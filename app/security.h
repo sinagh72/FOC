@@ -50,7 +50,7 @@ public:
      * @param output_signtext the digitally signed input. We passed nullptr. It will be initiallized inside the function
      * @return the digital signature of the corresponding input 
      */
-    int signature(string prvkey_filename, unsigned char * input_sign, unsigned char * output_sign);
+    int signature(string prvkey_filename, unsigned char * input_sign, unsigned char ** output_sign);
     //======================================================================================
     static unsigned char* verify_signature();
 

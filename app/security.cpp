@@ -6,6 +6,7 @@
 #include <openssl/pem.h>
 #include <string.h>
 #include<stdio.h>
+#include <mcheck.h>
 
 using namespace std;
 
@@ -17,18 +18,24 @@ const EVP_MD * const Security::SHA_256 = EVP_sha256();
 
 int Security::encryption_AES(unsigned char *plaintext, int plaintext_len, 
     unsigned char *key, unsigned char **iv, unsigned char **ciphertext){
-    
-    *ciphertext = (unsigned char *)malloc(sizeof(plaintext)+16);
-    if (!*ciphertext){ cerr << "Error: malloc returned NULL (ciphertext is too big?)\n"; return -1; }
+
     *iv = (unsigned char *)malloc(Security::AES_IV_LEN);
     if (!*iv){ cerr << "Error: malloc returned NULL (iv is too big?)\n"; return -1; }
+
+    *ciphertext = (unsigned char *)malloc(sizeof(plaintext)+AES_BLOCK_SIZE);
+    if (!*ciphertext){ cerr << "Error: malloc returned NULL (ciphertext is too big?)\n"; return -1; }
+    
+    //printf("%d (should be %d)\n", mprobe(*iv), MCHECK_OK);
+    
+
+    // printf("%d (should be %d)\n", mprobe(*iv), MCHECK_OK);
 
     EVP_CIPHER_CTX *ctx;
     int ret;
     //seed OpenSSL PRNG
     RAND_poll();
     //
-    ret = RAND_bytes((unsigned char*)&*iv[0], AES_IV_LEN);
+    ret = RAND_bytes((unsigned char*)*iv, AES_IV_LEN);
 
     cout << "IV:\n";
     BIO_dump_fp (stdout, (const char *)*iv, AES_IV_LEN);
@@ -65,7 +72,6 @@ int Security::encryption_AES(unsigned char *plaintext, int plaintext_len,
 
 int Security::decryption_AES(unsigned char *ciphertext, int ciphertext_len, unsigned char *key, 
     unsigned char *iv, unsigned char **decryptedtext){
-        
     *decryptedtext = (unsigned char*)malloc(ciphertext_len);
     if (!*decryptedtext){ cerr << "Error: malloc returned NULL (decryptedtext is too big?)\n"; return -1; }
 
@@ -92,13 +98,12 @@ int Security::decryption_AES(unsigned char *ciphertext, int ciphertext_len, unsi
 
     total_len += update_len;
     int plaintext_len = total_len;
-
     //delete the context and the plain_text from memory
     EVP_CIPHER_CTX_free(ctx);
     return plaintext_len;
 }
 
-int Security::signature(string prvkey_filename, unsigned char * input_sign, unsigned char * output_sign){
+int Security::signature(string prvkey_filename, unsigned char * input_sign, unsigned char ** output_sign){
     // load private key:    
     FILE* prvkey_file = fopen(prvkey_filename.c_str(), "r");
     if(!prvkey_file){ cerr << "Error: cannot open file '" << prvkey_filename << "' (missing?)\n"; return -1; }
@@ -106,7 +111,7 @@ int Security::signature(string prvkey_filename, unsigned char * input_sign, unsi
     fclose(prvkey_file);
     if(!prvkey){ cerr << "Error: PEM_read_PrivateKey returned NULL\n"; return -1; }
     // allocate buffer for signature:
-    output_sign = (unsigned char*)malloc(EVP_PKEY_size(prvkey));
+    *output_sign = (unsigned char*)malloc(EVP_PKEY_size(prvkey));
     if(!output_sign) { cerr << "Error: malloc returned NULL (signature too big?)\n"; return -1; }
 
     // create the signature context
@@ -119,7 +124,7 @@ int Security::signature(string prvkey_filename, unsigned char * input_sign, unsi
     ret = EVP_SignUpdate(md_ctx, input_sign, strlen((const char*)input_sign));
     if(ret == 0){ cerr << "Error: EVP_SignUpdate returned " << ret << "\n"; return -1; }
     unsigned int output_sign_len;
-    ret = EVP_SignFinal(md_ctx, output_sign, &output_sign_len, prvkey);
+    ret = EVP_SignFinal(md_ctx, *output_sign, &output_sign_len, prvkey);
     if(ret == 0){ cerr << "Error: EVP_SignFinal returned " << ret << "\n"; return -1; }
 
     // delete the digest and the private key from memory:
