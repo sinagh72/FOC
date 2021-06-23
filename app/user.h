@@ -1,5 +1,5 @@
-#ifndef _CHATTING_HPP_
-#define _CHATTING_HPP_
+#ifndef _CHATTINGAPP_HPP_
+#define _CHATTINGAPP_HPP_
 
 #include <string>
 
