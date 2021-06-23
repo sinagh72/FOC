@@ -13,6 +13,7 @@ private:
     unsigned char* key;
     unsigned short server_counter;
     unsigned short client_counter;
+    int client_socket;
     
 public:
     //constructor
