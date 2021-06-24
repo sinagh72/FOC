@@ -8,9 +8,11 @@
 #include "user.h"
 #include "Security.h"
 #include <stdint.h>
+#include <cstring>
 #include <openssl/conf.h>
 #include <openssl/dh.h>
 #include <openssl/evp.h>
+#include <openssl/pem.h>
 
 
 class Message {
@@ -23,7 +25,7 @@ public:
      * @param buffer is a pointer to pointer that will point to a buffer allocated inside the function
      * @return the number of byte of the buffer
      */
-    int create_message_0(char* username, char **buffer);
+    static unsigned int create_message_0(char* username, char **buffer);
 
     /**
      * handle function for message type 0
@@ -33,8 +35,8 @@ public:
      * @param port :port of the client
      * @param online_users : vector of Users that are online
      */
-    void handle_message_0(char* buffer, int client_socket, char* ip, uint16_t port, vector<User> online_users);
+    static void handle_message_0(char* buffer, int client_socket, char* ip, uint16_t port, vector<User> online_users);
 };
 
 
-#endif //APP_MESSAGE_H
+#endif

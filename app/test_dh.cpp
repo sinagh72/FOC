@@ -1,9 +1,9 @@
-#include "security.h"
+#include "Security.h"
 #include <cstdlib>
 #include <iostream>
-#include "security.h"
 #include <openssl/dh.h>
 #include <string.h>
+#include "Message.h"
 
 using namespace std;
 
@@ -31,5 +31,12 @@ int main(){
     EVP_PKEY_free(peers_pubk);
     EVP_PKEY_free(my_pubk);
 
+    printf("prima di create message");
+    char* message{nullptr};
+    printf("%d\n", Message::create_message_0("pippo", &message));
+    printf("%s", message+33);
+
     return 0;
+
+
 }
