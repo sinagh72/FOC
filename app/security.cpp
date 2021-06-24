@@ -311,4 +311,5 @@ int Security::generate_dh_key(EVP_PKEY * my_dhkey, EVP_PKEY * peers_dhk, unsigne
     EVP_PKEY_CTX_free(derive_ctx);
     EVP_PKEY_free(peers_dhk);
     EVP_PKEY_free(my_dhkey);
+    return 1;
 }
