@@ -1,5 +1,5 @@
-#ifndef _CHATTINGAPP_HPP_
-#define _CHATTINGAPP_HPP_
+#ifndef APP_USER_H
+#define APP_USER_H
 
 #include <string>
 
@@ -37,6 +37,12 @@ public:
     void set_key(unsigned char * key){
         this->key = key;
     }
+
+    //set server socket with that client (user)
+    void set_client_socket(int socket) {
+        this->client_socket = socket;
+    }
+
     //increment the server counter
     unsigned short increment_server_counter(){
         this->server_counter++;
@@ -78,6 +84,10 @@ public:
     //return the client counter
     unsigned short get_client_coutner() const{
         return this->client_counter;
+    }
+    // get the client socket
+    int get_client_socket() const{
+        return this->client_socket;
     }
     //serialize the object
     void serialize();

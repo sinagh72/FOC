@@ -10,34 +10,47 @@
 #include <sys/types.h> 
 #include <sys/socket.h> 
 #include <netinet/in.h> 
-#include <sys/time.h> //FD_SET, FD_ISSET, FD_ZERO macros 
+#include <sys/time.h> //FD_SET, FD_ISSET, FD_ZERO macros
+#include <vector>
+#include "user.h"
+#include "dimensions.h"
      
 #define TRUE   1 
 #define FALSE  0 
-#define PORT 8888 
+
+using namespace std;
      
-int main(int argc , char *argv[])  
-{  
-    int opt = TRUE;  
-    int master_socket , addrlen , new_socket , client_socket[30] , 
-          max_clients = 30 , activity, i , valread , sd;  
-    int max_sd;  
-    struct sockaddr_in address;  
-         
-    char buffer[1024];  //data buffer of 1K 
-         
-    //set of socket descriptors 
+int main(int argc , char *argv[]) {
+    const int port;
+    int opt = TRUE;
+    int master_socket;
+    int addrlen;
+    int new_socket;
+    //socket with clients
+    vector<User> online_users;
+    int ready_socket, i , valread;
+    int max_sd;
+    struct sockaddr_in address;
+
+    //set of socket descriptors
     // list of connections and sockets
-    fd_set readfds;  
-         
-    //a message 
-    char const *message = "ECHO Daemon v1.0 \r\n";  
-     
-    //initialise all client_socket[] to 0 so not checked 
-    for (i = 0; i < max_clients; i++)  
-    {  
-        client_socket[i] = 0;  
-    }  
+    fd_set readfds;
+
+
+    if(argc!=2) {
+        string port_string(argv[1]);
+        try {
+            port= stoi(port_string);
+            if(port<1024 or port>65535) throw out_of_range("Not valid port");
+        } catch (invalid_argument const &exception) {
+            cout<<"Error: server port number is not an integer"<<endl;
+            return;
+        } catch (out_of_range const &exception) {
+            cout<<"Error: server port number outside range 1024-65535"<<endl;
+            return;
+        }
+    }
+
          
     //create a master socket
     //AF_INET: IPV4
@@ -45,7 +58,7 @@ int main(int argc , char *argv[])
     //0: Internet Protocol(IP) 
     if((master_socket = socket(AF_INET , SOCK_STREAM , 0)) == 0)  
     {  
-        perror("socket failed");  
+        perror("socket creation failed");
         exit(EXIT_FAILURE);  
     }  
      
@@ -59,19 +72,20 @@ int main(int argc , char *argv[])
      
     //type of socket created 
     address.sin_family = AF_INET;  
-    address.sin_addr.s_addr = INADDR_ANY;  
-    address.sin_port = htons( PORT );  //host to network short
+    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_port = htons( port );
          
-    //bind the socket to localhost port 8888 
+    //bind the socket to all available interfaces on the selected port
     if (bind(master_socket, (struct sockaddr *)&address, sizeof(address))<0)  
     {  
         perror("bind failed");  
         exit(EXIT_FAILURE);  
-    }  
-    printf("Listener on port %d \n", PORT);  
+    }
+
+    printf("Listening on port %d \n", PORT);
          
     //try to specify maximum of 3 pending connections for the master socket 
-    if (listen(master_socket, 3) < 0)  
+    if (listen(master_socket, 50) < 0)
     {  
         perror("listen");  
         exit(EXIT_FAILURE);  
@@ -82,26 +96,26 @@ int main(int argc , char *argv[])
     puts("Waiting for connections ...");  
     int counter = 0;
     while(TRUE)  
-    {  
+    {
+
         counter ++;
-        std::cout<< "counter is: " << counter << std::endl;  
         //clear the socket set 
         FD_ZERO(&readfds);  
         //add master socket to set 
-        FD_SET(master_socket, &readfds);  
+        FD_SET(master_socket, &readfds);
+
         max_sd = master_socket;  
              
         //add child sockets to set 
-        for ( i = 0 ; i < max_clients ; i++)  
+        for ( vector<User>::iterator it= online_users.begin(); it != online_users.end() ; i++)
         {  
-            //socket descriptor 
-            sd = client_socket[i];  
+            //socket descriptor
+            int sd;
+            sd = it->get_client_socket();
                  
             //if valid socket descriptor then add to read list 
             if(sd > 0){
                 FD_SET( sd , &readfds);
-                std::cout<< "sd is: " << sd << std::endl;  
-                
             }
                  
             //highest file descriptor number, need it for the select function 
@@ -110,7 +124,7 @@ int main(int argc , char *argv[])
         }  
         //wait for an activity on one of the sockets , timeout is NULL , 
         //so wait indefinitely 
-        activity = select( max_sd + 1 , &readfds , NULL , NULL , NULL);  
+        ready_socket = select( max_sd + 1 , &readfds , NULL , NULL , NULL);
        
         if ((activity < 0) && (errno!=EINTR))  
         {  
@@ -127,12 +141,14 @@ int main(int argc , char *argv[])
                 perror("accept"); 
                 printf("accept error");   
                 exit(EXIT_FAILURE);  
-            }  
-            FD_SET(new_socket , &readfds);
-            //inform user of socket number - used in send and receive commands 
-            printf("New connection , socket fd is %d , ip is : %s , port : %d \n" , new_socket , 
-                inet_ntoa(address.sin_addr) , ntohs(address.sin_port));  
-           
+            }
+            char* buffer=(char*) malloc(MESSAGE_TYPE_0_DIMENSION);
+            read(new_socket, buffer, MESSAGE_TYPE_0_DIMENSION);
+
+            //check for message type 0
+            if(buffer[0]==0) handle_message_0(buffer, new_socket, inet_ntoa(address.sin_addr), ntohs(address.sin_port), online_users)
+
+
             //send new connection greeting message 
             if(send(new_socket, message, strlen(message), 0) != strlen(message))  
             {  
@@ -164,7 +180,7 @@ int main(int argc , char *argv[])
             {  
                 //Check if it was for closing , and also read the 
                 //incoming message 
-                if ((valread = read( sd , buffer, 1024)) == 0)  
+                if ((valread = read( sd , buffer, 1024)) == 0)
                 {  
                     //Somebody disconnected , get his details and print 
                     getpeername(sd , (struct sockaddr*)&address , \
@@ -186,7 +202,7 @@ int main(int argc , char *argv[])
                     buffer[valread] = '\0';
                     std::cout<< "Client " << inet_ntoa(address.sin_addr) <<"_" << ntohs(address.sin_port) << ": "
                     << buffer << std::endl; 
-                    std::cout<< "valread is: " << valread << std::endl; 
+                    std::cout<< "valread is: " << valread << std::endl;
                     if(send(sd , buffer , strlen(buffer) , 0 )!= strlen(buffer)){
                         perror("send");
                         exit(EXIT_FAILURE); 
