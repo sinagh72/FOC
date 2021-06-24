@@ -392,3 +392,23 @@ int Security::generate_dh_key(EVP_PKEY * my_dhkey, EVP_PKEY * peers_dhk, unsigne
     EVP_PKEY_CTX_free(derive_ctx);
     return 1;
 }
+
+char* Security::EVP_PKEY_to_chars(EVP_PKEY *pkey){
+ BIO *bio = NULL;
+    char *pk_buf = NULL;
+    if (NULL == pkey)
+      return NULL;
+    if ((bio = BIO_new(BIO_s_mem())) == NULL){
+        cerr << "Error: BIO_new returned NULL\n";
+        return NULL;
+    }
+    if (0 == PEM_write_bio_PUBKEY(bio, pkey)){
+      BIO_free(bio);
+      cerr << "Error: PEM_write_bio_PUBKEY Failed\n";
+      return NULL;
+    }
+    long pubkey_size = BIO_get_mem_data(bio, &pk_buf);
+    BIO_free(bio);
+
+    return pk_buf;   
+}

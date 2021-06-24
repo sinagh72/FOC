@@ -71,10 +71,34 @@ public:
     */
     static int verify_certificate(string cert_file_name);
     //======================================================================================
+    /**
+    * use the GCM to authenticate and encrypt the plaintext and returns the tag and ciphertext 
+    * @param aad aad for the GCM
+    * @param aad_len the length of the aad for the GCM
+    * @param plaintext plaintext we want to encrypt
+    * @param plaintext_len length of the plaintext we want to encrypt
+    * @param key key for authentication and encryption
+    * @param iv initialization vector 
+    * @param ciphertext the ciphertext of the encryption
+    * @param tag the generated tag after encryption and authentication
+    * @return intger to specify the length of the ciphertext
+    */
     static int gcm_encrypt(unsigned char * aad, int aad_len, unsigned char * plaintext, int plaintext_len, 
     unsigned char * key, unsigned char *iv, unsigned char ** ciphertext, unsigned char ** tag);
 
     //======================================================================================
+    /**
+    * use the GCM to verify authentication by the tag, decrypt the ciphertext and returns plaintext
+    * @param aad aad for the GCM
+    * @param aad_len the length of the aad for the GCM
+    * @param ciphertext ciphertext we want to encrypt
+    * @param ciphertext_len length of the ciphertext we want to decrypt
+    * @param key key for verify authentication and decryption
+    * @param iv initialization vector 
+    * @param decryptedtext the decrypted text
+    * @param tag the tag for verify authentication
+    * @return intger to specify the length of the decryptedtext 
+    */
     static int gcm_decrypt(unsigned char * aad, int aad_len, unsigned char * ciphertext, int ciphertext_len, 
     unsigned char * key, unsigned char *iv, unsigned char ** decryptedtext, unsigned char * tag);
     //======================================================================================
@@ -99,7 +123,14 @@ public:
     * @param skey the established session key
     * @return intger to specify that the generating is succeeded (length of plaintext) or not -1 
     */
-    static int generate_dh_key(EVP_PKEY * my_pubk, EVP_PKEY * peers_pubk,  unsigned char **skey);
+    static int generate_dh_key(EVP_PKEY * my_pubk, EVP_PKEY * peers_pubk,  unsigned char **skey);    
+    //======================================================================================
+    /**
+    * convert the EVP_PKEY into char*
+    * @param pkey the public/private key to convert into char*
+    * @return char* to use as string 
+    */
+    static char *EVP_PKEY_to_chars(EVP_PKEY *pkey);
 };
 
 #endif
