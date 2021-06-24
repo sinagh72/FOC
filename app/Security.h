@@ -16,6 +16,7 @@ public:
     static const EVP_MD* const SHA_256;
     static const EVP_CIPHER* const GCM_CIPHER;
     static const int GCM_IV_LEN;
+    static const int GCM_TAG_LEN;
     //======================================================================================
     /**
     * encrypt the message using symmetric key and AES CBC mode
@@ -71,11 +72,11 @@ public:
     static int verify_certificate(string cert_file_name);
     //======================================================================================
     static int gcm_encrypt(unsigned char * aad, int aad_len, unsigned char * plaintext, int plaintext_len, 
-    unsigned char * key, unsigned char **iv, unsigned char ** ciphertext, unsigned char ** tag);
+    unsigned char * key, unsigned char *iv, unsigned char ** ciphertext, unsigned char ** tag);
 
     //======================================================================================
     static int gcm_decrypt(unsigned char * aad, int aad_len, unsigned char * ciphertext, int ciphertext_len, 
-    unsigned char * key, unsigned char *iv, int iv_len, unsigned char ** decryptedtext, unsigned char * tag);
+    unsigned char * key, unsigned char *iv, unsigned char ** decryptedtext, unsigned char * tag);
     //======================================================================================
     /**
     * generates a DH public key and assign it to the variable pubk
@@ -91,7 +92,8 @@ public:
     static DH* get_dh2048(void);
     //======================================================================================
     /**
-    * generates a DH session key with two public keys
+    * generates a DH session key with two public keys. The input keys are not deallocated in this function
+    * So their memory should be deallocated! 
     * @param my_pubk the public key of they client that calls the function
     * @param peers_pubk the public key of the peers
     * @param skey the established session key

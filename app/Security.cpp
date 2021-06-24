@@ -18,6 +18,8 @@ const int Security::AES_BLOCK_SIZE = EVP_CIPHER_block_size(Security::AES_CIPHER)
 const EVP_MD * const Security::SHA_256 = EVP_sha256();
 const EVP_CIPHER* const Security::GCM_CIPHER =  EVP_aes_256_gcm();
 const int Security::GCM_IV_LEN = EVP_CIPHER_iv_length(Security::GCM_CIPHER);
+const int Security::GCM_TAG_LEN = 16;
+
 
 int Security::encryption_AES(unsigned char *plaintext, int plaintext_len, 
     unsigned char *key, unsigned char **iv, unsigned char **ciphertext){
@@ -33,8 +35,8 @@ int Security::encryption_AES(unsigned char *plaintext, int plaintext_len,
     RAND_poll();
     RAND_bytes((unsigned char*)*iv, AES_IV_LEN);
 
-    cout << "IV:\n";
-    BIO_dump_fp (stdout, (const char *)*iv, AES_IV_LEN);
+    // cout << "IV:\n";
+    // BIO_dump_fp (stdout, (const char *)*iv, AES_IV_LEN);
     //create and initialize the context
     if (!(ctx = EVP_CIPHER_CTX_new())){ cerr << "Error: EVP_CIPHER_CTX_new returned NULL\n"; return -1; }
 
@@ -55,8 +57,8 @@ int Security::encryption_AES(unsigned char *plaintext, int plaintext_len,
     int ciphertext_len = total_len;
 
     
-    cout << "Encrypted:\n";
-    BIO_dump_fp (stdout, (const char *)ciphertext, ciphertext_len);
+    // cout << "Encrypted:\n";
+    // BIO_dump_fp (stdout, (const char *)ciphertext, ciphertext_len);
     //delete the context and the plain_text from memory
     EVP_CIPHER_CTX_free(ctx);
     return ciphertext_len;
@@ -217,51 +219,55 @@ int Security::verify_certificate(string cert_file_name){
 }
 
 int Security::gcm_encrypt(unsigned char * aad, int aad_len, unsigned char * plaintext, int plaintext_len, 
-    unsigned char * key, unsigned char **iv, unsigned char ** ciphertext, unsigned char ** tag){
+    unsigned char * key, unsigned char *iv, unsigned char ** ciphertext, unsigned char ** tag){
 
     EVP_CIPHER_CTX *ctx;
     int len=0;
     int ciphertext_len=0;
-    cout<<aad_len<<endl;
-    //*iv = (unsigned char *)malloc(GCM_IV_LEN);
-    //if (!*iv){ cerr << "Error: malloc returned NULL (iv is too big?)\n"; return -1; }
-    //seed OpenSSL PRNG
-    //RAND_poll();
-    //RAND_bytes((unsigned char*)*iv, GCM_IV_LEN);
-    //BIO_dump_fp (stdout, (const char *)*iv, GCM_IV_LEN);
+
+    // *iv = (unsigned char *)malloc(AES_BLOCK_SIZE);
+    // if (!*iv){ cerr << "Error: malloc returned NULL (iv is too big?)\n"; return -1; }
+    // //seed OpenSSL PRNG
+    // RAND_poll();
+    // RAND_bytes((unsigned char*)*iv, GCM_IV_LEN);
+    // BIO_dump_fp (stdout, (const char *)*iv, GCM_IV_LEN);
 
     *ciphertext = (unsigned char *)malloc(plaintext_len + AES_BLOCK_SIZE);
     if (!*ciphertext){ cerr << "Error: malloc returned NULL (ciphertext is too big?)\n"; return -1; }
     
-    *tag = (unsigned char *)malloc(AES_BLOCK_SIZE);
+    *tag = (unsigned char *)malloc(GCM_TAG_LEN);
     if (!*ciphertext){ cerr << "Error: malloc returned NULL (tag is too big?)\n"; return -1; }
 
     // Create and initialise the context
     if(!(ctx = EVP_CIPHER_CTX_new())){ cerr << "Error: EVP_CIPHER_CTX_new returned NULL\n"; return -1; }
     // Initialise the encryption operation.
-    if(1 != EVP_EncryptInit(ctx, GCM_CIPHER, key, *iv)) { cerr << "Error: EVP_EncryptInit Failed\n"; return -1; }
+    if(1 != EVP_EncryptInit(ctx, GCM_CIPHER, key, iv)) { cerr << "Error: EVP_EncryptInit Failed\n"; return -1; }
 
     //Provide any AAD data. This can be called zero or more times as required
     if(1 != EVP_EncryptUpdate(ctx, NULL, &len, aad, aad_len)) { cerr << "Error: EVP_EncryptUpdate AAD Failed\n"; return -1; }
 
-    if(1 != EVP_EncryptUpdate(ctx, *ciphertext, &len, plaintext, plaintext_len)) { cerr << "Error: EVP_EncryptUpdate Failed\n"; return -1; }
+    if(1 != EVP_EncryptUpdate(ctx, *ciphertext, &len, plaintext, plaintext_len)) { 
+        cerr << "Error: EVP_EncryptUpdate Failed\n"; return -1;
+    }
     ciphertext_len = len;
 	//Finalize Encryption
     if(1 != EVP_EncryptFinal(ctx, *ciphertext + len, &len)){ cerr << "Error: EVP_EncryptFinal Failed\n"; return -1; }
     ciphertext_len += len;
     /* Get the tag */
-    if(1 != EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG, AES_BLOCK_SIZE, &tag)) { cerr << "Error: EVP_CIPHER_CTX_ctrl Failed\n"; return -1; }
+    if(1 != EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG, GCM_TAG_LEN, *tag)) {
+         cerr << "Error: EVP_CIPHER_CTX_ctrl Failed\n"; return -1;
+    }
     /* Clean up */
     EVP_CIPHER_CTX_free(ctx);
     return ciphertext_len;
 }
 int Security::gcm_decrypt(unsigned char * aad, int aad_len, unsigned char * ciphertext, int ciphertext_len, 
-    unsigned char * key, unsigned char *iv, int iv_len, unsigned char ** decryptedtext, unsigned char * tag){
+    unsigned char * key, unsigned char *iv, unsigned char ** decryptedtext, unsigned char * tag){
 
     EVP_CIPHER_CTX *ctx;
     int ret;
-    int len=0;
-    int decryptedtext_len=0;
+    int len = 0;
+    int decryptedtext_len = 0;
 
      *decryptedtext = (unsigned char*)malloc(ciphertext_len);
     if (!*decryptedtext){ cerr << "Error: malloc returned NULL (decryptedtext is too big?)\n"; return -1; }
@@ -277,13 +283,12 @@ int Security::gcm_decrypt(unsigned char * aad, int aad_len, unsigned char * ciph
     if(1 != EVP_DecryptUpdate(ctx, *decryptedtext, &len, ciphertext, ciphertext_len)) { cerr << "Error: EVP_DecryptUpdate Failed\n"; return -1; }
     decryptedtext_len = len;
 	/* Set expected tag value. Works in OpenSSL 1.0.1d and later */
-    if(!EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG, AES_BLOCK_SIZE, tag)){ cerr << "Error: EVP_CIPHER_CTX_ctrl Failed\n"; return -1; }
+    if(!EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG, GCM_TAG_LEN, tag)){ cerr << "Error: EVP_CIPHER_CTX_ctrl Failed\n"; return -1; }
     /*
      * Finalise the decryption. A positive return value indicates success,
      * anything else is a failure - the decryptedtext is not trustworthy.
      */
     ret = EVP_DecryptFinal(ctx, *decryptedtext + len, &len);
-
     /* Clean up */
     EVP_CIPHER_CTX_cleanup(ctx);
 
@@ -385,7 +390,5 @@ int Security::generate_dh_key(EVP_PKEY * my_dhkey, EVP_PKEY * peers_dhk, unsigne
     if (EVP_PKEY_derive(derive_ctx, *skey, &skeylen) <= 0) { cerr << "Error: EVP_PKEY_derive Failed\n"; return -1; }
     //FREE EVERYTHING INVOLVED WITH THE EXCHANGE (not the shared secret tho)
     EVP_PKEY_CTX_free(derive_ctx);
-    EVP_PKEY_free(peers_dhk);
-    EVP_PKEY_free(my_dhkey);
     return 1;
 }
