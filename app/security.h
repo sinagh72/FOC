@@ -86,11 +86,12 @@ public:
     //======================================================================================
     /**
     * generates a DH session key with two public keys
+    * @param my_pubk the public key of they client that calls the function
+    * @param peers_pubk the public key of the peers
+    * @param skey the established session key
     * @return intger to specify that the generating is succeeded (length of plaintext) or not -1 
     */
-    static int generate_dh_key(EVP_PKEY * my_pubk, EVP_PKEY * peers_pubk);
-
-
+    static int generate_dh_key(EVP_PKEY * my_pubk, EVP_PKEY * peers_pubk,  unsigned char **skey);
 };
 
 #endif
