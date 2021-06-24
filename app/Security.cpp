@@ -1,4 +1,5 @@
 #include "Security.h"
+#include <openssl/dh.h>
 #include <openssl/evp.h>
 #include <openssl/ossl_typ.h>
 #include <openssl/rand.h>
@@ -127,12 +128,12 @@ int Security::signature(string prvk_filename, unsigned char * text_to_sign, int 
 int Security::verify_signature(string pubk_filename, unsigned char * signature, int signature_len, unsigned char * clear_text, int clear_text_len){
     int ret;
    
-   // load my private key:
+   // load my public key:
    FILE* pubk_file = fopen(pubk_filename.c_str(), "r");
    if(!pubk_file){ cerr << "Error: cannot open file '" << pubk_filename << "' (missing?)\n"; exit(1); }
-   EVP_PKEY* pubk = PEM_read_PrivateKey(pubk_file, NULL, NULL, NULL);
+   EVP_PKEY* pubk = PEM_read_PUBKEY(pubk_file, NULL, NULL, NULL);
    fclose(pubk_file);
-   if(!pubk){ cerr << "Error: PEM_read_PrivateKey returned NULL\n"; exit(1); }
+   if(!pubk){ cerr << "Error: PEM_read_PUBKEY returned NULL\n"; exit(1); }
 
    // create the signature context:
    EVP_MD_CTX* md_ctx = EVP_MD_CTX_new();
@@ -354,8 +355,6 @@ DH * Security::get_dh2048(void)
 }
 
 int Security::generate_dh_pubk(EVP_PKEY ** pubk){
-    //openssl rsa -pubout -in rsa_privkey.pem -out rsa_pubkey.pem
-    //openssl genrsa -aes128 -out rsa_privkey.pem 3072
     EVP_PKEY *params;
     if(NULL == (params = EVP_PKEY_new())) { cerr << "Error: EVP_PKEY_new returned NULL\n"; return -1; }
     DH* temp = Security::get_dh2048();
@@ -367,6 +366,7 @@ int Security::generate_dh_pubk(EVP_PKEY ** pubk){
     /* Generate a new key */
     if(1 != EVP_PKEY_keygen_init(DHctx)){ cerr << "Error: EVP_PKEY_keygen_init Failed\n"; return -1; }
     if(1 != EVP_PKEY_keygen(DHctx, pubk)){ cerr << "Error: EVP_PKEY_keygen Failed\n"; return -1; }
+
     EVP_PKEY_CTX_free(DHctx);
     EVP_PKEY_free(params);
     return 1;
