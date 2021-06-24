@@ -7,9 +7,9 @@
 using namespace std;
 class User{
 private:
-    string identifier;
+    string username;
     string IP;
-    string port;
+    unsigned short port;
     unsigned char* key;
     unsigned short server_counter;
     unsigned short client_counter;
@@ -17,20 +17,20 @@ private:
     
 public:
     //constructor
-    User(string identifier, string IP, string port);
+    User(string username, string IP, unsigned short port);
     //copy constructor
     User(const User &source);
     //methods
-    //set the identifier
-    void set_identifier(string identifier){
-        this->identifier = identifier;
+    //set the username
+    void set_username(string username){
+        this->username = username;
     }
     //set the ip
     void set_IP(string IP){
         this->IP = IP;
     }
     //set the port
-    void set_port(string port){
+    void set_port(unsigned short port){
         this->port = port;
     }
     //set the key
@@ -61,16 +61,16 @@ public:
     void clear_server_counter(){
         this->server_counter = 0;
     }
-    //return the identifier
-    string get_identifier() const{
-        return this->identifier;
+    //return the username
+    string get_username() const{
+        return this->username;
     }
     //return the ip
     string get_IP() const{
         return this->IP;
     }
     //return the port
-    string get_port() const{
+    unsigned short get_port() const{
         return this->port;
     }
     //return the key

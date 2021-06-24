@@ -25,7 +25,7 @@ int main(){
     Security::generate_dh_pubk(&peers_pubk);
     char* peers_pubk_char = Security::EVP_PKEY_to_chars(peers_pubk);
     cout<<"Other party DH public " <<strlen((const char*)peers_pubk_char) << " key: "<<endl;
-    BIO_dump_fp (stdout, (const char *)peers_pubk_char, strlen((const char*)peers_pubk_char));
+    //BIO_dump_fp (stdout, (const char *)peers_pubk_char, strlen((const char*)peers_pubk_char));
 
     //generate g^{ab}
     unsigned char* skey{nullptr}; //session key g^{ab}
@@ -40,14 +40,12 @@ int main(){
     cout<<"Concatenation: " <<endl;
     BIO_dump_fp (stdout, (const char *)plaintext, plaintext_len);
     cout<<endl;
-
     //digital signature
     unsigned char* signature{nullptr};
     //digitally signed the {g^a,b^b} by private key
-    Security::signature("users/sina/rsa_privkey.pem", (unsigned char *)plaintext, plaintext_len, &signature);
-    int signature_len = strlen((const char*)signature);
+    int signature_len = Security::signature("users/sina/rsa_privkey.pem", (unsigned char *)plaintext, plaintext_len, &signature);
+
     cout << "PT: "<< endl;
-    
     BIO_dump_fp (stdout, (const char *)signature, signature_len);
 
     unsigned char* tag{nullptr};
@@ -100,10 +98,10 @@ int main(){
     EVP_PKEY_free(my_pubk);
     
 
-    // printf("prima di create message");
-    // char* message{nullptr};
-    // printf("%d\n", Message::create_message_0("pippo", &message));
-    // printf("%s", message+33);
+    printf("prima di create message");
+    char* message{nullptr};
+    printf("%d\n", Message::create_message_0("pippo", &message));
+    printf("%s", message+33);
 
     return 0;
 

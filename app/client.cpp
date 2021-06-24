@@ -1,13 +1,49 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <string.h>
+#include "user.h"
+#include <iostream>
+#include <vector>
+#include <filesystem>
+#include <fstream>
+#include <sys/stat.h>
+
+using namespace std;
 
 #define PORT 8888
 #define MSEC 10000 
 int main(int argc, char const *argv[])
 {
+
+    string username;
+    bool valid = false;
+    do{
+        cout<<"Please Enter Your Username:\n";
+        cin >> username;
+        if(!cin){
+            cerr<<"Wrong Input.\n";
+            valid = false;
+        }else{
+            string privk_file = "users/" + username + "/rsa_privkey.pem";
+            string pubk_file = "users/" + username + "/rsa_pubkey.pem";
+            struct stat buffer;   
+            if (!(stat(privk_file.c_str(), &buffer) == 0)){
+                cout << "No private key is generate for " << username<<"\n";
+                valid = false;
+            }
+            else if(!(stat (pubk_file.c_str(), &buffer) == 0)){
+                cout << "No public key is generate for "<< username<<"\n";
+                valid = false;
+            }
+            else 
+                valid = true;
+        }
+    }while(!valid);
+    //User *this_user = new User(username, "localhost", PORT);
     int sock = 0, valread;
     struct sockaddr_in serv_addr;
     char const *hello = "sina";
