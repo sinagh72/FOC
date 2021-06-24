@@ -1,5 +1,5 @@
-#ifndef _CHATTINGAPP_HPP_
-#define _CHATTINGAPP_HPP_
+#ifndef APP_SECURITY_H
+#define APP_SECURITY_H
 #include <openssl/conf.h>
 #include <openssl/dh.h>
 #include <openssl/evp.h>
@@ -15,10 +15,13 @@ using namespace std;
 class Security{
 
 public:
-    static const EVP_CIPHER * const AES_CIPHER;
+    static const EVP_CIPHER* const AES_CIPHER;
     static const int AES_IV_LEN;
     static const int AES_BLOCK_SIZE;
     static const EVP_MD* const SHA_256;
+    static const EVP_CIPHER* const GCM_CIPHER;
+    static const int GCM_IV_LEN;
+    static const int GCM_BLOCK_SIZE;
     //======================================================================================
     /**
     * encrypt the message using symmetric key and AES CBC mode
@@ -46,36 +49,45 @@ public:
     //======================================================================================
     /**
     * digitally signed the input text
-    * @param prvkey_filename address of the private key file name for digital signature
+    * @param prvk_filename address of the private key file name for digital signature
     * @param text_to_sign the input text we want to signed with the private key
     * @param text_to_sign_len the lenght of the input text
     * @param signature the digitally signed signature. 
     * @return intger to specify that the signing is succeeded (length of plaintext) or not -1 
     */
-    static int signature(string prvkey_filename, unsigned char * text_to_sign, int text_to_sign_len,
+    static int signature(string prvk_filename, unsigned char * text_to_sign, int text_to_sign_len,
      unsigned char ** signature);
     //======================================================================================
     /**
     * verify signature according to the public key
-    * @param public_key the public key of the peer to verify the signature
+    * @param pubk_filename the public key of the peer to verify the signature
     * @param signature address of the private key file name for digital signature
     * @param signature_len the input text we want to signed with the private key
     * @param clear_text the lenght of the input text
     * @param clear_text_len the digitally signed signature. 
     * @return intger to specify that the verification is succeeded (length of plaintext) or not -1 
     */
-    static int verify_signature(EVP_PKEY* publib_key, unsigned char * signature, int signature_len, unsigned char * clear_text, int clear_text_len);
+    static int verify_signature(string pubk_filename, unsigned char * signature, int signature_len, unsigned char * clear_text, int clear_text_len);
     //======================================================================================
-    static int verify_certificate();
+    /**
+    * verify the input certificate and verify it according to the store
+    * @param cert_file_name the address of the certificate to verify
+    * @return intger to specify that the verification is succeeded (length of plaintext) or not -1 
+    */
+    static int verify_certificate(string cert_file_name);
     //======================================================================================
-    static int gcm(unsigned char * aad, unsigned char * plaintext, unsigned char * key, unsigned char * ciphertext, 
-        unsigned char ** tag);
+    static int gcm_encrypt(unsigned char * aad, int aad_len, unsigned char * plaintext, int plaintext_len, 
+    unsigned char * key, unsigned char **iv, unsigned char ** ciphertext, unsigned char ** tag);
+
+    //======================================================================================
+    static int gcm_decrypt(unsigned char * aad, int aad_len, unsigned char * ciphertext, int ciphertext_len, 
+    unsigned char * key, unsigned char *iv, int iv_len, unsigned char ** decryptedtext, unsigned char * tag);
     //======================================================================================
     /**
     * generates a DH public key and assign it to the variable pubk
     * @return intger to specify that the generating is succeeded (length of plaintext) or not -1 
     */
-    static int generate_dh_pubk(EVP_PKEY* pubk = nullptr);
+    static int generate_dh_pubk(EVP_PKEY** pubk);
     //======================================================================================
     //
     /**
