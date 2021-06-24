@@ -1,4 +1,5 @@
 #include "security.h"
+#include <iterator>
 #include <openssl/evp.h>
 #include <openssl/ossl_typ.h>
 #include <openssl/rand.h>
@@ -6,7 +7,7 @@
 #include <iostream>
 #include <openssl/pem.h>
 #include <string.h>
-#include<stdio.h>
+#include <stdio.h>
 #include <mcheck.h>
 
 using namespace std;
@@ -18,7 +19,6 @@ const int Security::AES_BLOCK_SIZE = EVP_CIPHER_block_size(Security::AES_CIPHER)
 const EVP_MD * const Security::SHA_256 = EVP_sha256();
 const EVP_CIPHER* const Security::GCM_CIPHER =  EVP_aes_256_gcm();
 const int Security::GCM_IV_LEN = EVP_CIPHER_iv_length(Security::GCM_CIPHER);
-const int Security::GCM_BLOCK_SIZE = EVP_CIPHER_block_size(Security::GCM_CIPHER);
 
 int Security::encryption_AES(unsigned char *plaintext, int plaintext_len, 
     unsigned char *key, unsigned char **iv, unsigned char **ciphertext){
@@ -223,17 +223,18 @@ int Security::gcm_encrypt(unsigned char * aad, int aad_len, unsigned char * plai
     EVP_CIPHER_CTX *ctx;
     int len=0;
     int ciphertext_len=0;
-
-    *iv = (unsigned char *)malloc(GCM_IV_LEN);
-    if (!*iv){ cerr << "Error: malloc returned NULL (iv is too big?)\n"; return -1; }
+    cout<<aad_len<<endl;
+    //*iv = (unsigned char *)malloc(GCM_IV_LEN);
+    //if (!*iv){ cerr << "Error: malloc returned NULL (iv is too big?)\n"; return -1; }
     //seed OpenSSL PRNG
-    RAND_poll();
-    RAND_bytes((unsigned char*)*iv, GCM_IV_LEN);
+    //RAND_poll();
+    //RAND_bytes((unsigned char*)*iv, GCM_IV_LEN);
+    //BIO_dump_fp (stdout, (const char *)*iv, GCM_IV_LEN);
 
-    *ciphertext = (unsigned char *)malloc(plaintext_len + GCM_BLOCK_SIZE);
+    *ciphertext = (unsigned char *)malloc(plaintext_len + AES_BLOCK_SIZE);
     if (!*ciphertext){ cerr << "Error: malloc returned NULL (ciphertext is too big?)\n"; return -1; }
     
-    *tag = (unsigned char *)malloc(GCM_BLOCK_SIZE);
+    *tag = (unsigned char *)malloc(AES_BLOCK_SIZE);
     if (!*ciphertext){ cerr << "Error: malloc returned NULL (tag is too big?)\n"; return -1; }
 
     // Create and initialise the context
@@ -250,13 +251,13 @@ int Security::gcm_encrypt(unsigned char * aad, int aad_len, unsigned char * plai
     if(1 != EVP_EncryptFinal(ctx, *ciphertext + len, &len)){ cerr << "Error: EVP_EncryptFinal Failed\n"; return -1; }
     ciphertext_len += len;
     /* Get the tag */
-    if(1 != EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG, GCM_BLOCK_SIZE, &tag)) { cerr << "Error: EVP_CIPHER_CTX_ctrl Failed\n"; return -1; }
+    if(1 != EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG, AES_BLOCK_SIZE, &tag)) { cerr << "Error: EVP_CIPHER_CTX_ctrl Failed\n"; return -1; }
     /* Clean up */
     EVP_CIPHER_CTX_free(ctx);
     return ciphertext_len;
 }
-int Security::gcm_decrypt(unsigned char * aad, int aad_len, unsigned char * plaintext, int plaintext_len, 
-    unsigned char * key, unsigned char **iv, unsigned char ** ciphertext, unsigned char ** tag){
+int Security::gcm_decrypt(unsigned char * aad, int aad_len, unsigned char * ciphertext, int ciphertext_len, 
+    unsigned char * key, unsigned char *iv, int iv_len, unsigned char ** decryptedtext, unsigned char * tag){
 
     EVP_CIPHER_CTX *ctx;
     int ret;
@@ -277,7 +278,7 @@ int Security::gcm_decrypt(unsigned char * aad, int aad_len, unsigned char * plai
     if(1 != EVP_DecryptUpdate(ctx, *decryptedtext, &len, ciphertext, ciphertext_len)) { cerr << "Error: EVP_DecryptUpdate Failed\n"; return -1; }
     decryptedtext_len = len;
 	/* Set expected tag value. Works in OpenSSL 1.0.1d and later */
-    if(!EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG, GCM_BLOCK_SIZE, tag)){ cerr << "Error: EVP_CIPHER_CTX_ctrl Failed\n"; return -1; }
+    if(!EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG, AES_BLOCK_SIZE, tag)){ cerr << "Error: EVP_CIPHER_CTX_ctrl Failed\n"; return -1; }
     /*
      * Finalise the decryption. A positive return value indicates success,
      * anything else is a failure - the decryptedtext is not trustworthy.

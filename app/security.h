@@ -7,11 +7,6 @@
 
 using namespace std;
 
-// const EVP_CIPHER* const AES_CIPHER = EVP_aes_256_cbc();
-// const int AES_IV_LEN = EVP_CIPHER_iv_length(AES_CIPHER);
-// const int AES_BLOCK_SIZE = EVP_CIPHER_block_size(AES_CIPHER);
-// const EVP_MD * const SHA_256 = EVP_sha256();
-
 class Security{
 
 public:
@@ -21,7 +16,6 @@ public:
     static const EVP_MD* const SHA_256;
     static const EVP_CIPHER* const GCM_CIPHER;
     static const int GCM_IV_LEN;
-    static const int GCM_BLOCK_SIZE;
     //======================================================================================
     /**
     * encrypt the message using symmetric key and AES CBC mode
