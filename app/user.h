@@ -2,26 +2,39 @@
 #define APP_USER_H
 
 #include <string>
+#include <openssl/evp.h>
 
 
 using namespace std;
+
+
+enum STATUS : {CONNECTING, ONLINE, CHATTING};
+
 class User{
 private:
+    STATUS status;
     string username;
     string IP;
     unsigned short port;
-    unsigned char* key;
-    unsigned short server_counter;
-    unsigned short client_counter;
+    unsigned char* sim_key;
+    EVP_PKEY* pub_key;
+    unsigned short server_counter{0};
+    unsigned short client_counter{0};
     int client_socket;
+
     
 public:
     //constructor
-    User(string username, string IP, unsigned short port);
+    User(string username, string IP, unsigned short port, EVP_PKEY* pubkey, int client_socket);
     //copy constructor
     User(const User &source);
     //methods
     //set the username
+
+    void set_status(STATUS status) {
+        this->status = status;
+    }
+
     void set_username(string username){
         this->username = username;
     }
@@ -61,6 +74,12 @@ public:
     void clear_server_counter(){
         this->server_counter = 0;
     }
+
+    //return the status
+    STATUS get_status() {
+        return this->status;
+    }
+
     //return the username
     string get_username() const{
         return this->username;

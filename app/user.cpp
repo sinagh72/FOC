@@ -3,8 +3,8 @@
 
 //methods
 //set the username
-User::User(string username_val, string IP_val, unsigned short port_val):
-    IP{IP_val},username{username_val},port{port_val},key{nullptr}, server_counter{0}, client_counter{0}, client_socket{0}{
+User::User(tring username, string IP, unsigned short port, EVP_PKEY* pubkey, int client_socket):
+    IP{IP},username{username},port{port},pub_key{pubkey}, server_counter{0}, client_counter{0}, client_socket{client_socket}{
 }
 User::User(const User &source):
     username(source.username),IP(source.IP),port(source.port),key(source.key), 
