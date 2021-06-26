@@ -25,16 +25,12 @@ const int Security::GCM_TAG_LEN = 16;
 int Security::encryption_AES(unsigned char *plaintext, int plaintext_len, 
     unsigned char *key, unsigned char **iv, unsigned char **ciphertext){
 
-    *iv = (unsigned char *)malloc(AES_IV_LEN);
-    if (!*iv){ cerr << "Error: malloc returned NULL (iv is too big?)\n"; return -1; }
+    if (Security::generate_iv(iv, AES_IV_LEN)){return -1;}
 
     *ciphertext = (unsigned char *)malloc(plaintext_len + AES_BLOCK_SIZE);
     if (!*ciphertext){ cerr << "Error: malloc returned NULL (ciphertext is too big?)\n"; return -1; }
 
     EVP_CIPHER_CTX *ctx;
-    //seed OpenSSL PRNG
-    RAND_poll();
-    RAND_bytes((unsigned char*)*iv, AES_IV_LEN);
 
     // cout << "IV:\n";
     // BIO_dump_fp (stdout, (const char *)*iv, AES_IV_LEN);
@@ -226,13 +222,6 @@ int Security::gcm_encrypt(unsigned char * aad, int aad_len, unsigned char * plai
     int len=0;
     int ciphertext_len=0;
 
-    // *iv = (unsigned char *)malloc(AES_BLOCK_SIZE);
-    // if (!*iv){ cerr << "Error: malloc returned NULL (iv is too big?)\n"; return -1; }
-    // //seed OpenSSL PRNG
-    // RAND_poll();
-    // RAND_bytes((unsigned char*)*iv, GCM_IV_LEN);
-    // BIO_dump_fp (stdout, (const char *)*iv, GCM_IV_LEN);
-
     *ciphertext = (unsigned char *)malloc(plaintext_len + AES_BLOCK_SIZE);
     if (!*ciphertext){ cerr << "Error: malloc returned NULL (ciphertext is too big?)\n"; return -1; }
     
@@ -411,4 +400,14 @@ char* Security::EVP_PKEY_to_chars(EVP_PKEY *pkey){
     BIO_free(bio);
 
     return pk_buf;   
+}
+
+bool generate_iv(unsigned char**iv, int iv_len){
+    if(!iv) return true;//check if iv is NULL, return true!
+    *iv = (unsigned char *)malloc(iv_len);
+    if (!*iv){ cerr << "Error: malloc for iv returned NULL (iv is too big?)\n"; return false; }
+    //seed OpenSSL PRNG
+    RAND_poll();
+    RAND_bytes((unsigned char*)iv, iv_len);
+    return true;
 }

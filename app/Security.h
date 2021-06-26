@@ -131,6 +131,10 @@ public:
     * @return char* to use as string 
     */
     static char *EVP_PKEY_to_chars(EVP_PKEY *pkey);
+    //======================================================================================
+    /**
+     */
+    static bool generate_iv(unsigned char**iv, int iv_len);
 };
 
 #endif
