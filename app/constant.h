@@ -1,5 +1,5 @@
-#ifndef _CHATTINGAPP_HPP_
-#define _CHATTINGAPP_HPP_
+#ifndef APP_CONSTANT_H
+#define APP_CONSTANT_H
 
 
 

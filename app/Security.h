@@ -17,6 +17,7 @@ public:
     static const EVP_CIPHER* const GCM_CIPHER;
     static const int GCM_IV_LEN;
     static const int GCM_TAG_LEN;
+
     //======================================================================================
     /**
     * encrypt the message using symmetric key and AES CBC mode
@@ -28,8 +29,8 @@ public:
     * @return intger to specify that the encryption is succeeded (length of ciphertext) or not -1
     */
     static int encryption_AES(unsigned char *plaintext, int plaintext_len, unsigned char *key, 
-    unsigned char **iv, unsigned char **ciphertext);
-        //======================================================================================
+    unsigned char *iv, unsigned char **ciphertext);
+    //======================================================================================
     /**
     * encrypt the message using symmetric key and AES CBC mode
     * @param ciphertext the ciphertext to decrypt
@@ -132,9 +133,13 @@ public:
     */
     static char *EVP_PKEY_to_chars(EVP_PKEY *pkey);
     //======================================================================================
-    /**
-     */
+    /** 
+    * generates initialization vector 
+    * @param iv the iv we want to initialize
+    * @param iv_len the lenght of the iv
+    */
     static bool generate_iv(unsigned char**iv, int iv_len);
+
 };
 
 #endif

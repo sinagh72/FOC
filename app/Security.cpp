@@ -23,9 +23,7 @@ const int Security::GCM_TAG_LEN = 16;
 
 
 int Security::encryption_AES(unsigned char *plaintext, int plaintext_len, 
-    unsigned char *key, unsigned char **iv, unsigned char **ciphertext){
-
-    if (Security::generate_iv(iv, AES_IV_LEN)){return -1;}
+    unsigned char *key, unsigned char *iv, unsigned char **ciphertext){
 
     *ciphertext = (unsigned char *)malloc(plaintext_len + AES_BLOCK_SIZE);
     if (!*ciphertext){ cerr << "Error: malloc returned NULL (ciphertext is too big?)\n"; return -1; }
@@ -35,20 +33,26 @@ int Security::encryption_AES(unsigned char *plaintext, int plaintext_len,
     // cout << "IV:\n";
     // BIO_dump_fp (stdout, (const char *)*iv, AES_IV_LEN);
     //create and initialize the context
-    if (!(ctx = EVP_CIPHER_CTX_new())){ cerr << "Error: EVP_CIPHER_CTX_new returned NULL\n"; return -1; }
+    if (!(ctx = EVP_CIPHER_CTX_new())){ free(ciphertext); cerr << "Error: EVP_CIPHER_CTX_new returned NULL\n"; return -1; }
 
-    if (1 != EVP_EncryptInit(ctx, AES_CIPHER, key, *iv)){ cerr << "Error: EVP_EncryptInit Failed\n"; EVP_CIPHER_CTX_free(ctx); return -1; }
+    if (1 != EVP_EncryptInit(ctx, AES_CIPHER, key, iv)){ free(ciphertext);cerr << "Error: EVP_EncryptInit Failed\n"; EVP_CIPHER_CTX_free(ctx); return -1; }
 
     int update_len = 0;// bytes encrypted at each chunk
     int total_len = 0;// total encrypted bytes
  
     //Encrypt Update
-    if (1 != EVP_EncryptUpdate(ctx, *ciphertext, &update_len, plaintext, plaintext_len)){ cerr << "Error: EVP_EncryptUpdate Failed\n"; EVP_CIPHER_CTX_free(ctx); return -1; }
+    if (1 != EVP_EncryptUpdate(ctx, *ciphertext, &update_len, plaintext, plaintext_len)){ 
+        free(ciphertext);
+        cerr << "Error: EVP_EncryptUpdate Failed\n"; EVP_CIPHER_CTX_free(ctx); return -1; 
+    }
 
     total_len += update_len;
 
     //Encrypt Final. Finalize the encryption and adds the padding
-    if (1 != EVP_EncryptFinal(ctx, *ciphertext+total_len, &update_len)){ cerr << "Error: EVP_EncryptFinal Failed\n"; EVP_CIPHER_CTX_free(ctx); return -1; }
+    if (1 != EVP_EncryptFinal(ctx, *ciphertext+total_len, &update_len)){ 
+        free(ciphertext);
+        cerr << "Error: EVP_EncryptFinal Failed\n"; EVP_CIPHER_CTX_free(ctx); return -1; 
+    }
 
     total_len += update_len;
     int ciphertext_len = total_len;
@@ -70,20 +74,28 @@ int Security::decryption_AES(unsigned char *ciphertext, int ciphertext_len, unsi
     EVP_CIPHER_CTX *ctx;
     int ret;
     //create and initialize the context
-    if (!(ctx = EVP_CIPHER_CTX_new())){ cerr << "Error: EVP_CIPHER_CTX_new returned NULL\n"; EVP_CIPHER_CTX_free(ctx); return -1; }
+    if (!(ctx = EVP_CIPHER_CTX_new())){ 
+        cerr << "Error: EVP_CIPHER_CTX_new returned NULL\n"; EVP_CIPHER_CTX_free(ctx); return -1; 
+    }
 
-    if (1 != EVP_DecryptInit(ctx, AES_CIPHER, key, iv)){ cerr << "Error: EVP_DecryptInit Failed\n"; EVP_CIPHER_CTX_free(ctx); return -1; }
+    if (1 != EVP_DecryptInit(ctx, AES_CIPHER, key, iv)){ 
+        cerr << "Error: EVP_DecryptInit Failed\n"; EVP_CIPHER_CTX_free(ctx); return -1; 
+    }
 
     int update_len = 0;// bytes encrypted at each chunk
     int total_len = 0;// total encrypted bytes
 
     //Encrypt Update
-    if (1 != EVP_DecryptUpdate(ctx, *decryptedtext, &update_len, ciphertext, ciphertext_len)){ cerr << "Error: EVP_DecryptUpdate Failed\n"; EVP_CIPHER_CTX_free(ctx); return -1; }
+    if (1 != EVP_DecryptUpdate(ctx, *decryptedtext, &update_len, ciphertext, ciphertext_len)){ 
+        cerr << "Error: EVP_DecryptUpdate Failed\n"; EVP_CIPHER_CTX_free(ctx); return -1; 
+    }
 
     total_len += update_len;
 
     //Encrypt Final. Finalize the encryption and adds the padding
-    if (1 != EVP_DecryptFinal(ctx, *decryptedtext+total_len, &update_len)){ cerr << "Error: EVP_DecryptFinal Failed\n"; EVP_CIPHER_CTX_free(ctx); return -1; }
+    if (1 != EVP_DecryptFinal(ctx, *decryptedtext+total_len, &update_len)){ 
+        cerr << "Error: EVP_DecryptFinal Failed\n"; EVP_CIPHER_CTX_free(ctx); return -1; 
+    }
 
     total_len += update_len;
     int plaintext_len = total_len;
@@ -101,20 +113,28 @@ int Security::signature(string prvk_filename, unsigned char * text_to_sign, int 
     if(!prvk){ cerr << "Error: PEM_read_PrivateKey returned NULL\n"; return -1; }
     // allocate buffer for signature:
     *signature = (unsigned char*)malloc(EVP_PKEY_size(prvk));
-    if(!signature) { cerr << "Error: malloc returned NULL (signature too big?)\n"; return -1; }
+    if(!signature) { EVP_PKEY_free(prvk);cerr << "Error: malloc returned NULL (signature too big?)\n"; return -1; }
 
     // create the signature context
     EVP_MD_CTX* md_ctx = EVP_MD_CTX_new();
-    if(!md_ctx){ cerr << "Error: EVP_MD_CTX_new returned NULL\n"; return -1; }
+    if(!md_ctx){ free(signature);EVP_PKEY_free(prvk);cerr << "Error: EVP_MD_CTX_new returned NULL\n"; return -1; }
 
     int ret; // used for return values
     ret = EVP_SignInit(md_ctx, SHA_256);
-    if(ret == 0){ cerr << "Error: EVP_SignInit returned " << ret << "\n"; return -1; }
+    if(ret == 0){ free(signature); EVP_PKEY_free(prvk);EVP_MD_CTX_free(md_ctx);
+        cerr << "Error: EVP_SignInit returned " << ret << "\n"; return -1; 
+    }
     ret = EVP_SignUpdate(md_ctx, text_to_sign, text_to_sign_len);
-    if(ret == 0){ cerr << "Error: EVP_SignUpdate returned " << ret << "\n"; return -1; }
+    if(ret == 0){ 
+        free(signature); EVP_PKEY_free(prvk);EVP_MD_CTX_free(md_ctx);
+        cerr << "Error: EVP_SignUpdate returned " << ret << "\n"; return -1; 
+    }
     unsigned int signature_len;
     ret = EVP_SignFinal(md_ctx, *signature, &signature_len, prvk);
-    if(ret == 0){ cerr << "Error: EVP_SignFinal returned " << ret << "\n"; return -1; }
+    if(ret == 0){ 
+        free(signature); EVP_PKEY_free(prvk);EVP_MD_CTX_free(md_ctx);
+        cerr << "Error: EVP_SignFinal returned " << ret << "\n"; return -1; 
+    }
     // delete the digest and the private key from memory:
     EVP_MD_CTX_free(md_ctx);
     EVP_PKEY_free(prvk);
@@ -124,37 +144,45 @@ int Security::signature(string prvk_filename, unsigned char * text_to_sign, int 
 int Security::verify_signature(string pubk_filename, unsigned char * signature, int signature_len, unsigned char * clear_text, int clear_text_len){
     int ret;
    
-   // load my public key:
-   FILE* pubk_file = fopen(pubk_filename.c_str(), "r");
-   if(!pubk_file){ cerr << "Error: cannot open file '" << pubk_filename << "' (missing?)\n"; exit(1); }
-   EVP_PKEY* pubk = PEM_read_PUBKEY(pubk_file, NULL, NULL, NULL);
-   fclose(pubk_file);
-   if(!pubk){ cerr << "Error: PEM_read_PUBKEY returned NULL\n"; exit(1); }
+    // load my public key:
+    FILE* pubk_file = fopen(pubk_filename.c_str(), "r");
+    if(!pubk_file){ cerr << "Error: cannot open file '" << pubk_filename << "' (missing?)\n"; exit(1); }
+    EVP_PKEY* pubk = PEM_read_PUBKEY(pubk_file, NULL, NULL, NULL);
+    fclose(pubk_file);
+    if(!pubk){ cerr << "Error: PEM_read_PUBKEY returned NULL\n"; exit(1); }
 
-   // create the signature context:
-   EVP_MD_CTX* md_ctx = EVP_MD_CTX_new();
-   if(!md_ctx){ cerr << "Error: EVP_MD_CTX_new returned NULL\n"; return -1; }
+    // create the signature context:
+    EVP_MD_CTX* md_ctx = EVP_MD_CTX_new();
+    if(!md_ctx){ EVP_MD_CTX_free(md_ctx);cerr << "Error: EVP_MD_CTX_new returned NULL\n"; return -1; }
 
-   // verify the plaintext:(perform a single update on the whole plaintext, 
-   // assuming that the plaintext is not huge)
-   ret = EVP_VerifyInit(md_ctx, SHA_256);
-   if(ret == 0){ cerr << "Error: EVP_VerifyInit returned " << ret << "\n"; return -1; }
-   ret = EVP_VerifyUpdate(md_ctx, clear_text, clear_text_len);  
-   if(ret == 0){ cerr << "Error: EVP_VerifyUpdate returned " << ret << "\n"; return -1; }
-   ret = EVP_VerifyFinal(md_ctx, signature, signature_len, pubk);
-   if(ret == -1){ // it is 0 if invalid signature, -1 if some other error, 1 if success.
-      cerr << "Error: EVP_VerifyFinal returned " << ret << " (invalid signature?)\n";
-      return -1;
-   }else if(ret == 0){
-      cerr << "Error: Invalid signature!\n";
-      return -1;
-   }
-   // print the successful signature verification to screen:
-   cout << "The Signature has been correctly verified! The message is authentic!\n";
-   // deallocate data:
-   EVP_MD_CTX_free(md_ctx);
-   EVP_PKEY_free(pubk);
-   return 0;
+    // verify the plaintext:(perform a single update on the whole plaintext, 
+    // assuming that the plaintext is not huge)
+    ret = EVP_VerifyInit(md_ctx, SHA_256);
+    if(ret == 0){ 
+        EVP_PKEY_free(pubk);EVP_MD_CTX_free(md_ctx);
+        cerr << "Error: EVP_VerifyInit returned " << ret << "\n"; return -1; }
+    ret = EVP_VerifyUpdate(md_ctx, clear_text, clear_text_len);  
+    if(ret == 0){ 
+        EVP_PKEY_free(pubk);EVP_MD_CTX_free(md_ctx);
+        cerr << "Error: EVP_VerifyUpdate returned " << ret << "\n"; return -1; 
+    }
+    ret = EVP_VerifyFinal(md_ctx, signature, signature_len, pubk);
+    if(ret == -1){ 
+        EVP_PKEY_free(pubk);EVP_MD_CTX_free(md_ctx);
+        // it is 0 if invalid signature, -1 if some other error, 1 if success.
+        cerr << "Error: EVP_VerifyFinal returned " << ret << " (invalid signature?)\n";
+        return -1;
+    }else if(ret == 0){
+        EVP_PKEY_free(pubk);EVP_MD_CTX_free(md_ctx);
+        cerr << "Error: Invalid signature!\n";
+        return -1;
+    }
+    // print the successful signature verification to screen:
+    cout << "The Signature has been correctly verified! The message is authentic!\n";
+    // deallocate data:
+    EVP_MD_CTX_free(md_ctx);
+    EVP_PKEY_free(pubk);
+    return 1;
 }
 
 int Security::verify_certificate(string cert_file_name){
@@ -170,35 +198,39 @@ int Security::verify_certificate(string cert_file_name){
     // load the CRL:
     string crl_file_name="certificates/Foc_crl.pem";
     FILE* crl_file = fopen(crl_file_name.c_str(), "r");
-    if(!crl_file){ cerr << "Error: cannot open file '" << crl_file_name << "' (missing?)\n"; return -1; }
+    if(!crl_file){ X509_free(cacert);cerr << "Error: cannot open file '" << crl_file_name << "' (missing?)\n"; return -1; }
     X509_CRL* crl = PEM_read_X509_CRL(crl_file, NULL, NULL, NULL);
     fclose(crl_file);
-    if(!crl){ cerr << "Error: PEM_read_X509_CRL returned NULL\n"; return -1; }
+    if(!crl){ X509_free(cacert); cerr << "Error: PEM_read_X509_CRL returned NULL\n"; return -1; }
 
     // build a store with the CA's certificate and the CRL:
     X509_STORE* store = X509_STORE_new();
-    if(!store) { cerr << "Error: X509_STORE_new returned NULL\n" << ERR_error_string(ERR_get_error(), NULL) << "\n"; return -1; }
+    if(!store) { X509_free(cacert);X509_CRL_free(crl);cerr << "Error: X509_STORE_new returned NULL\n" << ERR_error_string(ERR_get_error(), NULL) << "\n"; return -1; }
     ret = X509_STORE_add_cert(store, cacert);
-    if(ret != 1) { cerr << "Error: X509_STORE_add_cert returned " << ret << "\n" << ERR_error_string(ERR_get_error(), NULL) << "\n"; return -1; }
+    if(ret != 1) { X509_free(cacert);X509_CRL_free(crl);cerr << "Error: X509_STORE_add_cert returned " << ret << "\n" << ERR_error_string(ERR_get_error(), NULL) << "\n"; return -1; }
     ret = X509_STORE_add_crl(store, crl);
-    if(ret != 1) { cerr << "Error: X509_STORE_add_crl returned " << ret << "\n" << ERR_error_string(ERR_get_error(), NULL) << "\n"; return -1; }
+    if(ret != 1) { X509_free(cacert);X509_CRL_free(crl);cerr << "Error: X509_STORE_add_crl returned " << ret << "\n" << ERR_error_string(ERR_get_error(), NULL) << "\n"; return -1; }
     ret = X509_STORE_set_flags(store, X509_V_FLAG_CRL_CHECK);
-    if(ret != 1) { cerr << "Error: X509_STORE_set_flags returned " << ret << "\n" << ERR_error_string(ERR_get_error(), NULL) << "\n"; return -1; }
+    if(ret != 1) { X509_free(cacert);X509_CRL_free(crl); 
+        cerr << "Error: X509_STORE_set_flags returned " << ret << "\n" << ERR_error_string(ERR_get_error(), NULL) << "\n"; return -1; 
+    }
 
     // load the peer's certificate:
     FILE* cert_file = fopen(cert_file_name.c_str(), "r");
-    if(!cert_file){ cerr << "Error: cannot open file '" << cert_file_name << "' (missing?)\n"; return -1; }
+    if(!cert_file){ X509_free(cacert);X509_CRL_free(crl); X509_STORE_free(store);cerr << "Error: cannot open file '" << cert_file_name << "' (missing?)\n"; return -1; }
     X509* cert = PEM_read_X509(cert_file, NULL, NULL, NULL);
     fclose(cert_file);
-    if(!cert){ cerr << "Error: PEM_read_X509 returned NULL\n"; return -1; }
+    if(!cert){ 
+        X509_free(cacert);X509_CRL_free(crl); X509_STORE_free(store);
+        cerr << "Error: PEM_read_X509 returned NULL\n"; return -1; }
 
     // verify the certificate:
     X509_STORE_CTX* certvfy_ctx = X509_STORE_CTX_new();
-    if(!certvfy_ctx) { cerr << "Error: X509_STORE_CTX_new returned NULL\n" << ERR_error_string(ERR_get_error(), NULL) << "\n"; return -1; }
+    if(!certvfy_ctx) { X509_free(cacert);X509_CRL_free(crl); X509_STORE_free(store);X509_free(cert);cerr << "Error: X509_STORE_CTX_new returned NULL\n" << ERR_error_string(ERR_get_error(), NULL) << "\n"; return -1; }
     ret = X509_STORE_CTX_init(certvfy_ctx, store, cert, NULL);
-    if(ret != 1) { cerr << "Error: X509_STORE_CTX_init returned " << ret << "\n" << ERR_error_string(ERR_get_error(), NULL) << "\n"; return -1; }
+    if(ret != 1) { X509_free(cacert);X509_CRL_free(crl); X509_STORE_free(store);X509_free(cert);cerr << "Error: X509_STORE_CTX_init returned " << ret << "\n" << ERR_error_string(ERR_get_error(), NULL) << "\n"; return -1; }
     ret = X509_verify_cert(certvfy_ctx);
-    if(ret != 1) { cerr << "Error: X509_verify_cert returned " << ret << "\n" << ERR_error_string(ERR_get_error(), NULL) << "\n"; return -1; }
+    if(ret != 1) { X509_free(cacert);X509_CRL_free(crl); X509_STORE_free(store);X509_free(cert);cerr << "Error: X509_verify_cert returned " << ret << "\n" << ERR_error_string(ERR_get_error(), NULL) << "\n"; return -1; }
 
     // print the successful verification to screen:
     char* tmp = X509_NAME_oneline(X509_get_subject_name(cert), NULL, 0);
@@ -226,26 +258,28 @@ int Security::gcm_encrypt(unsigned char * aad, int aad_len, unsigned char * plai
     if (!*ciphertext){ cerr << "Error: malloc returned NULL (ciphertext is too big?)\n"; return -1; }
     
     *tag = (unsigned char *)malloc(GCM_TAG_LEN);
-    if (!*ciphertext){ cerr << "Error: malloc returned NULL (tag is too big?)\n"; return -1; }
+    if (!*ciphertext){ free(ciphertext);cerr << "Error: malloc returned NULL (tag is too big?)\n"; return -1; }
 
     // Create and initialise the context
-    if(!(ctx = EVP_CIPHER_CTX_new())){ cerr << "Error: EVP_CIPHER_CTX_new returned NULL\n"; return -1; }
+    if(!(ctx = EVP_CIPHER_CTX_new())){ free(ciphertext);free(tag);cerr << "Error: EVP_CIPHER_CTX_new returned NULL\n"; return -1; }
     // Initialise the encryption operation.
-    if(1 != EVP_EncryptInit(ctx, GCM_CIPHER, key, iv)) { cerr << "Error: EVP_EncryptInit Failed\n"; return -1; }
+    if(1 != EVP_EncryptInit(ctx, GCM_CIPHER, key, iv)) { free(ciphertext);free(tag);EVP_CIPHER_CTX_free(ctx);cerr << "Error: EVP_EncryptInit Failed\n"; return -1; }
 
     //Provide any AAD data. This can be called zero or more times as required
-    if(1 != EVP_EncryptUpdate(ctx, NULL, &len, aad, aad_len)) { cerr << "Error: EVP_EncryptUpdate AAD Failed\n"; return -1; }
+    if(1 != EVP_EncryptUpdate(ctx, NULL, &len, aad, aad_len)) { free(ciphertext);free(tag);EVP_CIPHER_CTX_free(ctx);cerr << "Error: EVP_EncryptUpdate AAD Failed\n"; return -1; }
 
     if(1 != EVP_EncryptUpdate(ctx, *ciphertext, &len, plaintext, plaintext_len)) { 
+        free(ciphertext);free(tag);EVP_CIPHER_CTX_free(ctx);
         cerr << "Error: EVP_EncryptUpdate Failed\n"; return -1;
     }
     ciphertext_len = len;
 	//Finalize Encryption
-    if(1 != EVP_EncryptFinal(ctx, *ciphertext + len, &len)){ cerr << "Error: EVP_EncryptFinal Failed\n"; return -1; }
+    if(1 != EVP_EncryptFinal(ctx, *ciphertext + len, &len)){ free(ciphertext);free(tag);EVP_CIPHER_CTX_free(ctx);cerr << "Error: EVP_EncryptFinal Failed\n"; return -1; }
     ciphertext_len += len;
     /* Get the tag */
     if(1 != EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG, GCM_TAG_LEN, *tag)) {
-         cerr << "Error: EVP_CIPHER_CTX_ctrl Failed\n"; return -1;
+        free(ciphertext);free(tag);EVP_CIPHER_CTX_free(ctx);
+        cerr << "Error: EVP_CIPHER_CTX_ctrl Failed\n"; return -1;
     }
     /* Clean up */
     EVP_CIPHER_CTX_free(ctx);
@@ -263,17 +297,19 @@ int Security::gcm_decrypt(unsigned char * aad, int aad_len, unsigned char * ciph
     if (!*decryptedtext){ cerr << "Error: malloc returned NULL (decryptedtext is too big?)\n"; return -1; }
 
     // Create and initialise the context
-    if(!(ctx = EVP_CIPHER_CTX_new())){ cerr << "Error: EVP_CIPHER_CTX_new returned NULL\n"; return -1; }
+    if(!(ctx = EVP_CIPHER_CTX_new())){ free(decryptedtext); cerr << "Error: EVP_CIPHER_CTX_new returned NULL\n"; return -1; }
     // Initialise the encryption operation.
-    if(1 != EVP_DecryptInit(ctx, GCM_CIPHER, key, iv)) { cerr << "Error: EVP_DecryptInit Failed\n"; return -1; }
+    if(1 != EVP_DecryptInit(ctx, GCM_CIPHER, key, iv)) { free(decryptedtext);EVP_CIPHER_CTX_cleanup(ctx);cerr << "Error: EVP_DecryptInit Failed\n"; return -1; }
 
     //Provide any AAD data. This can be called zero or more times as required
-    if(1 != EVP_DecryptUpdate(ctx, NULL, &len, aad, aad_len)) { cerr << "Error: EVP_DecryptUpdate AAD Failed\n"; return -1; }
+    if(1 != EVP_DecryptUpdate(ctx, NULL, &len, aad, aad_len)) { free(decryptedtext);EVP_CIPHER_CTX_cleanup(ctx);cerr << "Error: EVP_DecryptUpdate AAD Failed\n"; return -1; }
 
-    if(1 != EVP_DecryptUpdate(ctx, *decryptedtext, &len, ciphertext, ciphertext_len)) { cerr << "Error: EVP_DecryptUpdate Failed\n"; return -1; }
+    if(1 != EVP_DecryptUpdate(ctx, *decryptedtext, &len, ciphertext, ciphertext_len)) { free(decryptedtext);EVP_CIPHER_CTX_cleanup(ctx);cerr << "Error: EVP_DecryptUpdate Failed\n"; return -1; }
     decryptedtext_len = len;
 	/* Set expected tag value. Works in OpenSSL 1.0.1d and later */
-    if(!EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG, GCM_TAG_LEN, tag)){ cerr << "Error: EVP_CIPHER_CTX_ctrl Failed\n"; return -1; }
+    if(!EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG, GCM_TAG_LEN, tag)){ 
+        free(decryptedtext);EVP_CIPHER_CTX_cleanup(ctx);
+        cerr << "Error: EVP_CIPHER_CTX_ctrl Failed\n"; return -1; }
     /*
      * Finalise the decryption. A positive return value indicates success,
      * anything else is a failure - the decryptedtext is not trustworthy.
@@ -369,14 +405,14 @@ int Security::generate_dh_key(EVP_PKEY * my_dhkey, EVP_PKEY * peers_dhk, unsigne
     if (!derive_ctx) { cerr << "Error: EVP_PKEY_CTX_new returned NULL\n"; return -1; }
     if (EVP_PKEY_derive_init(derive_ctx) <= 0) { cerr << "Error: EVP_PKEY_derive_init Failed\n"; return -1; }
     /*Setting the peer with its pubkey*/
-    if (EVP_PKEY_derive_set_peer(derive_ctx, peers_dhk) <= 0) { cerr << "Error: EVP_PKEY_derive_set_peer Failed\n"; return -1; }
+    if (EVP_PKEY_derive_set_peer(derive_ctx, peers_dhk) <= 0) { EVP_PKEY_CTX_free(derive_ctx);cerr << "Error: EVP_PKEY_derive_set_peer Failed\n"; return -1; }
     /* Determine buffer length, by performing a derivation but writing the result nowhere */
     EVP_PKEY_derive(derive_ctx, NULL, &skeylen);
     /*allocate buffer for the shared secret*/
     *skey = (unsigned char*)(malloc(int(skeylen)));
-    if (!skey) { cerr << "Error: malloc returns NULL (skey is too big?)\n"; return -1; }
+    if (!skey) { EVP_PKEY_CTX_free(derive_ctx);cerr << "Error: malloc returns NULL (skey is too big?)\n"; return -1; }
     /*Perform again the derivation and store it in skey buffer*/
-    if (EVP_PKEY_derive(derive_ctx, *skey, &skeylen) <= 0) { cerr << "Error: EVP_PKEY_derive Failed\n"; return -1; }
+    if (EVP_PKEY_derive(derive_ctx, *skey, &skeylen) <= 0) { EVP_PKEY_CTX_free(derive_ctx);free(skey);cerr << "Error: EVP_PKEY_derive Failed\n"; return -1; }
     //FREE EVERYTHING INVOLVED WITH THE EXCHANGE (not the shared secret tho)
     EVP_PKEY_CTX_free(derive_ctx);
     return 1;
@@ -402,7 +438,7 @@ char* Security::EVP_PKEY_to_chars(EVP_PKEY *pkey){
     return pk_buf;   
 }
 
-bool generate_iv(unsigned char**iv, int iv_len){
+bool Security::generate_iv(unsigned char**iv, int iv_len){
     if(!iv) return true;//check if iv is NULL, return true!
     *iv = (unsigned char *)malloc(iv_len);
     if (!*iv){ cerr << "Error: malloc for iv returned NULL (iv is too big?)\n"; return false; }

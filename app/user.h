@@ -3,7 +3,8 @@
 
 #include <string>
 #include <openssl/evp.h>
-
+#include <iostream>
+#include "Security.h"
 
 using namespace std;
 
@@ -18,9 +19,11 @@ private:
     unsigned short port;
     unsigned char* sim_key;
     EVP_PKEY* pub_key;
-    unsigned short server_counter{0};
-    unsigned short client_counter{0};
+    char * pub_key_char;
+    unsigned short server_counter{0};//server to client counter: #messages that the user has received from the server
+    unsigned short client_counter{0};//client to server counter: #messages that the user has sent to the server
     int client_socket;
+
 
     
 public:
@@ -70,9 +73,17 @@ public:
     void clear_client_counter(){
          this->client_counter = 0;
     }
-    //ser the server counter to zero
+    //set the server counter to zero
     void clear_server_counter(){
         this->server_counter = 0;
+    }
+    //set public key
+    void set_pub_key(EVP_PKEY*pub_key){
+        this->pub_key = pub_key;
+    }
+    //set public key char
+    void set_pub_key_char(char*pub_key_char){
+        this->pub_key_char = pub_key_char;
     }
 
     //return the status
@@ -108,8 +119,18 @@ public:
     int get_client_socket() const{
         return this->client_socket;
     }
+    // get the public key
+    EVP_PKEY* get_pub_key() const{
+        return this->pub_key;
+    }
+    // get the public key char
+    char* get_pub_key_char() const{
+        return this->pub_key_char;
+    }
     //serialize the object
     void serialize();
+    //check for replay attack
+    bool replay_check(bool from_server, unsigned short received_counter);
     //Destructor
     ~User();
 };
