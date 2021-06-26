@@ -8,7 +8,7 @@
 using namespace std;
 
 
-enum STATUS : {CONNECTING, ONLINE, CHATTING};
+enum STATUS {CONNECTING, ONLINE, CHATTING};
 
 class User{
 private:
@@ -48,7 +48,7 @@ public:
     }
     //set the key
     void set_key(unsigned char * key){
-        this->key = key;
+        this->sim_key = key;
     }
 
     //set server socket with that client (user)
@@ -94,7 +94,7 @@ public:
     }
     //return the key
     unsigned char * get_key() const{
-        return this->key;
+        return this->sim_key;
     }
     //return the server counter
     unsigned short get_server_counter() const{
