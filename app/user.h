@@ -1,6 +1,7 @@
 #ifndef APP_USER_H
 #define APP_USER_H
 
+#include <cstdint>
 #include <string>
 #include <openssl/evp.h>
 #include <iostream>
@@ -20,7 +21,7 @@ private:
     unsigned char* sim_key;
     EVP_PKEY* pub_key;
     char * pub_key_char;
-    unsigned short server_counter{0};//server to client counter: #messages that the user has received from the server
+    uint16_t server_counter{0};//server to client counter: #messages that the user has received from the server
     unsigned short client_counter{0};//client to server counter: #messages that the user has sent to the server
     int client_socket;
 

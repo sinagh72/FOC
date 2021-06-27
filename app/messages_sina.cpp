@@ -130,7 +130,9 @@ unsigned int Message::send_message_9(User* my_user,
 
     return gcm_ciphertext_len;
 }
-unsigned int Message::parse_message_9(char* message, unsigned char* sender_key, unsigned char* receiver_key, vector<User>users){
+unsigned int Message::parse_message_9(char* message, 
+                                    unsigned char* sender_server_key, 
+                                    unsigned char* receiver_server_key, vector<User>users){
     //extract the tag from the message
     string msg (message);
     string tag = msg.substr(msg.length()-Security::GCM_TAG_LEN, msg.length());
@@ -144,7 +146,7 @@ unsigned int Message::parse_message_9(char* message, unsigned char* sender_key, 
     int decryptedtext_len = 0;
     if(-1 == (decryptedtext_len = Security::gcm_decrypt((unsigned char*)aad.c_str(), aad.length(), 
                         (unsigned char*)ciphertext.c_str(), ciphertext.length(),
-                        sender_key, 
+                        sender_server_key, 
                         (unsigned char*)gcm_iv.c_str(), &decryptedtext,
                         (unsigned char*)tag.c_str()))) return 0;
 
@@ -157,14 +159,15 @@ unsigned int Message::parse_message_9(char* message, unsigned char* sender_key, 
     //check for replay
     User*sender;
     if (!(sender = find_user(str_.substr(0,USERNAME_LENGTH), users))) return 0;
-    if (!sender->replay_check(false, received_counter)){ return 0; }
+    if (!sender->replay_check(false, received_counter)){ delete sender; return 0; }
     //find pubkey of the receiver
     string receiver = str_.substr(USERNAME_LENGTH,2*USERNAME_LENGTH);
     string forwarding_message = aad.substr(MESSAGE_TYPE_LENGTH+COUNTER_LENGTH+Security::GCM_IV_LEN, aad.length());
     //send the message type 10
     int gcm_ciphertext_len;
-    if(0 == (gcm_ciphertext_len = send_message_10(sender->get_username(), receiver, forwarding_message, receiver_key, users))){
+    if(0 == (gcm_ciphertext_len = send_message_10(sender->get_username(), receiver, forwarding_message, receiver_server_key, users))){
         cerr <<"Erro: sending message 10 failed";
+        delete sender;
         return 0;
     }
     delete sender;
@@ -230,6 +233,14 @@ unsigned int Message::send_message_10(string source_username, string dest_userna
     free(gcm_ciphertext);
     free(tag);
     return gcm_ciphertext_len;
+}
+unsigned int Message::parse_message_10(char* message, 
+                                    unsigned char* sender_server_key, 
+                                    unsigned char* receiver_server_key, vector<User>users){
+
+    
+    return 1;
+                                        
 }
 int main(){
     

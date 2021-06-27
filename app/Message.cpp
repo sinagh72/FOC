@@ -35,7 +35,7 @@ unsigned int Message::create_message_0(char *username, char **buffer) {
 
 void Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16_t port, vector <User> online_users) {
 
-    string ip(ip);
+    string ip_str(ip);
     //extract the username
     string username(buffer+1);
 
@@ -56,12 +56,12 @@ void Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16
         return;
     }
 
-    User client = new User(username, ip, (unsigned short) port, evpPkey, client_socket);
-    client.set_status(CONNECTING);
+    User *client = new User(username, ip, (unsigned short) port, evpPkey, client_socket);
+    client->set_status(CONNECTING);
     online_users.insert(online_users.begin(), client);
 
     //load server certificate from file and serialize it
-    FIlE* cert_file = fopen("./certificates/ChatApp_cert.pem", "r");
+    FILE* cert_file = fopen("./certificates/ChatApp_cert.pem", "r");
     if(!cert_file)  {
         printf("Error opening server certificate file");
         return;

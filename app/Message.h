@@ -14,7 +14,7 @@
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 
-
+using namespace std;
 class Message {
 
 public:
