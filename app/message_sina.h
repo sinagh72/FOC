@@ -29,16 +29,14 @@ public:
                                     EVP_PKEY* dest_dh_pubk, char* dest_dh_pubk_char,
                                     unsigned char* clinets_key, unsigned char* server_client_key);
     //===================================================================================================================
-    static unsigned int parse_message_9(char* message, 
+    static int parse_message_9(char* message, 
                                     unsigned char* sender_server_key, 
                                     unsigned char* receiver_server_key, vector<User>users);
     //===================================================================================================================
     static unsigned int send_message_10(string source_username, string dest_username, string forwarding_message,
                                     unsigned char* key, vector<User>users);
     //===================================================================================================================
-    static unsigned int parse_message_10(char* message, 
-                                    unsigned char* sender_server_key, 
-                                    unsigned char* receiver_server_key, vector<User>users);
+    static int parse_message_10(char* message, User* my_user);
 };
 
 

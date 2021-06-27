@@ -18,7 +18,7 @@ int main(){
     char* my_pubk_char = Security::EVP_PKEY_to_chars(my_pubk);
     cout<<"My DH public " <<strlen((const char*)my_pubk_char) << " key: "<<endl;
     BIO_dump_fp (stdout, (const char *)my_pubk_char, strlen((const char*)my_pubk_char));
-    
+    cout << strlen(my_pubk_char)<<endl;
     //g^b
     EVP_PKEY * peers_pubk{nullptr};
     // generate g^b
@@ -98,10 +98,10 @@ int main(){
     EVP_PKEY_free(my_pubk);
     
 
-    printf("prima di create message");
-    char* message{nullptr};
-    printf("%d\n", Message::create_message_0("pippo", &message));
-    printf("%s", message+33);
+    // printf("prima di create message");
+    // char* message{nullptr};
+    // printf("%d\n", Message::create_message_0("pippo", &message));
+    // printf("%s", message+33);
 
     return 0;
 

@@ -128,10 +128,12 @@ public:
     //======================================================================================
     /**
     * convert the EVP_PKEY into char*
-    * @param pkey the public/private key to convert into char*
-    * @return char* to use as string 
+    * @param pkey the public key to convert into char*
+    * @param bio BIO serialization, null pointer to BIO should pass to this function
+    * @param pk_buf the output buffer 
+    * @return intger to specify that serialization is succeeded (length of output buffer) or not -1  
     */
-    static char *EVP_PKEY_to_chars(EVP_PKEY *pkey);
+    static unsigned int EVP_PKEY_to_chars(BIO *bio, EVP_PKEY *pkey, unsigned char** pk_buf);
     //======================================================================================
     /** 
     * generates initialization vector 

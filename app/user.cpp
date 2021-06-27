@@ -3,12 +3,13 @@
 
 //methods
 //set the username
-User::User(string username, string IP, unsigned short port, EVP_PKEY* pubkey, int client_socket):
-    IP{IP},username{username},port{port},pub_key{pubkey}, server_counter{0}, client_counter{0}, client_socket{client_socket}{
-        this->pub_key_char = Security::EVP_PKEY_to_chars(pubkey);
+User::User(string username, string IP, unsigned short port, EVP_PKEY* dh_pubk, int client_socket):
+    IP{IP},username{username},port{port},dh_pubk{dh_pubk}, server_counter{0}, client_counter{0}, client_socket{client_socket}{
+        BIO *bio{nullptr};
+        Security::EVP_PKEY_to_chars(bio, dh_pubk, &this->dh_pubk_char);
 }
 User::User(const User &source):
-    username(source.username),IP(source.IP),port(source.port),pub_key(source.pub_key), 
+    username(source.username),IP(source.IP),port(source.port),dh_pubk(source.dh_pubk), 
     server_counter(source.server_counter), client_counter(source.client_counter), client_socket(source.client_socket){
     
 }

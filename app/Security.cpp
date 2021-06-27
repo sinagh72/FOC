@@ -21,7 +21,6 @@ const EVP_CIPHER* const Security::GCM_CIPHER =  EVP_aes_256_gcm();
 const int Security::GCM_IV_LEN = EVP_CIPHER_iv_length(Security::GCM_CIPHER);
 const int Security::GCM_TAG_LEN = 16;
 
-
 int Security::encryption_AES(unsigned char *plaintext, int plaintext_len, 
     unsigned char *key, unsigned char *iv, unsigned char **ciphertext){
 
@@ -382,9 +381,9 @@ DH * Security::get_dh2048(void)
 int Security::generate_dh_pubk(EVP_PKEY ** pubk){
     EVP_PKEY *params;
     if(NULL == (params = EVP_PKEY_new())) { cerr << "Error: EVP_PKEY_new returned NULL\n"; return -1; }
-    DH* temp = Security::get_dh2048();
-    if(1 != EVP_PKEY_set1_DH(params, temp)){ cerr << "Error: EVP_PKEY_set1_DH Failed\n"; return -1; }
-    DH_free(temp);
+    //DH* temp = Security::get_dh2048();
+    if(1 != EVP_PKEY_set1_DH(params, DH_get_2048_224())){ cerr << "Error: EVP_PKEY_set1_DH Failed\n"; return -1; }
+    //DH_free(temp);
     /* Create context for the key generation */
     EVP_PKEY_CTX *DHctx;
     if(!(DHctx = EVP_PKEY_CTX_new(params, NULL))){ cerr << "Error: EVP_PKEY_CTX_new returned NULL\n"; return -1; }
@@ -418,24 +417,26 @@ int Security::generate_dh_key(EVP_PKEY * my_dhkey, EVP_PKEY * peers_dhk, unsigne
     return 1;
 }
 
-char* Security::EVP_PKEY_to_chars(EVP_PKEY *pkey){
- BIO *bio = NULL;
-    char *pk_buf = NULL;
-    if (NULL == pkey)
-      return NULL;
+unsigned int Security::EVP_PKEY_to_chars(BIO *bio, EVP_PKEY *pkey, unsigned char** pk_buf){
+    //BIO *bio = NULL;
+    if (NULL == pkey){
+        cerr << "Error: pkey is NULL\n";
+        return -1;
+    }
     if ((bio = BIO_new(BIO_s_mem())) == NULL){
         cerr << "Error: BIO_new returned NULL\n";
-        return NULL;
+        return -1;
     }
     if (0 == PEM_write_bio_PUBKEY(bio, pkey)){
       BIO_free(bio);
       cerr << "Error: PEM_write_bio_PUBKEY Failed\n";
-      return NULL;
+      return -1;
     }
-    long pubkey_size = BIO_get_mem_data(bio, &pk_buf);
-    BIO_free(bio);
 
-    return pk_buf;   
+    long pkey_size = BIO_get_mem_data(bio, pk_buf);
+    cout << "SIZE long:" <<pkey_size<<endl;
+    cout << "buffer size inside function:"<<strlen((char*)*pk_buf)<<endl;
+    return pkey_size;   
 }
 
 bool Security::generate_iv(unsigned char**iv, int iv_len){

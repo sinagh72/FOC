@@ -18,18 +18,21 @@ private:
     string username;
     string IP;
     unsigned short port;
-    unsigned char* sim_key;
-    EVP_PKEY* pub_key;
-    char * pub_key_char;
+    unsigned char* client_server_key; // the key between the server and the client
+    unsigned char* clients_key; // the key between two clients
+    EVP_PKEY* dh_pubk;
+    unsigned char * dh_pubk_char;
+    EVP_PKEY* peer_dh_pubk;
+    unsigned char *peer_dh_pubk_char;
     uint16_t server_counter{0};//server to client counter: #messages that the user has received from the server
-    unsigned short client_counter{0};//client to server counter: #messages that the user has sent to the server
+    uint16_t client_counter{0};//client to server counter: #messages that the user has sent to the server
     int client_socket;
 
 
     
 public:
     //constructor
-    User(string username, string IP, unsigned short port, EVP_PKEY* pubkey, int client_socket);
+    User(string username, string IP, unsigned short port, EVP_PKEY* dh_pubkey, int client_socket);
     //copy constructor
     User(const User &source);
     //methods
@@ -50,9 +53,13 @@ public:
     void set_port(unsigned short port){
         this->port = port;
     }
-    //set the key
-    void set_key(unsigned char * key){
-        this->sim_key = key;
+    //set the key between client and server
+    void set_client_server_key(unsigned char * key){
+        this->client_server_key = key;
+    }
+    //set the key between clients
+    void set_clientskey(unsigned char * key){
+        this->clients_key = key;
     }
 
     //set server socket with that client (user)
@@ -61,12 +68,12 @@ public:
     }
 
     //increment the server counter
-    unsigned short increment_server_counter(){
+    uint16_t increment_server_counter(){
         this->server_counter++;
         return this->server_counter;
     }
     //increment the client counter
-    unsigned short increment_client_counter(){
+    uint16_t increment_client_counter(){
         this->client_counter++;
         return client_counter;
     }
@@ -79,12 +86,20 @@ public:
         this->server_counter = 0;
     }
     //set public key
-    void set_pub_key(EVP_PKEY*pub_key){
-        this->pub_key = pub_key;
+    void set_dh_pubk(EVP_PKEY*dh_pubk){
+        this->dh_pubk = dh_pubk;
+    }
+      //set public key
+    void set_peer_dh_pubk(EVP_PKEY*peer_dh_pubk){
+        this->peer_dh_pubk = peer_dh_pubk;
     }
     //set public key char
-    void set_pub_key_char(char*pub_key_char){
-        this->pub_key_char = pub_key_char;
+    void set_dh_pubk_char(unsigned char*dh_pubk_char){
+        this->dh_pubk_char = dh_pubk_char;
+    }
+     //set public key char
+    void set_peer_dh_pubk_char(unsigned char*peer_dh_pubk_char){
+        this->peer_dh_pubk_char = peer_dh_pubk_char;
     }
 
     //return the status
@@ -104,16 +119,20 @@ public:
     unsigned short get_port() const{
         return this->port;
     }
-    //return the key
-    unsigned char * get_key() const{
-        return this->sim_key;
+    //return the key between client and server
+    unsigned char * get_client_server_key() const{
+        return this->client_server_key;
+    }
+    //return the key between clients
+    unsigned char * get_clients_key() const{
+        return this->clients_key;
     }
     //return the server counter
-    unsigned short get_server_counter() const{
+    uint16_t get_server_counter() const{
         return this->server_counter;
     }
     //return the client counter
-    unsigned short get_client_coutner() const{
+    uint16_t get_client_coutner() const{
         return this->client_counter;
     }
     // get the client socket
@@ -121,17 +140,25 @@ public:
         return this->client_socket;
     }
     // get the public key
-    EVP_PKEY* get_pub_key() const{
-        return this->pub_key;
+    EVP_PKEY* get_dh_pubk() const{
+        return this->dh_pubk;
     }
     // get the public key char
-    char* get_pub_key_char() const{
-        return this->pub_key_char;
+    unsigned char* get_dh_pubk_char() const{
+        return this->dh_pubk_char;
+    }
+     // get the peer public key
+    EVP_PKEY* get_peer_dh_pubk() const{
+        return this->peer_dh_pubk;
+    }
+    // get the peer public key char
+    unsigned char* get_peer_dh_pubk_char() const{
+        return this->peer_dh_pubk_char;
     }
     //serialize the object
     void serialize();
     //check for replay attack
-    bool replay_check(bool from_server, unsigned short received_counter);
+    bool replay_check(bool from_server, uint16_t received_counter);
     //Destructor
     ~User();
 };
