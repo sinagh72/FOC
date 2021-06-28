@@ -9,8 +9,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <mcheck.h>
-
-using namespace std;
+#include "dimensions.h"
 
 
 const EVP_CIPHER* const Security::AES_CIPHER = EVP_aes_256_cbc();
@@ -437,7 +436,23 @@ int Security::EVP_PKEY_to_chars(BIO *bio, EVP_PKEY *pkey, unsigned char** pk_buf
     cout << "buffer size inside function:"<<strlen((char*)*pk_buf)<<endl;
     return pkey_size;   
 }
-
+int Security::chars_to_EVP_PKEY(BIO *bio, EVP_PKEY **pkey, unsigned char* pk_buf){
+    if (NULL == pk_buf){
+        cerr << "Error: pubk_char is NULL\n";
+        return -1;
+    }
+    if ((bio = BIO_new(BIO_s_mem())) == NULL){
+        cerr << "Error: BIO_new returned NULL\n";
+        return -1;
+    }
+    if (0 == BIO_write(bio, pk_buf, DH_PUBK_LENGTH)){
+        BIO_free(bio);
+        cerr << "Error: BIO_write Failed\n";
+        return -1;
+    }
+    *pkey = PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL);
+    return DH_PUBK_LENGTH;   
+}
 bool Security::generate_iv(unsigned char**iv, int iv_len){
     if(!iv) return true;//check if iv is NULL, return true!
     *iv = (unsigned char *)malloc(iv_len);
