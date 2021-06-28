@@ -37,6 +37,7 @@ private:
     
 public:
     //constructor
+    User();
     User(string username, string IP, unsigned short port, EVP_PKEY* dh_pubkey, int client_socket);
     //copy constructor
     User(const User &source);
@@ -175,7 +176,7 @@ public:
         return this->peer_pubk;
     }
     // get the public key char
-    unsigned char* get_pubk_char() const{
+    unsigned char* get_peer_pubk_char() const{
         return this->peer_pubk_char;
     }
      // get the peer public key

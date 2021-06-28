@@ -34,9 +34,9 @@ User* find_user(string user, vector<User>users){
     cerr<< "Error: Receiver not found (find_dhpubk)!" <<endl;
     return NULL;
 }
-//sent by a client 
+//sent by the client 
 unsigned int Message::send_message_5(User* my_user, string dest_username){
-    //TODO: cerate a field in user for dh_public key for a' and dh_publick key for a'
+    //generating new dh pubk
     EVP_PKEY * newA{nullptr};
     if(Security::generate_dh_pubk(&newA) == -1){return 0;}
     my_user->set_clients_pubk(newA);
@@ -192,6 +192,7 @@ unsigned int Message::send_message_6(User* sender_user, string dest_username, ve
     receiver_user->set_peer_pubk_char(sender_user->get_clients_pubk_char());
     return gcm_ciphertext_len;
 }
+//received by the client
 int Message::parse_message_6(char* message, User*my_user){
     string msg (message);
     string tag = msg.substr(msg.length()-Security::GCM_TAG_LEN, msg.length());
@@ -224,6 +225,145 @@ int Message::parse_message_6(char* message, User*my_user){
     send_message_7(my_user);
     return 1;
 
+}
+//sent by the client
+unsigned int Message::send_message_7(User* my_user, string dest_username){
+    //generating new dh pubk
+    EVP_PKEY * newB{nullptr};
+    if(Security::generate_dh_pubk(&newB) == -1){return 0;}
+    my_user->set_clients_pubk(newB);
+    BIO * bio{nullptr};
+    unsigned char *newB_char{nullptr};
+    if(Security::EVP_PKEY_to_chars(bio, newB ,&newB_char) == -1){
+        EVP_PKEY_free(newB);
+        my_user->set_clients_pubk(nullptr);
+        return 0;
+    }
+    my_user->set_clients_pubk_char(newB_char);
+    BIO_free(bio);
+    //convert peers pubk char into EVP_PKEY
+    BIO * mio{nullptr};
+    EVP_PKEY * peer_pubk;
+    if(Security::chars_to_EVP_PKEY(mio, &peer_pubk , my_user->get_peer_pubk_char())==-1){
+        EVP_PKEY_free(newB);
+        my_user->set_clients_pubk(nullptr);
+        my_user->set_clients_pubk_char(nullptr);
+        return 0;
+    }
+    my_user->set_peer_pubk(peer_pubk);
+    //concatenation g^a' g^b'
+    unsigned char* text_to_sign = (unsigned char*)malloc(2*DH_PUBK_LENGTH);
+    if(!text_to_sign){
+        cerr <<"malloc for concatenation returned NULL (text_to_sign is too big?)"<<endl;
+        EVP_PKEY_free(newB);
+        my_user->set_clients_pubk(nullptr);
+        my_user->set_clients_pubk_char(nullptr);
+        my_user->set_peer_pubk(nullptr);
+        return 0;
+    }
+    memcpy(text_to_sign, my_user->get_peer_pubk_char(), DH_PUBK_LENGTH);
+    memcpy(text_to_sign, my_user->get_clients_pubk_char(), DH_PUBK_LENGTH);
+  
+   
+    //sign the concatenation
+    unsigned char *signature{nullptr};
+    int signature_len = 0;
+    if((signature_len = Security::signature("./users/"+my_user->get_username()+"rsa_privkey.pem", text_to_sign, 
+                            2*DH_PUBK_LENGTH, &signature)) == -1){
+        EVP_PKEY_free(newB);
+        free(text_to_sign);
+        my_user->set_clients_pubk(nullptr);
+        my_user->set_clients_pubk_char(nullptr);
+        my_user->set_peer_pubk(nullptr);
+        return 0;
+    }
+    //generating session key between two client
+    unsigned char * clients_key{nullptr};
+    if(Security::generate_dh_key(my_user->get_clients_pubk(), my_user->get_peer_pubk(), &clients_key) == -1){
+        EVP_PKEY_free(newB);
+        free(text_to_sign);
+        my_user->set_clients_pubk(nullptr);
+        my_user->set_clients_pubk_char(nullptr);
+        my_user->set_peer_pubk(nullptr);
+        free(signature);
+        return 0;
+    }
+    my_user->set_clients_key(clients_key);
+    //initialization vector
+    unsigned char* iv{nullptr};
+    if(Security::generate_iv(&iv, Security::GCM_IV_LEN)){
+        EVP_PKEY_free(newB);
+        free(text_to_sign);
+        my_user->set_clients_pubk(nullptr);
+        my_user->set_clients_pubk_char(nullptr);
+        my_user->set_peer_pubk(nullptr);
+        my_user->set_clients_key(nullptr);
+        free(signature);
+        return 0;
+    }
+    //creating aad: message type, client_to_server_counter, iv, encrypted signature
+    int aad_len = MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN + DH_PUBK_LENGTH + signature_len + 1;
+    char * aad = (char*)malloc(aad_len);
+    if(!aad){
+        EVP_PKEY_free(newB);
+        free(text_to_sign);
+        my_user->set_clients_pubk(nullptr);
+        my_user->set_clients_pubk_char(nullptr);
+        my_user->set_peer_pubk(nullptr);
+        my_user->set_clients_key(nullptr);
+        free(signature);
+        free(iv);
+        cerr<< "Error: malloc for AAD returned NULL (too big AAD?)\n"; return 0;
+    }
+    aad[0] = 7;
+    uint16_t * counter_pointer = (uint16_t *) (aad+1);
+    *counter_pointer = my_user->get_client_coutner() + 1;
+    memcpy(aad + MESSAGE_TYPE_LENGTH + COUNTER_LENGTH , iv, Security::GCM_IV_LEN);
+    BIO* bio{nullptr};
+    unsigned char*newA_char{nullptr};
+    if(Security::EVP_PKEY_to_chars(bio, newA, &newA_char)==-1){ 
+        my_user->set_clients_pubk(nullptr);
+        EVP_PKEY_free(newA);
+        free(iv);
+        return 0;
+    }
+    my_user->set_clients_pubk_char(newA_char);
+    BIO_free(bio);
+    memcpy(aad + MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN, newA_char, DH_PUBK_LENGTH);
+
+    int gcm_plaintext_len = my_user->get_username().length() + dest_username.length() + 1;
+    unsigned char* gcm_plaintext = (unsigned char*)malloc(gcm_plaintext_len);
+    strcpy((char*)gcm_plaintext, my_user->get_username().c_str());
+    strcat((char*)gcm_plaintext, dest_username.c_str());
+    //GCM encryption
+    unsigned char* gcm_ciphertext{nullptr};
+    unsigned char* tag{nullptr};
+    int gcm_ciphertext_len = 0;
+    if(-1 == (gcm_ciphertext_len = Security::gcm_encrypt((unsigned char *)aad, aad_len , gcm_plaintext, gcm_plaintext_len, 
+                                                        my_user->get_server_client_key(), iv, &gcm_ciphertext, &tag))){
+
+        my_user->set_clients_pubk(nullptr);
+        my_user->set_clients_pubk_char(nullptr);
+        EVP_PKEY_free(newA);
+        free(gcm_plaintext);    
+        free(gcm_ciphertext);
+        free(tag);
+        free(iv);
+        free(aad);
+        return 0;
+    }
+
+    ///TODO:Send the data to the network!
+
+    ////
+    my_user->increment_client_counter();
+    free(aad);
+    free(iv);
+    free(gcm_plaintext);
+    free(gcm_ciphertext);
+    free(tag);
+    EVP_PKEY_free(newA);
+    return gcm_ciphertext_len;
 }
 //confirmation message that the session key is received and generated sucessfully
 //sent by a client 
