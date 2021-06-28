@@ -139,15 +139,14 @@ int Security::signature(string prvk_filename, unsigned char * text_to_sign, int 
     return signature_len;
 }
 
-int Security::verify_signature(string pubk_filename, unsigned char * signature, int signature_len, unsigned char * clear_text, int clear_text_len){
+int Security::verify_signature(EVP_PKEY* pubk, unsigned char * signature, int signature_len, unsigned char * clear_text, int clear_text_len){
     int ret;
-   
     // load my public key:
-    FILE* pubk_file = fopen(pubk_filename.c_str(), "r");
-    if(!pubk_file){ cerr << "Error: cannot open file '" << pubk_filename << "' (missing?)\n"; exit(1); }
-    EVP_PKEY* pubk = PEM_read_PUBKEY(pubk_file, NULL, NULL, NULL);
-    fclose(pubk_file);
-    if(!pubk){ cerr << "Error: PEM_read_PUBKEY returned NULL\n"; exit(1); }
+    // FILE* pubk_file = fopen(pubk_filename.c_str(), "r");
+    // if(!pubk_file){ cerr << "Error: cannot open file '" << pubk_filename << "' (missing?)\n"; exit(1); }
+    // EVP_PKEY* pubk = PEM_read_PUBKEY(pubk_file, NULL, NULL, NULL);
+    // fclose(pubk_file);
+    // if(!pubk){ cerr << "Error: PEM_read_PUBKEY returned NULL\n"; exit(1); }
 
     // create the signature context:
     EVP_MD_CTX* md_ctx = EVP_MD_CTX_new();

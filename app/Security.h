@@ -56,14 +56,14 @@ public:
     //======================================================================================
     /**
     * verify signature according to the public key
-    * @param pubk_filename the public key of the peer to verify the signature
+    * @param pubk the public key of the peer to verify the signature
     * @param signature address of the private key file name for digital signature
     * @param signature_len the input text we want to signed with the private key
     * @param clear_text the lenght of the input text
     * @param clear_text_len the digitally signed signature. 
     * @return intger to specify that the verification is succeeded (length of plaintext) or not -1 
     */
-    static int verify_signature(string pubk_filename, unsigned char * signature, int signature_len, unsigned char * clear_text, int clear_text_len);
+    static int verify_signature(EVP_PKEY* pubk, unsigned char * signature, int signature_len, unsigned char * clear_text, int clear_text_len);
     //======================================================================================
     /**
     * verify the input certificate and verify it according to the store
