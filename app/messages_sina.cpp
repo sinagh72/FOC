@@ -24,7 +24,6 @@ void short_to_char(unsigned short input, unsigned char **array){
     (*array)[2] = '\0';
 }
 User* find_user(string user, vector<User>users){
-    bool returned = false;
     for (auto &usr : users) // access by reference to avoid copying
     {  
         if (usr.get_username().compare(user)==0)
@@ -100,15 +99,131 @@ unsigned int Message::send_message_5(User* my_user, string dest_username){
     free(gcm_plaintext);
     free(gcm_ciphertext);
     free(tag);
-    my_user->set_clients_pubk(nullptr);
-    my_user->set_clients_pubk_char(nullptr);
     EVP_PKEY_free(newA);
     return gcm_ciphertext_len;
 }
 //recevied by the server 
-int Message::parse_message_5(char * message, string sender, vector<User>users){
-    
+int Message::parse_message_5(char * message, string sender_username, vector<User>users){
+    User *sender {nullptr};
+    if(find_user(sender_username, users) == NULL) return -1;
+    string msg (message);
+    string tag = msg.substr(msg.length()-Security::GCM_TAG_LEN, msg.length());
+    string ciphertext = msg.substr(msg.length()-Security::GCM_TAG_LEN -2*USERNAME_LENGTH, msg.length()-Security::GCM_TAG_LEN);
+    string aad = msg.substr(0,MESSAGE_TYPE_LENGTH+COUNTER_LENGTH+Security::GCM_IV_LEN+DH_PUBK_LENGTH);
+    string gcm_iv = msg.substr(MESSAGE_TYPE_LENGTH+COUNTER_LENGTH,MESSAGE_TYPE_LENGTH+COUNTER_LENGTH+Security::GCM_IV_LEN);
+    unsigned char *decryptedtext{nullptr};
+    if(-1==(Security::gcm_decrypt((unsigned char*)aad.c_str(), aad.length(), 
+                                (unsigned char*)ciphertext.c_str(), ciphertext.length(),
+                                sender->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &decryptedtext, 
+                                (unsigned char*)tag.c_str()))){
+        delete sender;
+        return -1;
+    }
+    string decryptedtext_str ((char*)decryptedtext);
+    free(decryptedtext);
+    uint16_t received_counter = 0;
+    received_counter = message[1] << 8;  
+    received_counter |= message[2];
+    if(!sender->replay_check(false, received_counter)){
+        delete sender;
+        return -1;
+    }
+    if((decryptedtext_str.substr(0,USERNAME_LENGTH).compare(sender_username)) != 0){
+        cerr << "Error: sender username and decrypted sender are not equal!";
+        delete sender;
+        return -1;
+    }
+    string dh_key = aad.substr(MESSAGE_TYPE_LENGTH+COUNTER_LENGTH+Security::GCM_IV_LEN,aad.length()); 
+    sender->set_peer_pubk_char((unsigned char *)dh_key.c_str());
+    send_message_6(sender, decryptedtext_str.substr(USERNAME_LENGTH,decryptedtext_str.length()), users);
     return 1;
+}
+//sent by the server 
+unsigned int Message::send_message_6(User* sender_user, string dest_username, vector<User>users){
+    //
+    User *receiver_user{nullptr};
+    if(!(receiver_user = find_user(dest_username, users))) return 0;
+    //initialization vector
+    unsigned char* iv{nullptr};
+    if(Security::generate_iv(&iv, Security::GCM_IV_LEN)){return 0;}
+    //creating aad: message type, client_to_server_counter, iv, encrypted signature
+    int aad_len = MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN + DH_PUBK_LENGTH + 1;
+    char * aad = (char*)malloc(aad_len);
+    if(!aad){
+        free(iv);
+        cerr<< "Error: malloc for AAD returned NULL (too big AAD?)\n"; return 0;
+    }
+    aad[0] = 6;
+    uint16_t * counter_pointer = (uint16_t *) (aad+1);
+    *counter_pointer = sender_user->get_client_coutner() + 1;
+    memcpy(aad + MESSAGE_TYPE_LENGTH + COUNTER_LENGTH , iv, Security::GCM_IV_LEN);
+    memcpy(aad + MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN, sender_user->get_clients_pubk_char(), DH_PUBK_LENGTH);
+
+    int gcm_plaintext_len = sender_user->get_username().length() + dest_username.length() + 1;
+    unsigned char* gcm_plaintext = (unsigned char*)malloc(gcm_plaintext_len);
+    strcpy((char*)gcm_plaintext, sender_user->get_username().c_str());
+    strcat((char*)gcm_plaintext, dest_username.c_str());
+    //GCM encryption
+    unsigned char* gcm_ciphertext{nullptr};
+    unsigned char* tag{nullptr};
+    int gcm_ciphertext_len = 0;
+    if(-1 == (gcm_ciphertext_len = Security::gcm_encrypt((unsigned char *)aad, aad_len , gcm_plaintext, gcm_plaintext_len, 
+                                                        receiver_user->get_server_client_key(), 
+                                                        iv, &gcm_ciphertext, &tag))){
+
+        receiver_user->set_peer_pubk_char(nullptr);
+        free(gcm_plaintext);    
+        free(gcm_ciphertext);
+        free(tag);
+        free(iv);
+        free(aad);
+        return gcm_ciphertext_len;
+    }
+
+    ///TODO:Send the data to the network!
+
+    ////
+    receiver_user->increment_server_counter();
+    free(aad);
+    free(iv);
+    free(gcm_plaintext);
+    free(gcm_ciphertext);
+    free(tag);
+    receiver_user->set_peer_pubk_char(sender_user->get_clients_pubk_char());
+    return gcm_ciphertext_len;
+}
+int Message::parse_message_6(char* message, User*my_user){
+    string msg (message);
+    string tag = msg.substr(msg.length()-Security::GCM_TAG_LEN, msg.length());
+    string ciphertext = msg.substr(msg.length()-Security::GCM_TAG_LEN -2*USERNAME_LENGTH, msg.length()-Security::GCM_TAG_LEN);
+    string aad = msg.substr(0,MESSAGE_TYPE_LENGTH+COUNTER_LENGTH+Security::GCM_IV_LEN+DH_PUBK_LENGTH);
+    string gcm_iv = msg.substr(MESSAGE_TYPE_LENGTH+COUNTER_LENGTH,MESSAGE_TYPE_LENGTH+COUNTER_LENGTH+Security::GCM_IV_LEN);
+    unsigned char *decryptedtext{nullptr};
+    if(-1==(Security::gcm_decrypt((unsigned char*)aad.c_str(), aad.length(), 
+                                (unsigned char*)ciphertext.c_str(), ciphertext.length(),
+                                my_user->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &decryptedtext, 
+                                (unsigned char*)tag.c_str()))){
+        return -1;
+    }
+    string decryptedtext_str ((char*)decryptedtext);
+    free(decryptedtext);
+    uint16_t received_counter = 0;
+    received_counter = message[1] << 8;  
+    received_counter |= message[2];
+    if(!my_user->replay_check(true, received_counter)){
+        return -1;
+    }
+    if((decryptedtext_str.substr(USERNAME_LENGTH,2*USERNAME_LENGTH).compare(my_user->get_username())) != 0){
+        cerr << "Error: sender username and decrypted sender are not equal!";
+        return -1;
+    }
+    string dh_key = aad.substr(MESSAGE_TYPE_LENGTH+COUNTER_LENGTH+Security::GCM_IV_LEN,aad.length()); 
+    my_user->set_peer_pubk_char((unsigned char *)dh_key.c_str());
+    my_user->set_peer_username(decryptedtext_str.substr(0,USERNAME_LENGTH));
+    //TODO: specify to user the to accept or reject this request
+    send_message_7(my_user);
+    return 1;
+
 }
 //confirmation message that the session key is received and generated sucessfully
 //sent by a client 

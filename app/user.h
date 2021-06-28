@@ -31,6 +31,7 @@ private:
     uint16_t server_counter{0};//server to client counter: #messages that the user has received from the server
     uint16_t client_counter{0};//client to server counter: #messages that the user has sent to the server
     int client_socket;
+    string peer_username;//the username of the user that we are communicating with
 
 
     
@@ -121,7 +122,9 @@ public:
     void set_server_pubk_char(unsigned char*pub_key_char){
         this->server_pubk_char = pub_key_char;
     }
-
+    void set_peer_username(string username){
+        this->peer_username = username;
+    }
     //return the status
     STATUS get_status() {
         return this->status;
@@ -189,6 +192,10 @@ public:
     // get the peer public key char
     unsigned char* get_server_pubk_char() const{
         return this->server_pubk_char;
+    }
+    //get peer username
+    string get_peer_username(){
+        return this->username;
     }
     //serialize the object
     void serialize();
