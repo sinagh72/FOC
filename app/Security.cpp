@@ -409,7 +409,7 @@ int Security::generate_dh_key(EVP_PKEY * my_dhkey, EVP_PKEY * peers_dhk, unsigne
     EVP_PKEY_derive(derive_ctx, NULL, &skeylen);
     /*allocate buffer for the shared secret*/
     *skey = (unsigned char*)(malloc(int(skeylen)));
-    if (!skey) { EVP_PKEY_CTX_free(derive_ctx);cerr << "Error: malloc returns NULL (skey is too big?)\n"; return -1; }
+    if (!*skey) { EVP_PKEY_CTX_free(derive_ctx);cerr << "Error: malloc returns NULL (skey is too big?)\n"; return -1; }
     /*Perform again the derivation and store it in skey buffer*/
     if (EVP_PKEY_derive(derive_ctx, *skey, &skeylen) <= 0) { EVP_PKEY_CTX_free(derive_ctx);free(skey);cerr << "Error: EVP_PKEY_derive Failed\n"; return -1; }
     //FREE EVERYTHING INVOLVED WITH THE EXCHANGE (not the shared secret tho)
