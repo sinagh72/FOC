@@ -1,6 +1,6 @@
-<mxfile host="app.diagrams.net" modified="2021-06-28T21:04:34.682Z" agent="5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36" etag="bHCEaQ-iz27CIgREI7qX" version="14.8.2" type="github">
+<mxfile host="app.diagrams.net" modified="2021-06-28T23:09:00.845Z" agent="5.0 (X11)" etag="FfQelR3Pz779Twg0iZEE" version="14.8.2" type="github">
   <diagram id="F_jE-BOAkrTfxv78qMfI" name="Page-1">
-    <mxGraphModel dx="2272" dy="1806" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="1722" dy="2456" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -8,7 +8,7 @@
           <mxGeometry x="-80" y="-70" width="390" height="20" as="geometry" />
         </mxCell>
         <mxCell id="7HuCR2p12rS5CB_kkMIx-15" value="&lt;div style=&quot;text-align: left ; font-size: 20px&quot;&gt;&lt;span style=&quot;font-size: 20px&quot;&gt;0: CLIENT HELLO MESSAGE&amp;nbsp;&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left ; font-size: 20px&quot;&gt;&lt;span style=&quot;font-size: 20px&quot;&gt;1: SERVER SENDS CERTIFICATE&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left ; font-size: 20px&quot;&gt;&lt;span style=&quot;font-size: 20px&quot;&gt;2: CLIENT SENDS AUTHENTICATION&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left ; font-size: 20px&quot;&gt;&lt;span style=&quot;font-size: 20px&quot;&gt;3: ACTIVE USERS REQUEST&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left ; font-size: 20px&quot;&gt;&lt;span style=&quot;font-size: 20px&quot;&gt;4: REPLY ACTIVE USERS&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left ; font-size: 20px&quot;&gt;&lt;span style=&quot;font-size: 20px&quot;&gt;5: REQUEST TO TALK&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left ; font-size: 20px&quot;&gt;&lt;span style=&quot;font-size: 20px&quot;&gt;6: FORWARD REQUEST TO TALK&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left ; font-size: 20px&quot;&gt;&lt;span style=&quot;font-size: 20px&quot;&gt;7: ACCEPT REQUEST TO TALK&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left ; font-size: 20px&quot;&gt;&lt;span style=&quot;font-size: 20px&quot;&gt;8: FORWARD ACCEPT REQUEST TO TALK&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left ; font-size: 20px&quot;&gt;&lt;span style=&quot;font-size: 20px&quot;&gt;9: DECLINE REQUEST TO TALK&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left ; font-size: 20px&quot;&gt;&lt;span style=&quot;font-size: 20px&quot;&gt;10: FORWARD DECLINE REQUEST TO TALK&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left ; font-size: 20px&quot;&gt;&lt;span style=&quot;font-size: 20px&quot;&gt;11: CHAT MESSAGE&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left ; font-size: 20px&quot;&gt;&lt;span style=&quot;font-size: 20px&quot;&gt;12: FORWARD CHAT MESSAGE&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left ; font-size: 20px&quot;&gt;&lt;span style=&quot;font-size: 20px&quot;&gt;13:&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left ; font-size: 20px&quot;&gt;&lt;span style=&quot;font-size: 20px&quot;&gt;14:&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left ; font-size: 20px&quot;&gt;&lt;span style=&quot;font-size: 20px&quot;&gt;15:&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left ; font-size: 20px&quot;&gt;&lt;span style=&quot;font-size: 20px&quot;&gt;16:&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left ; font-size: 20px&quot;&gt;&lt;span style=&quot;font-size: 20px&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left ; font-size: 20px&quot;&gt;&lt;br style=&quot;font-size: 20px&quot;&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left ; font-size: 20px&quot;&gt;&lt;span style=&quot;font-size: 20px&quot;&gt;&amp;nbsp;&lt;/span&gt;&lt;/div&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fontSize=20;fontFamily=Times New Roman;" parent="1" vertex="1">
-          <mxGeometry x="615" y="-440" width="420" height="490" as="geometry" />
+          <mxGeometry x="600" y="-490" width="420" height="490" as="geometry" />
         </mxCell>
         <mxCell id="7HuCR2p12rS5CB_kkMIx-33" value="&lt;b&gt;the server has all the public key of the clients&lt;/b&gt;&lt;br&gt;Nonce: counter (integer) --&amp;gt; it is only about authentication and we dont need encryption" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontFamily=Times New Roman;" parent="1" vertex="1">
           <mxGeometry x="520" y="20" width="670" height="20" as="geometry" />
@@ -29,10 +29,10 @@
           <mxGeometry x="300" width="150" height="30" as="geometry" />
         </mxCell>
         <mxCell id="7HuCR2p12rS5CB_kkMIx-39" value="" style="shape=table;html=1;whiteSpace=wrap;startSize=0;container=1;collapsible=0;childLayout=tableLayout;fontFamily=Times New Roman;" parent="1" vertex="1">
-          <mxGeometry x="-90" y="446" width="900" height="33" as="geometry" />
+          <mxGeometry x="-90" y="446" width="1050" height="33" as="geometry" />
         </mxCell>
         <mxCell id="7HuCR2p12rS5CB_kkMIx-40" value="" style="shape=partialRectangle;html=1;whiteSpace=wrap;collapsible=0;dropTarget=0;pointerEvents=0;fillColor=none;top=0;left=0;bottom=0;right=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontFamily=Times New Roman;" parent="7HuCR2p12rS5CB_kkMIx-39" vertex="1">
-          <mxGeometry width="900" height="33" as="geometry" />
+          <mxGeometry width="1050" height="33" as="geometry" />
         </mxCell>
         <mxCell id="7HuCR2p12rS5CB_kkMIx-41" value="Message Type: 1" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;fillColor=#fff2cc;top=0;left=0;bottom=0;right=0;overflow=hidden;strokeColor=#d6b656;fontFamily=Times New Roman;" parent="7HuCR2p12rS5CB_kkMIx-40" vertex="1">
           <mxGeometry width="150" height="33" as="geometry" />
@@ -40,17 +40,20 @@
         <mxCell id="46wRRIrfo-uhjWPLOnh3-5" value="counter_Sa" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;fillColor=#fff2cc;top=0;left=0;bottom=0;right=0;overflow=hidden;strokeColor=#d6b656;fontFamily=Times New Roman;" parent="7HuCR2p12rS5CB_kkMIx-40" vertex="1">
           <mxGeometry x="150" width="150" height="33" as="geometry" />
         </mxCell>
-        <mxCell id="7HuCR2p12rS5CB_kkMIx-42" value="Server Certificate" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;fillColor=#fff2cc;top=0;left=0;bottom=0;right=0;overflow=hidden;strokeColor=#d6b656;fontFamily=Times New Roman;" parent="7HuCR2p12rS5CB_kkMIx-40" vertex="1">
+        <mxCell id="zXGo25FR2z5JaLwto-aH-1" value="gcm_iv" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;fillColor=#fff2cc;top=0;left=0;bottom=0;right=0;overflow=hidden;strokeColor=#d6b656;fontFamily=Times New Roman;" vertex="1" parent="7HuCR2p12rS5CB_kkMIx-40">
           <mxGeometry x="300" width="150" height="33" as="geometry" />
         </mxCell>
-        <mxCell id="7HuCR2p12rS5CB_kkMIx-50" value="g^b" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;fillColor=#fff2cc;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Times New Roman;strokeColor=#d6b656;" parent="7HuCR2p12rS5CB_kkMIx-40" vertex="1">
+        <mxCell id="7HuCR2p12rS5CB_kkMIx-42" value="Server Certificate" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;fillColor=#fff2cc;top=0;left=0;bottom=0;right=0;overflow=hidden;strokeColor=#d6b656;fontFamily=Times New Roman;" parent="7HuCR2p12rS5CB_kkMIx-40" vertex="1">
           <mxGeometry x="450" width="150" height="33" as="geometry" />
         </mxCell>
-        <mxCell id="7HuCR2p12rS5CB_kkMIx-56" value="&lt;b&gt;{&amp;lt;g^a, g^b&amp;gt;ss}k&lt;/b&gt;" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;top=0;left=0;bottom=0;right=0;overflow=hidden;strokeColor=#9673a6;fillColor=#e1d5e7;fontFamily=Times New Roman;" parent="7HuCR2p12rS5CB_kkMIx-40" vertex="1">
+        <mxCell id="7HuCR2p12rS5CB_kkMIx-50" value="g^b" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;fillColor=#fff2cc;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Times New Roman;strokeColor=#d6b656;" parent="7HuCR2p12rS5CB_kkMIx-40" vertex="1">
           <mxGeometry x="600" width="150" height="33" as="geometry" />
         </mxCell>
-        <mxCell id="yCbRSSfEJfGpyD3MhMj6-2" value="Tag" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Times New Roman;" parent="7HuCR2p12rS5CB_kkMIx-40" vertex="1">
+        <mxCell id="7HuCR2p12rS5CB_kkMIx-56" value="&lt;b&gt;{&amp;lt;g^a, g^b&amp;gt;ss}k&lt;/b&gt;" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;top=0;left=0;bottom=0;right=0;overflow=hidden;strokeColor=#9673a6;fillColor=#e1d5e7;fontFamily=Times New Roman;" parent="7HuCR2p12rS5CB_kkMIx-40" vertex="1">
           <mxGeometry x="750" width="150" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="yCbRSSfEJfGpyD3MhMj6-2" value="Tag" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;overflow=hidden;fontFamily=Times New Roman;" parent="7HuCR2p12rS5CB_kkMIx-40" vertex="1">
+          <mxGeometry x="900" width="150" height="33" as="geometry" />
         </mxCell>
         <mxCell id="7HuCR2p12rS5CB_kkMIx-44" value="" style="shape=table;html=1;whiteSpace=wrap;startSize=0;container=1;collapsible=0;childLayout=tableLayout;fontFamily=Times New Roman;" parent="1" vertex="1">
           <mxGeometry x="-85" y="573" width="900" height="33" as="geometry" />
@@ -71,7 +74,7 @@
           <mxGeometry x="675" width="225" height="33" as="geometry" />
         </mxCell>
         <mxCell id="7HuCR2p12rS5CB_kkMIx-49" value="server generates b and computes g^b. then the session key is computed by the server.&amp;nbsp;&lt;br style=&quot;font-size: 19px&quot;&gt;The server digitally signed&amp;nbsp;the pair (g^b, g^a) with its own privK to reduce the encryption size.&lt;br&gt;Finally the server encrypts&amp;nbsp;it with the session key.&amp;nbsp;&lt;br&gt;We are using GCM to compute the tag and append it to the message" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fontSize=19;fontFamily=Times New Roman;" parent="1" vertex="1">
-          <mxGeometry x="860" y="412.5" width="740" height="100" as="geometry" />
+          <mxGeometry x="1000" y="412.5" width="740" height="100" as="geometry" />
         </mxCell>
         <mxCell id="7HuCR2p12rS5CB_kkMIx-51" value="&lt;div style=&quot;font-size: 19px&quot;&gt;(confirmation) Client does the same procedure and sends the message to the server&lt;/div&gt;&lt;div style=&quot;font-size: 19px&quot;&gt;now we have the session key between the client and the server&lt;br&gt;The procedure is same as before using GCM&lt;/div&gt;" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fontSize=19;fontFamily=Times New Roman;" parent="1" vertex="1">
           <mxGeometry x="865" y="546" width="640" height="70" as="geometry" />
@@ -187,7 +190,7 @@
         <mxCell id="yCbRSSfEJfGpyD3MhMj6-7" value="" style="endArrow=classic;startArrow=classic;html=1;fontFamily=Times New Roman;" parent="1" edge="1">
           <mxGeometry width="50" height="50" relative="1" as="geometry">
             <mxPoint x="-90" y="530" as="sourcePoint" />
-            <mxPoint x="660" y="530" as="targetPoint" />
+            <mxPoint x="800" y="530" as="targetPoint" />
           </mxGeometry>
         </mxCell>
         <mxCell id="yCbRSSfEJfGpyD3MhMj6-9" value="Authenticated" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontFamily=Times New Roman;" parent="yCbRSSfEJfGpyD3MhMj6-7" vertex="1" connectable="0">
@@ -197,8 +200,8 @@
         </mxCell>
         <mxCell id="yCbRSSfEJfGpyD3MhMj6-8" value="" style="endArrow=classic;startArrow=classic;html=1;fontFamily=Times New Roman;" parent="1" edge="1">
           <mxGeometry width="50" height="50" relative="1" as="geometry">
-            <mxPoint x="510" y="500" as="sourcePoint" />
-            <mxPoint x="659.9999999999995" y="500" as="targetPoint" />
+            <mxPoint x="660" y="500" as="sourcePoint" />
+            <mxPoint x="809.9999999999995" y="500" as="targetPoint" />
           </mxGeometry>
         </mxCell>
         <mxCell id="yCbRSSfEJfGpyD3MhMj6-10" value="Encrypted" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontFamily=Times New Roman;" parent="yCbRSSfEJfGpyD3MhMj6-8" vertex="1" connectable="0">
@@ -209,7 +212,7 @@
         <mxCell id="yCbRSSfEJfGpyD3MhMj6-11" value="" style="endArrow=classic;startArrow=classic;html=1;fontFamily=Times New Roman;" parent="1" edge="1">
           <mxGeometry width="50" height="50" relative="1" as="geometry">
             <mxPoint x="-90" y="500" as="sourcePoint" />
-            <mxPoint x="510" y="500" as="targetPoint" />
+            <mxPoint x="650" y="500" as="targetPoint" />
           </mxGeometry>
         </mxCell>
         <mxCell id="yCbRSSfEJfGpyD3MhMj6-12" value="Clear Header (AAD)" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontFamily=Times New Roman;" parent="yCbRSSfEJfGpyD3MhMj6-11" vertex="1" connectable="0">
@@ -331,7 +334,7 @@
         <mxCell id="fmLFLyb55_Ck_awDn2ng-18" value="counter_Sb" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;fillColor=#fff2cc;top=0;left=0;bottom=0;right=0;overflow=hidden;strokeColor=#d6b656;fontFamily=Times New Roman;" parent="fmLFLyb55_Ck_awDn2ng-16" vertex="1">
           <mxGeometry x="150" width="150" height="33" as="geometry" />
         </mxCell>
-        <mxCell id="SHcrsHsKTFC2fSdgtpZ8-1" value="&lt;span&gt;gcm_iv&lt;/span&gt;" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;fillColor=#fff2cc;top=0;left=0;bottom=0;right=0;overflow=hidden;strokeColor=#d6b656;fontFamily=Times New Roman;" vertex="1" parent="fmLFLyb55_Ck_awDn2ng-16">
+        <mxCell id="SHcrsHsKTFC2fSdgtpZ8-1" value="&lt;span&gt;gcm_iv&lt;/span&gt;" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;fillColor=#fff2cc;top=0;left=0;bottom=0;right=0;overflow=hidden;strokeColor=#d6b656;fontFamily=Times New Roman;" parent="fmLFLyb55_Ck_awDn2ng-16" vertex="1">
           <mxGeometry x="300" width="150" height="33" as="geometry" />
         </mxCell>
         <mxCell id="fmLFLyb55_Ck_awDn2ng-19" value="g^a&#39;" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;fillColor=#fff2cc;top=0;left=0;bottom=0;right=0;overflow=hidden;strokeColor=#d6b656;fontFamily=Times New Roman;" parent="fmLFLyb55_Ck_awDn2ng-16" vertex="1">
@@ -358,7 +361,7 @@
         <mxCell id="fmLFLyb55_Ck_awDn2ng-34" value="counter_Sa" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;fillColor=#fff2cc;top=0;left=0;bottom=0;right=0;overflow=hidden;strokeColor=#d6b656;fontFamily=Times New Roman;" parent="yCbRSSfEJfGpyD3MhMj6-44" vertex="1">
           <mxGeometry x="150" width="150" height="33" as="geometry" />
         </mxCell>
-        <mxCell id="SHcrsHsKTFC2fSdgtpZ8-3" value="&lt;span&gt;gcm_iv&lt;/span&gt;" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;fillColor=#fff2cc;top=0;left=0;bottom=0;right=0;overflow=hidden;strokeColor=#d6b656;fontFamily=Times New Roman;" vertex="1" parent="yCbRSSfEJfGpyD3MhMj6-44">
+        <mxCell id="SHcrsHsKTFC2fSdgtpZ8-3" value="&lt;span&gt;gcm_iv&lt;/span&gt;" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;fillColor=#fff2cc;top=0;left=0;bottom=0;right=0;overflow=hidden;strokeColor=#d6b656;fontFamily=Times New Roman;" parent="yCbRSSfEJfGpyD3MhMj6-44" vertex="1">
           <mxGeometry x="300" width="150" height="33" as="geometry" />
         </mxCell>
         <mxCell id="yCbRSSfEJfGpyD3MhMj6-48" value="g^b&#39;" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;top=0;left=0;bottom=0;right=0;overflow=hidden;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Times New Roman;" parent="yCbRSSfEJfGpyD3MhMj6-44" vertex="1">
@@ -418,7 +421,7 @@
         <mxCell id="fmLFLyb55_Ck_awDn2ng-23" value="counter_Bs" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;fillColor=#fff2cc;top=0;left=0;bottom=0;right=0;overflow=hidden;strokeColor=#d6b656;fontFamily=Times New Roman;" parent="y36w_arXSWlQnjkWe3Qv-5" vertex="1">
           <mxGeometry x="150" width="150" height="33" as="geometry" />
         </mxCell>
-        <mxCell id="SHcrsHsKTFC2fSdgtpZ8-2" value="&lt;span&gt;gcm_iv&lt;/span&gt;" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;fillColor=#fff2cc;top=0;left=0;bottom=0;right=0;overflow=hidden;strokeColor=#d6b656;fontFamily=Times New Roman;" vertex="1" parent="y36w_arXSWlQnjkWe3Qv-5">
+        <mxCell id="SHcrsHsKTFC2fSdgtpZ8-2" value="&lt;span&gt;gcm_iv&lt;/span&gt;" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;fillColor=#fff2cc;top=0;left=0;bottom=0;right=0;overflow=hidden;strokeColor=#d6b656;fontFamily=Times New Roman;" parent="y36w_arXSWlQnjkWe3Qv-5" vertex="1">
           <mxGeometry x="300" width="150" height="33" as="geometry" />
         </mxCell>
         <mxCell id="fmLFLyb55_Ck_awDn2ng-24" value="&lt;span&gt;g^b&#39;&lt;/span&gt;" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;fillColor=#fff2cc;top=0;left=0;bottom=0;right=0;overflow=hidden;strokeColor=#d6b656;fontFamily=Times New Roman;" parent="y36w_arXSWlQnjkWe3Qv-5" vertex="1">
