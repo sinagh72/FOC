@@ -13,6 +13,8 @@
 #include <openssl/dh.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 
 using namespace std;
 class Message {

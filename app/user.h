@@ -17,7 +17,7 @@ private:
     STATUS status;
     string username;
     string IP;
-    unsigned short port;
+    uint16_t port;
     unsigned char* server_client_key; // the key between the server and the client
     unsigned char* clients_key; // the key between two clients
     EVP_PKEY* clients_pubk; // dh pub key for generating a'
@@ -38,7 +38,7 @@ private:
 public:
     //constructor
     User();
-    User(string username, string IP, unsigned short port, EVP_PKEY* dh_pubkey, int client_socket);
+    User(string username, string IP, uint16_t port, EVP_PKEY* dh_pubkey, int client_socket);
     //copy constructor
     User(const User &source);
     //methods
@@ -56,7 +56,7 @@ public:
         this->IP = IP;
     }
     //set the port
-    void set_port(unsigned short port){
+    void set_port(uint16_t port){
         this->port = port;
     }
     //set the key between client and server
@@ -140,7 +140,7 @@ public:
         return this->IP;
     }
     //return the port
-    unsigned short get_port() const{
+    uint16_t get_port() const{
         return this->port;
     }
     //return the key between client and server

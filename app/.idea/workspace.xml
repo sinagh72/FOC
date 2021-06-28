@@ -10,11 +10,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="701079ee-8794-440d-9495-26407b2b0549" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Message.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Message.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Security.h" beforeDir="false" afterPath="$PROJECT_DIR$/Security.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/user.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/user.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Message.h" beforeDir="false" afterPath="$PROJECT_DIR$/Message.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/user.h" beforeDir="false" afterPath="$PROJECT_DIR$/user.h" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -24,6 +22,16 @@
   </component>
   <component name="ClangdSettings">
     <option name="formatViaClangd" value="false" />
+  </component>
+  <component name="ExternalProjectsManager">
+    <system id="GRADLE">
+      <state>
+        <task path="$PROJECT_DIR$">
+          <activation />
+        </task>
+        <projects_view />
+      </state>
+    </system>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
@@ -96,7 +104,9 @@
       <workItem from="1624453694725" duration="122000" />
       <workItem from="1624454018319" duration="31000" />
       <workItem from="1624454057819" duration="28405000" />
-      <workItem from="1624607182348" duration="13795000" />
+      <workItem from="1624607182348" duration="14279000" />
+      <workItem from="1624889233146" duration="6253000" />
+      <workItem from="1624910431571" duration="10755000" />
     </task>
     <servers />
   </component>
