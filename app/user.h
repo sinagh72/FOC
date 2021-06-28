@@ -18,12 +18,16 @@ private:
     string username;
     string IP;
     unsigned short port;
-    unsigned char* client_server_key; // the key between the server and the client
+    unsigned char* server_client_key; // the key between the server and the client
     unsigned char* clients_key; // the key between two clients
-    EVP_PKEY* dh_pubk;
-    unsigned char * dh_pubk_char;
-    EVP_PKEY* peer_dh_pubk;
-    unsigned char *peer_dh_pubk_char;
+    EVP_PKEY* clients_pubk; // dh pub key for generating a'
+    unsigned char * clients_pubk_char; // dh pub key for generating a' in characters
+    EVP_PKEY* client_server_pubk; //dh pub key for generating a
+    unsigned char * client_server_pubk_char;// dh pub key for generating a in characters
+    EVP_PKEY* server_pubk;// dh pub key of the server or g^b
+    unsigned char *server_pubk_char;//h pub key of the server or g^b in characters
+    EVP_PKEY* peer_pubk;// dh pub key of other peer or g^b'
+    unsigned char *peer_pubk_char;// dh pub key of other peer or g^b' in characters
     uint16_t server_counter{0};//server to client counter: #messages that the user has received from the server
     uint16_t client_counter{0};//client to server counter: #messages that the user has sent to the server
     int client_socket;
@@ -54,11 +58,11 @@ public:
         this->port = port;
     }
     //set the key between client and server
-    void set_client_server_key(unsigned char * key){
-        this->client_server_key = key;
+    void set_server_client_key(unsigned char * key){
+        this->server_client_key = key;
     }
     //set the key between clients
-    void set_clientskey(unsigned char * key){
+    void set_clients_key(unsigned char * key){
         this->clients_key = key;
     }
 
@@ -85,21 +89,37 @@ public:
     void clear_server_counter(){
         this->server_counter = 0;
     }
-    //set public key
-    void set_dh_pubk(EVP_PKEY*dh_pubk){
-        this->dh_pubk = dh_pubk;
+    //set public key for the client_client communication 
+    void set_clients_pubk(EVP_PKEY*dh_pubk){
+        this->clients_pubk = dh_pubk;
+    }
+    //set public key for the server_client communication 
+    void set_clients_pubk_char(unsigned char*dh_pubk_char){
+        this->clients_pubk_char = dh_pubk_char;
+    }
+        //set public key for the client_client communication 
+    void set_client_server_pubk_char(unsigned char*dh_pubk_char){
+        this->client_server_pubk_char = dh_pubk_char;
+    }
+    //set public key for the server_client communication 
+    void set_client_server_pubk(EVP_PKEY*dh_pubk){
+        this->client_server_pubk = dh_pubk;
     }
       //set public key
-    void set_peer_dh_pubk(EVP_PKEY*peer_dh_pubk){
-        this->peer_dh_pubk = peer_dh_pubk;
-    }
-    //set public key char
-    void set_dh_pubk_char(unsigned char*dh_pubk_char){
-        this->dh_pubk_char = dh_pubk_char;
+    void set_peer_pubk(EVP_PKEY*peer_pubk){
+        this->peer_pubk = peer_pubk;
     }
      //set public key char
-    void set_peer_dh_pubk_char(unsigned char*peer_dh_pubk_char){
-        this->peer_dh_pubk_char = peer_dh_pubk_char;
+    void set_peer_pubk_char(unsigned char*peer_pubk_char){
+        this->peer_pubk_char = peer_pubk_char;
+    }
+          //set public key
+    void set_server_pubk(EVP_PKEY*pubk){
+        this->server_pubk = pubk;
+    }
+     //set public key char
+    void set_server_pubk_char(unsigned char*pub_key_char){
+        this->server_pubk_char = pub_key_char;
     }
 
     //return the status
@@ -120,8 +140,8 @@ public:
         return this->port;
     }
     //return the key between client and server
-    unsigned char * get_client_server_key() const{
-        return this->client_server_key;
+    unsigned char * get_server_client_key() const{
+        return this->server_client_key;
     }
     //return the key between clients
     unsigned char * get_clients_key() const{
@@ -140,20 +160,35 @@ public:
         return this->client_socket;
     }
     // get the public key
-    EVP_PKEY* get_dh_pubk() const{
-        return this->dh_pubk;
+    EVP_PKEY* get_clients_pubk() const{
+        return this->clients_pubk;
     }
     // get the public key char
-    unsigned char* get_dh_pubk_char() const{
-        return this->dh_pubk_char;
+    unsigned char* get_clients_pubk_char() const{
+        return this->clients_pubk_char;
     }
      // get the peer public key
-    EVP_PKEY* get_peer_dh_pubk() const{
-        return this->peer_dh_pubk;
+    EVP_PKEY* get_peer_pubk() const{
+        return this->peer_pubk;
+    }
+    // get the public key char
+    unsigned char* get_pubk_char() const{
+        return this->peer_pubk_char;
+    }
+     // get the peer public key
+    EVP_PKEY* get_client_server_pubk() const{
+        return this->client_server_pubk;
     }
     // get the peer public key char
-    unsigned char* get_peer_dh_pubk_char() const{
-        return this->peer_dh_pubk_char;
+    unsigned char* get_client_server_pubk_char() const{
+        return this->client_server_pubk_char;
+    }
+    EVP_PKEY* get_server_pubk() const{
+        return this->server_pubk;
+    }
+    // get the peer public key char
+    unsigned char* get_server_pubk_char() const{
+        return this->server_pubk_char;
     }
     //serialize the object
     void serialize();

@@ -417,8 +417,7 @@ int Security::generate_dh_key(EVP_PKEY * my_dhkey, EVP_PKEY * peers_dhk, unsigne
     return 1;
 }
 
-unsigned int Security::EVP_PKEY_to_chars(BIO *bio, EVP_PKEY *pkey, unsigned char** pk_buf){
-    //BIO *bio = NULL;
+int Security::EVP_PKEY_to_chars(BIO *bio, EVP_PKEY *pkey, unsigned char** pk_buf){
     if (NULL == pkey){
         cerr << "Error: pkey is NULL\n";
         return -1;

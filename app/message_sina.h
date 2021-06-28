@@ -14,6 +14,10 @@
 class Message {
 
 public:
+    static unsigned int send_message_5(User* my_user, string dest_username);
+    //===================================================================================================================  
+    static int parse_message_5(char * message, string sender, vector<User>users);
+    //===================================================================================================================   
     /**
      * create a message of type 9
      * @param my_user the sender User
@@ -37,6 +41,8 @@ public:
                                     unsigned char* key, vector<User>users);
     //===================================================================================================================
     static int parse_message_10(char* message, User* my_user);
+
+    
 };
 
 
