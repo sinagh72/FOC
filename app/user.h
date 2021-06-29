@@ -2,11 +2,12 @@
 #define APP_USER_H
 
 #include <cstdint>
+#include <cstring>
 #include <string>
 #include <openssl/evp.h>
 #include <iostream>
 #include "Security.h"
-
+#include "dimensions.h"
 using namespace std;
 
 
@@ -39,7 +40,7 @@ public:
     //constructor
     User();
     User(string username, string IP, uint16_t port, int client_socket);
-    //copy constructor
+    //copyructor
     User(const User &source);
     //methods
     //set the username
@@ -109,11 +110,16 @@ public:
     }
       //set public key
     void set_peer_pubk(EVP_PKEY*peer_pubk){
+        if(!this->peer_pubk_char){
+        }
         this->peer_pubk = peer_pubk;
     }
      //set public key char
     void set_peer_pubk_char(unsigned char*peer_pubk_char){
-        this->peer_pubk_char = peer_pubk_char;
+        if(!this->peer_pubk_char){
+            this->peer_pubk_char = (unsigned char*)malloc(DH_PUBK_LENGTH);
+        }
+        memcpy(this->peer_pubk_char,peer_pubk_char,DH_PUBK_LENGTH);
     }
           //set public key
     void set_server_pubk(EVP_PKEY*pubk){
@@ -132,77 +138,77 @@ public:
     }
 
     //return the username
-    string get_username() const{
+    string get_username(){
         return this->username;
     }
     //return the ip
-    string get_IP() const{
+    string get_IP(){
         return this->IP;
     }
     //return the port
-    uint16_t get_port() const{
+    uint16_t get_port(){
         return this->port;
     }
     //return the key between client and server
-    unsigned char * get_server_client_key() const{
+    unsigned char * get_server_client_key(){
         return this->server_client_key;
     }
     //return the key between clients
-    unsigned char * get_clients_key() const{
+    unsigned char * get_clients_key(){
         return this->clients_key;
     }
     //return the server counter
-    uint16_t get_server_counter() const{
+    uint16_t get_server_counter(){
         return this->server_counter;
     }
     //return the client counter
-    uint16_t get_client_coutner() const{
+    uint16_t get_client_coutner(){
         return this->client_counter;
     }
     // get the client socket
-    int get_client_socket() const{
+    int get_client_socket(){
         return this->client_socket;
     }
     // get the public key
-    EVP_PKEY* get_clients_pubk() const{
+    EVP_PKEY* get_clients_pubk(){
         return this->clients_pubk;
     }
     // get the public key char
-    unsigned char* get_clients_pubk_char() const{
+    unsigned char* get_clients_pubk_char(){
         return this->clients_pubk_char;
     }
      // get the peer public key
-    EVP_PKEY* get_peer_pubk() const{
+    EVP_PKEY* get_peer_pubk(){
         return this->peer_pubk;
     }
     // get the public key char
-    unsigned char* get_peer_pubk_char() const{
+    unsigned char* get_peer_pubk_char(){
         return this->peer_pubk_char;
     }
      // get the peer public key
-    EVP_PKEY* get_client_server_pubk() const{
+    EVP_PKEY* get_client_server_pubk(){
         return this->client_server_pubk;
     }
     // get the peer public key char
-    unsigned char* get_client_server_pubk_char() const{
+    unsigned char* get_client_server_pubk_char(){
         return this->client_server_pubk_char;
     }
-    EVP_PKEY* get_server_pubk() const{
+    EVP_PKEY* get_server_pubk(){
         return this->server_pubk;
     }
     // get the peer public key char
-    unsigned char* get_server_pubk_char() const{
+    unsigned char* get_server_pubk_char(){
         return this->server_pubk_char;
     }
     //get peer username
     string get_peer_username(){
-        return this->username;
+        return this->peer_username;
     }
     //serialize the object
     void serialize();
     //check for replay attack
     bool replay_check(bool from_server, uint16_t received_counter);
-    //Destructor
+    //destructor
     ~User();
 };
 #endif

@@ -402,7 +402,11 @@ int Security::generate_dh_key(EVP_PKEY * my_dhkey, EVP_PKEY * peers_dhk, unsigne
     if (!derive_ctx) { cerr << "Error: EVP_PKEY_CTX_new returned NULL\n"; return -1; }
     if (EVP_PKEY_derive_init(derive_ctx) <= 0) { cerr << "Error: EVP_PKEY_derive_init Failed\n"; return -1; }
     /*Setting the peer with its pubkey*/
-    if (EVP_PKEY_derive_set_peer(derive_ctx, peers_dhk) <= 0) { EVP_PKEY_CTX_free(derive_ctx);cerr << "Error: EVP_PKEY_derive_set_peer Failed\n"; return -1; }
+    if (EVP_PKEY_derive_set_peer(derive_ctx, peers_dhk) <= 0) { 
+        EVP_PKEY_CTX_free(derive_ctx);
+        cerr << "Error: EVP_PKEY_derive_set_peer Failed\n"; 
+        return -1; 
+    }
     /* Determine buffer length, by performing a derivation but writing the result nowhere */
     EVP_PKEY_derive(derive_ctx, NULL, &skeylen);
     /*allocate buffer for the shared secret*/
@@ -431,8 +435,11 @@ int Security::EVP_PKEY_to_chars(BIO *bio, EVP_PKEY *pkey, unsigned char** pk_buf
     }
 
     long pkey_size = BIO_get_mem_data(bio, pk_buf);
-    cout << "SIZE long:" <<pkey_size<<endl;
-    cout << "buffer size inside function:"<<strlen((char*)*pk_buf)<<endl;
+    if(pkey_size != DH_PUBK_LENGTH){
+        BIO_free(bio);
+        cerr << "Error: serialized dh public key does not have " << DH_PUBK_LENGTH <<" length\n";
+        return -1;
+    }
     return pkey_size;   
 }
 int Security::chars_to_EVP_PKEY(BIO *bio, EVP_PKEY **pkey, unsigned char* pk_buf){
@@ -453,11 +460,10 @@ int Security::chars_to_EVP_PKEY(BIO *bio, EVP_PKEY **pkey, unsigned char* pk_buf
     return DH_PUBK_LENGTH;   
 }
 bool Security::generate_iv(unsigned char**iv, int iv_len){
-    if(!iv) return true;//check if iv is NULL, return true!
     *iv = (unsigned char *)malloc(iv_len);
     if (!*iv){ cerr << "Error: malloc for iv returned NULL (iv is too big?)\n"; return false; }
     //seed OpenSSL PRNG
     RAND_poll();
-    RAND_bytes((unsigned char*)iv, iv_len);
+    RAND_bytes((unsigned char*)iv[0], iv_len);
     return true;
 }
