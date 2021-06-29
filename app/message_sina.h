@@ -32,22 +32,13 @@ public:
     //===================================================================================================================     
     /**
      * create a message of type 9
-     * @param my_user the sender User
-     * @param receiver_username destination username
-     * @param dest_dh_pubk the dh pubkey of the receiver of the message
-     * @param dest_dh_pubk_char the dh pubkey of the receiver of the message type char*
-     * @param clinets_key the established key between two clients
-     * @param server_client_key the established key between server and the sender
-     * @return the number of byte of the buffer
+     * @param my_user the User of that is sending the message!
      */
     static unsigned int send_message_9(User* my_user);
     //===================================================================================================================
-    static int parse_message_9(char* message, 
-                                    unsigned char* sender_server_key, 
-                                    unsigned char* receiver_server_key, vector<User>users);
+    static int parse_message_9(char * message, User* sender, vector<User>users);
     //===================================================================================================================
-    static unsigned int send_message_10(string source_username, string receiver_username, string forwarding_message,
-                                    unsigned char* key, vector<User>users);
+    static unsigned int send_message_10(User* sender, string clients_ciphertext, vector<User>users);
     //===================================================================================================================
     static int parse_message_10(char* message, User* my_user);
 

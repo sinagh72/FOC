@@ -38,7 +38,7 @@ private:
 public:
     //constructor
     User();
-    User(string username, string IP, uint16_t port, EVP_PKEY* dh_pubkey, int client_socket);
+    User(string username, string IP, uint16_t port, int client_socket);
     //copy constructor
     User(const User &source);
     //methods

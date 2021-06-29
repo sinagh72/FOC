@@ -1,16 +1,15 @@
 #include "user.h"
 
 
-//methods
-//set the username
-User::User(string username, string IP, unsigned short port, EVP_PKEY* dh_pubk, int client_socket):
-    IP{IP},username{username},port{port},dh_pubk{dh_pubk}, server_counter{0}, client_counter{0}, client_socket{client_socket}{
-        BIO *bio{nullptr};
-        Security::EVP_PKEY_to_chars(bio, dh_pubk, &this->dh_pubk_char);
+//constructors
+User::User(){
+    
+}
+User::User(string username, string IP, unsigned short port, int client_socket):
+    username{username}, IP{IP}, port{port}, client_socket{client_socket}{
 }
 User::User(const User &source):
-    username(source.username),IP(source.IP),port(source.port),dh_pubk(source.dh_pubk), 
-    server_counter(source.server_counter), client_counter(source.client_counter), client_socket(source.client_socket){
+    username(source.username),IP(source.IP),port(source.port),client_socket(source.client_socket){
     
 }
 
