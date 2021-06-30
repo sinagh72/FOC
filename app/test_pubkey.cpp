@@ -13,22 +13,38 @@
 using namespace std;
 
 int main(){
+    int size = 0;
     //g^a
-    EVP_PKEY * pubk{nullptr};
-    Security::generate_dh_pubk(&pubk);
-    cout << "SIZE EVPkey:"<<EVP_PKEY_size(pubk)<<endl;
-    unsigned char*pkey_buf{nullptr};
-    // Security::EVP_PKEY_to_chars(pubk, &pkey_buf);
-    BIO *bio = NULL;
-    Security::EVP_PKEY_to_chars(bio, pubk, &pkey_buf);
-    // BIO *bio = BIO_new(BIO_s_mem());
-    // PEM_write_bio_PUBKEY(bio, pubk);
-    // char*pkey_buf = NULL;
-    // long pubkey_size =  BIO_get_mem_data(bio, &pkey_buf);
-    // cout << "SIZE long:" <<pubkey_size<<endl;
+    EVP_PKEY * g_a{nullptr};
+    Security::generate_dh_pubk(&g_a);
+    unsigned char*g_a_char{nullptr};
+    size = Security::EVP_PKEY_to_chars(g_a, &g_a_char);
+    cout << "size of g^a " << size <<endl;
+    //g^b
+    EVP_PKEY * g_b{nullptr};
+    Security::generate_dh_pubk(&g_b);
+    unsigned char*g_b_char{nullptr};
+    size = Security::EVP_PKEY_to_chars(g_b, &g_b_char);
+    cout << "size of g^b " << size <<endl;
+    //digest key
+    unsigned char *digest{nullptr};
+    size = Security::generate_dh_key(g_a, g_b, &digest);
+    cout << "size of digest " << size <<endl;
+    ///deserialize the dh pubks
+    EVP_PKEY * g_a_d{nullptr};
+    Security::chars_to_EVP_PKEY(&g_a_d, g_a_char);
+    EVP_PKEY * g_b_d{nullptr};
+    Security::chars_to_EVP_PKEY(&g_b_d, g_b_char);
+    //
+    cout << "The compare: " << EVP_PKEY_cmp(g_a_d, g_a) <<endl;
+    //1 means they are not equal
+    //digest key
+    unsigned char *digest_d{nullptr};
+    size = Security::generate_dh_key(g_a_d, g_b_d, &digest_d);
+    cout << "size of digest des " << size <<endl;
+
+
     // BIO_dump_fp (stdout, pkey_buf, 1190);
-    cout << "buffer size outside the function:"<<strlen((char*)pkey_buf)<<endl;
-    BIO_free(bio);
 
     // char* pubkey_buf = (char*)malloc(pubkey_size);
     // BIO *mbio = BIO_new(BIO_s_mem());   
