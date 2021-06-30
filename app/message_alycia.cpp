@@ -32,7 +32,10 @@ unsigned int Message::send_message_3(char** msg_buf, User* my_user) {
     }    
     msg[0] = 3;
     uint16_t * counter_pointer = (uint16_t *) (msg + 1);
+    // FIX: the value of the counter contain the next valid value to be sent
+    //      So you don't need increment. You have to call the increment function after.
     *counter_pointer = my_user->get_client_coutner() + 1;
+
 
     // encrypt identifier (username) with gcm 
     int id_pt_len = USERNAME_LENGTH;
@@ -91,6 +94,7 @@ unsigned int Message::send_message_4(char** msg_buf, vector<User> * act_usr, Use
     }    
     msg[0] = 3;
     uint16_t * counter_pointer = (uint16_t *) (msg + 1);
+    // FIX SAME OF MESSAGE 3
     *counter_pointer = dest_user->get_client_coutner() + 1;
 
 
