@@ -1,7 +1,7 @@
 #include <cstring>
 #include <iostream>
+#include <openssl/bio.h>
 #include <string>
-#include <string.h>
 #include <openssl/dh.h>
 #include <openssl/evp.h>
 #include <openssl/ossl_typ.h>
@@ -11,16 +11,31 @@
 #include <openssl/pem.h>
 #include <string.h>
 #include <stdio.h>
-#include <mcheck.h>
 #include <openssl/conf.h>
-#include <openssl/dh.h>
-#include <openssl/evp.h>
 #include "Security.h"
+#include "dimensions.h"
 using namespace std;
 int main(){
-    unsigned char* txt = (unsigned char*)"asdfasdffasdfasdf";
-    unsigned char* signature{nullptr};
-    int signature_len = Security::signature("./users/sina/rsa_privkey.pem", txt, strlen((char*)txt), &signature);
-    cout << signature_len;
+    EVP_PKEY * pubkeyA{nullptr};
+    Security::generate_dh_pubk(&pubkeyA);
+    BIO *bio{nullptr};
+    unsigned char*pk_bufA{nullptr};
+    Security::EVP_PKEY_to_chars(bio, pubkeyA, &pk_bufA);
+    BIO_dump_fp (stdout, (const char *)pk_bufA, DH_PUBK_LENGTH);
+    cout<<"===================================\n";
+    EVP_PKEY * pubkB{nullptr};
+    Security::generate_dh_pubk(&pubkB);
+    BIO_dump_fp (stdout, (const char *)pk_bufA, DH_PUBK_LENGTH);
+    cout<<"===================================\n";
+    EVP_PKEY * pubkc{nullptr};
+    Security::generate_dh_pubk(&pubkc);
+    BIO_dump_fp (stdout, (const char *)pk_bufA, DH_PUBK_LENGTH);
+    EVP_PKEY * pubkd{nullptr};
+    BIO *mio{nullptr};
+    Security::chars_to_EVP_PKEY(mio, &pubkd, pk_bufA);
+    BIO_dump_fp (stdout, (const char *)pk_bufA, DH_PUBK_LENGTH);
+
+    
+
 
 }

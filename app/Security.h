@@ -10,14 +10,13 @@ using namespace std;
 class Security{
 
 public:
-    static const EVP_CIPHER* const AES_CIPHER;
+    static const EVP_CIPHER * const AES_CIPHER;
     static const int AES_IV_LEN;
     static const int AES_BLOCK_SIZE;
-    static const EVP_MD* const SHA_256;
-    static const EVP_CIPHER* const GCM_CIPHER;
+    static const EVP_MD * const SHA_256;
+    static const EVP_CIPHER * const GCM_CIPHER;
     static const int GCM_IV_LEN;
     static const int GCM_TAG_LEN;
-
     //======================================================================================
     /**
     * encrypt the message using symmetric key and AES CBC mode
@@ -122,9 +121,9 @@ public:
     * @param my_pubk the public key of they client that calls the function
     * @param peers_pubk the public key of the peers
     * @param skey the established session key
-    * @return intger to specify that the generating is succeeded (length of plaintext) or not -1 
+    * @return intger to specify that the generating is succeeded (length of skey) or not -1 
     */
-    static int generate_dh_key(EVP_PKEY * my_pubk, EVP_PKEY * peers_pubk,  unsigned char **skey);    
+    static size_t generate_dh_key(EVP_PKEY * my_pubk, EVP_PKEY * peers_pubk,  unsigned char **skey);    
     //======================================================================================
     /**
     * convert the EVP_PKEY into char*
@@ -133,7 +132,7 @@ public:
     * @param pk_buf the output buffer 
     * @return intger to specify that serialization is succeeded (length of output buffer) or not -1  
     */
-    static int EVP_PKEY_to_chars(BIO *bio, EVP_PKEY *pkey, unsigned char** pk_buf);
+    static int EVP_PKEY_to_chars(EVP_PKEY *pkey, unsigned char** pk_buf);
     //======================================================================================
         //======================================================================================
     /**
@@ -143,7 +142,7 @@ public:
     * @param pkey the output pubk 
     * @return intger to specify that serialization is succeeded (length of output buffer) or not -1  
     */
-    static int chars_to_EVP_PKEY(BIO *bio, EVP_PKEY **pkey, unsigned char* pk_buf);
+    static int chars_to_EVP_PKEY(EVP_PKEY **pkey, unsigned char* pk_buf);
     //======================================================================================
     /** 
     * generates initialization vector 
@@ -151,6 +150,7 @@ public:
     * @param iv_len the lenght of the iv
     */
     static bool generate_iv(unsigned char**iv, int iv_len);
+    //======================================================================================
 
 };
 

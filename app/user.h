@@ -50,11 +50,11 @@ public:
     }
 
     void set_username(string username){
-        this->username = username;
+        this->username.assign(username);
     }
     //set the ip
     void set_IP(string IP){
-        this->IP = IP;
+        this->IP.assign(IP);
     }
     //set the port
     void set_port(uint16_t port){
@@ -98,7 +98,10 @@ public:
     }
     //set public key for the server_client communication 
     void set_clients_pubk_char(unsigned char*dh_pubk_char){
-        this->clients_pubk_char = dh_pubk_char;
+        if(!this->clients_pubk_char){
+            this->clients_pubk_char = (unsigned char*)malloc(DH_PUBK_LENGTH);
+        }
+        memcpy(this->clients_pubk_char,dh_pubk_char,DH_PUBK_LENGTH);
     }
         //set public key for the client_client communication 
     void set_client_server_pubk_char(unsigned char*dh_pubk_char){
@@ -130,7 +133,7 @@ public:
         this->server_pubk_char = pub_key_char;
     }
     void set_peer_username(string username){
-        this->peer_username = username;
+        this->peer_username.assign(username);
     }
     //return the status
     STATUS get_status() {

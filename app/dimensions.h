@@ -14,3 +14,4 @@ const unsigned int MESSAGE_TYPE_LENGTH = 1;
 // due to the fact that we are using DH_get_2048_224()
 const unsigned int DH_PUBK_LENGTH = 1190; 
 const unsigned int SIGNATURE_LENGTH = 384; 
+const unsigned int RSA_PUBK_LENGTH = 624; 

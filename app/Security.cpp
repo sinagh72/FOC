@@ -1,4 +1,7 @@
 #include "Security.h"
+#include <cstdlib>
+#include <cstring>
+#include <openssl/bio.h>
 #include <openssl/dh.h>
 #include <openssl/evp.h>
 #include <openssl/ossl_typ.h>
@@ -393,8 +396,7 @@ int Security::generate_dh_pubk(EVP_PKEY ** pubk){
     EVP_PKEY_free(params);
     return 1;
 }
-
-int Security::generate_dh_key(EVP_PKEY * my_dhkey, EVP_PKEY * peers_dhk, unsigned char **skey){
+size_t Security::generate_dh_key(EVP_PKEY * my_dhkey, EVP_PKEY * peers_dhk, unsigned char ** skey){
     /*creating a context, the buffer for the shared key and an int for its length*/
     EVP_PKEY_CTX *derive_ctx;
     size_t skeylen;
@@ -416,47 +418,71 @@ int Security::generate_dh_key(EVP_PKEY * my_dhkey, EVP_PKEY * peers_dhk, unsigne
     if (EVP_PKEY_derive(derive_ctx, *skey, &skeylen) <= 0) { EVP_PKEY_CTX_free(derive_ctx);free(skey);cerr << "Error: EVP_PKEY_derive Failed\n"; return -1; }
     //FREE EVERYTHING INVOLVED WITH THE EXCHANGE (not the shared secret tho)
     EVP_PKEY_CTX_free(derive_ctx);
-    return 1;
+
+    //Hashing the shared seret to obtain a key
+    //create digest pointer and length variable
+    unsigned char* digest;
+    unsigned int digest_len;
+    //Create and init context
+    EVP_MD_CTX * Hctx;
+    Hctx = EVP_MD_CTX_new();
+    if(!Hctx){ free(skey);cerr << "Error: EVP_MD_CTX_new returned NULL\n"; return -1; }
+    //allocate memory for digest
+    digest = (unsigned char*)malloc(EVP_MD_size(SHA_256));
+    if(!digest){ free(skey); EVP_MD_CTX_free(Hctx); cerr << "Error: EVP_MD_CTX_new returned NULL\n"; return -1; }
+    //init, update, and finalize
+    if(1 != EVP_DigestInit(Hctx, SHA_256)){ free(skey); EVP_MD_CTX_free(Hctx); cerr << "Error: EVP_DigestInit returned NULL\n"; return -1; }
+    if(1 != EVP_DigestUpdate(Hctx, skey, skeylen)){ free(skey); EVP_MD_CTX_free(Hctx); cerr << "Error: EVP_DigestUpdate returned NULL\n"; return -1; }
+    if(1 != EVP_DigestFinal(Hctx, digest, &digest_len)){ free(skey); EVP_MD_CTX_free(Hctx); cerr << "Error: EVP_DigestFinal returned NULL\n"; return -1; }
+
+    EVP_MD_CTX_free(Hctx);
+
+    return digest_len;
 }
 
-int Security::EVP_PKEY_to_chars(BIO *bio, EVP_PKEY *pkey, unsigned char** pk_buf){
+int Security::EVP_PKEY_to_chars(EVP_PKEY *pkey, unsigned char ** pk_buf){
+    BIO * bio{nullptr};
     if (NULL == pkey){
         cerr << "Error: pkey is NULL\n";
         return -1;
     }
-    if ((bio = BIO_new(BIO_s_mem())) == NULL){
-        cerr << "Error: BIO_new returned NULL\n";
+    if((bio = BIO_new(BIO_s_mem())) == NULL){
+        cerr << "Error: MBIO is NULL\n";
         return -1;
     }
     if (0 == PEM_write_bio_PUBKEY(bio, pkey)){
-      BIO_free(bio);
       cerr << "Error: PEM_write_bio_PUBKEY Failed\n";
       return -1;
     }
-
-    long pkey_size = BIO_get_mem_data(bio, pk_buf);
-    if(pkey_size != DH_PUBK_LENGTH){
+    unsigned char* buf{nullptr};
+    long pkey_size = BIO_get_mem_data(bio, &buf);
+    *pk_buf = (unsigned char*)malloc(pkey_size);
+    if(!*pk_buf){
+        cerr << "Error: malloc returned NULL (pk_buf is too big?)"<<endl;
         BIO_free(bio);
-        cerr << "Error: serialized dh public key does not have " << DH_PUBK_LENGTH <<" length\n";
         return -1;
     }
+    memcpy(*pk_buf, buf, pkey_size);
+    BIO_free(bio);
     return pkey_size;   
 }
-int Security::chars_to_EVP_PKEY(BIO *bio, EVP_PKEY **pkey, unsigned char* pk_buf){
+int Security::chars_to_EVP_PKEY(EVP_PKEY ** pkey, unsigned char * pk_buf){
+    BIO * bio{nullptr};
     if (NULL == pk_buf){
         cerr << "Error: pubk_char is NULL\n";
         return -1;
     }
-    if ((bio = BIO_new(BIO_s_mem())) == NULL){
-        cerr << "Error: BIO_new returned NULL\n";
+    if((bio = BIO_new(BIO_s_mem())) == NULL){
+        cerr << "Error: MBIO is NULL\n";
         return -1;
     }
-    if (0 == BIO_write(bio, pk_buf, DH_PUBK_LENGTH)){
+    if (0 == BIO_write(bio, pk_buf, strlen((char*)pk_buf))){
         BIO_free(bio);
         cerr << "Error: BIO_write Failed\n";
         return -1;
     }
-    *pkey = PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL);
+    *pkey= PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL);
+    BIO_free(bio);
     return DH_PUBK_LENGTH;   
 }
 bool Security::generate_iv(unsigned char**iv, int iv_len){
@@ -467,3 +493,4 @@ bool Security::generate_iv(unsigned char**iv, int iv_len){
     RAND_bytes((unsigned char*)iv[0], iv_len);
     return true;
 }
+

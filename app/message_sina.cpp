@@ -5,7 +5,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
-#include <openssl/bio.h>
 #include <openssl/evp.h>
 #include <openssl/ossl_typ.h>
 #include <string.h>
@@ -19,8 +18,8 @@ User* find_user(string user, vector<User>users){
     for (auto &usr : users) // access by reference to avoid copying
     {  
         if (usr.get_username().compare(user)==0)
-        {
-           return &usr;
+        {   
+            return new User(usr);
         }
     }
     cerr<< "Error: Receiver not found (find_dhpubk)!" <<endl;
@@ -54,23 +53,26 @@ unsigned int Message::send_message_5(char**message_buf, User* my_user, string re
     *counter_pointer = my_user->get_client_coutner() + 1;
     //add iv to aad
     memcpy(aad + COUNTER_LENGTH , iv, Security::GCM_IV_LEN);
-
-    BIO* bio{nullptr};
     unsigned char*newA_char{nullptr};
-    if(Security::EVP_PKEY_to_chars(bio, newA, &newA_char) == -1){ 
+    if(Security::EVP_PKEY_to_chars(newA, &newA_char) == -1){ 
         my_user->set_clients_pubk(nullptr);
         EVP_PKEY_free(newA);
         free(iv);
         return 0;
     }
-
     my_user->set_clients_pubk_char(newA_char);
-    BIO_free(bio);
     //add generated dh public key to aad
     memcpy(aad + COUNTER_LENGTH + Security::GCM_IV_LEN, newA_char, DH_PUBK_LENGTH);
     //generate the gcm plaintext: sender username||receiver username
     int gcm_plaintext_len = 2*USERNAME_LENGTH;
     unsigned char* gcm_plaintext = (unsigned char*)calloc(gcm_plaintext_len, 1);
+     if(!gcm_plaintext){
+        EVP_PKEY_free(newA);
+        my_user->set_clients_pubk(nullptr);
+        free(iv);
+        free(aad);
+        cerr<< "Error: malloc for gcm plaintext returned NULL (too big usernames?)\n"; return 0;
+    }
     memcpy(gcm_plaintext, (my_user->get_username()+receiver_username).c_str(), 
                             my_user->get_username().length()+receiver_username.length());
     //GCM encryption
@@ -111,7 +113,7 @@ unsigned int Message::send_message_5(char**message_buf, User* my_user, string re
     return message_buf_len;
 }
 //recevied by the server 
-int Message::parse_message_5(char * message, size_t message_len, User* sender, vector<User>users){
+int Message::handle_message_5(char * message, size_t message_len, User* sender, vector<User>users){
     int i;
     string msg = "";
     for (i = 0; i < message_len; i++) {
@@ -119,7 +121,7 @@ int Message::parse_message_5(char * message, size_t message_len, User* sender, v
     }
     string tag = msg.substr(msg.length() - Security::GCM_TAG_LEN, Security::GCM_TAG_LEN);
     string ciphertext = msg.substr(msg.length() - Security::GCM_TAG_LEN - 2 * USERNAME_LENGTH, 2 * USERNAME_LENGTH);
-    string aad = msg.substr(0, MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN + DH_PUBK_LENGTH);
+    string aad = msg.substr(0, msg.length() - ciphertext.length() - tag.length());
     string gcm_iv = msg.substr(COUNTER_LENGTH, Security::GCM_IV_LEN);
     unsigned char *decryptedtext{nullptr};
     int decryptedtext_len = 0;
@@ -147,7 +149,6 @@ unsigned int Message::send_message_6(char**message_buf, User* sender, vector<Use
     //
     User *receiver{nullptr};
     if(!(receiver = find_user(sender->get_peer_username(), users))) return 0;
-
     //initialization vector
     unsigned char* iv{nullptr};
     if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)){return 0;}
@@ -170,8 +171,15 @@ unsigned int Message::send_message_6(char**message_buf, User* sender, vector<Use
     //generate the gcm plaintext: sender username||receiver username
     int gcm_plaintext_len = 2*USERNAME_LENGTH;
     unsigned char* gcm_plaintext = (unsigned char*)calloc(gcm_plaintext_len, 1);
+    if(!gcm_plaintext){
+        free(iv);
+        free(aad);
+        cerr<< "Error: malloc for gcm plaintext returned NULL (too big usernames?)\n"; return 0;
+    }
     memcpy(gcm_plaintext, (sender->get_username()+receiver->get_username()).c_str(), 
                             sender->get_username().length()+receiver->get_username().length());
+
+    
     //GCM encryption
     unsigned char* gcm_ciphertext{nullptr};
     unsigned char* tag{nullptr};
@@ -205,7 +213,7 @@ unsigned int Message::send_message_6(char**message_buf, User* sender, vector<Use
     return message_buf_len;
 }
 //received by the client B
-int Message::parse_message_6(char* message, size_t message_len, User*my_user){
+int Message::handle_message_6(char* message, size_t message_len, User*my_user){
    int i;
     string msg = "";
     for (i = 0; i < message_len; i++) {
@@ -213,7 +221,7 @@ int Message::parse_message_6(char* message, size_t message_len, User*my_user){
     }
     string tag = msg.substr(msg.length() - Security::GCM_TAG_LEN, Security::GCM_TAG_LEN);
     string ciphertext = msg.substr(msg.length() - Security::GCM_TAG_LEN - 2 * USERNAME_LENGTH, 2 * USERNAME_LENGTH);
-    string aad = msg.substr(0, MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN + DH_PUBK_LENGTH);
+    string aad = msg.substr(0, msg.length() - ciphertext.length() - tag.length());
     string gcm_iv = msg.substr(COUNTER_LENGTH, Security::GCM_IV_LEN);
     unsigned char *decryptedtext{nullptr};
     int decryptedtext_len = 0;
@@ -234,13 +242,11 @@ int Message::parse_message_6(char* message, size_t message_len, User*my_user){
     ///TODO: specify to user the to accept or reject this request
     ///
     //if we want to accept
-
     string dh_key = aad.substr(COUNTER_LENGTH+Security::GCM_IV_LEN,DH_PUBK_LENGTH); 
     my_user->set_peer_pubk_char((unsigned char *)dh_key.c_str());
-    string receiver_username = decryptedtext_str.substr(my_user->get_username().length(),
+    string sender_username = decryptedtext_str.substr(0,
                                 decryptedtext_str.length() - my_user->get_username().length());
-    my_user->set_peer_username(receiver_username);
-
+    my_user->set_peer_username(sender_username);
     return 1;
 
 }
@@ -252,19 +258,18 @@ unsigned int Message::send_message_7(char**message_buf, User* my_user){
     if(Security::generate_dh_pubk(&newB) == -1){return 0;}
     my_user->set_clients_pubk(newB);
 
-    BIO * bio{nullptr};
+    BIO *bio{nullptr};
     unsigned char *newB_char{nullptr};
-    if(Security::EVP_PKEY_to_chars(bio, newB ,&newB_char) == -1){
+    if(Security::EVP_PKEY_to_chars(newB ,&newB_char) == -1){
         EVP_PKEY_free(newB);
         my_user->set_clients_pubk(nullptr);
         return 0;
     }
     my_user->set_clients_pubk_char(newB_char);
-    BIO_free(bio);
     //convert peers pubk char into EVP_PKEY
-    BIO * mio{nullptr};
-    EVP_PKEY * peer_pubk;
-    if(Security::chars_to_EVP_PKEY(mio, &peer_pubk , my_user->get_peer_pubk_char())==-1){
+    BIO *mbio{nullptr};
+    EVP_PKEY * peer_pubk{nullptr};
+    if(Security::chars_to_EVP_PKEY(&peer_pubk , my_user->get_peer_pubk_char()) == -1){
         EVP_PKEY_free(newB);
         my_user->set_clients_pubk(nullptr);
         my_user->set_clients_pubk_char(nullptr);
@@ -331,7 +336,6 @@ unsigned int Message::send_message_7(char**message_buf, User* my_user){
         EVP_PKEY_free(peer_pubk);
         return 0;
     }
-
      //initialization vector
     unsigned char* iv{nullptr};
     if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)){
@@ -349,7 +353,7 @@ unsigned int Message::send_message_7(char**message_buf, User* my_user){
     }
 
     //creating aad: message type, client_to_server_counter, iv, generated dh public key,encrypted signature
-    int aad_len = MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN + DH_PUBK_LENGTH + ciphertext_len + 1;
+    int aad_len = MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN + DH_PUBK_LENGTH + ciphertext_len;
     char * aad = (char*)malloc(aad_len);
     if(!aad){
         EVP_PKEY_free(newB);
@@ -379,6 +383,21 @@ unsigned int Message::send_message_7(char**message_buf, User* my_user){
     //generate the gcm plaintext: sender username||receiver username
     int gcm_plaintext_len = 2*USERNAME_LENGTH;
     unsigned char* gcm_plaintext = (unsigned char*)calloc(gcm_plaintext_len, 1);
+    if(!gcm_plaintext){
+        EVP_PKEY_free(newB);
+        free(text_to_sign);
+        my_user->set_clients_pubk(nullptr);
+        my_user->set_clients_pubk_char(nullptr);
+        my_user->set_peer_pubk(nullptr);
+        my_user->set_clients_key(nullptr);
+        free(signature);
+        free(iv);
+        free(ciphertext);
+        free(clients_key);
+        EVP_PKEY_free(peer_pubk);
+        free(aad);
+        cerr<< "Error: malloc for gcm plaintext returned NULL (too big usernames?)\n"; return 0;
+    }
     memcpy(gcm_plaintext, (my_user->get_username()+my_user->get_peer_username()).c_str(), 
                             my_user->get_username().length()+my_user->get_peer_username().length());
     //GCM encryption
@@ -402,7 +421,12 @@ unsigned int Message::send_message_7(char**message_buf, User* my_user){
         EVP_PKEY_free(peer_pubk);
         return 0;
     }
-
+    int message_buf_len = aad_len + gcm_ciphertext_len + Security::GCM_TAG_LEN;
+    *message_buf = (char*)malloc(message_buf_len);
+    memcpy(*message_buf, aad, aad_len);
+    memcpy(*message_buf + aad_len, gcm_ciphertext, gcm_ciphertext_len);
+    memcpy(*message_buf + aad_len + gcm_ciphertext_len, tag, Security::GCM_TAG_LEN);
+    cout << my_user->get_username()<<" sends message 7"<<endl;
     ///TODO:Send the data to the network!
 
     ////
@@ -416,16 +440,25 @@ unsigned int Message::send_message_7(char**message_buf, User* my_user){
     free(aad);
     free(gcm_ciphertext);
     free(clients_key);
-    return gcm_ciphertext_len;
+    return message_buf_len;
 }
 //recevied by the server 
-int Message::parse_message_7(char**message_buf, char * message, User* sender, vector<User>users){
-    string msg (message);
-    string tag = msg.substr(msg.length()-Security::GCM_TAG_LEN, msg.length());
-    string gcm_ciphertext = msg.substr(msg.length()-Security::GCM_TAG_LEN -2*USERNAME_LENGTH, msg.length()-Security::GCM_TAG_LEN);
-    string aad = msg.substr(0,msg.length() - gcm_ciphertext.length() - tag.length());
-    string gcm_iv = msg.substr(MESSAGE_TYPE_LENGTH+COUNTER_LENGTH,MESSAGE_TYPE_LENGTH+COUNTER_LENGTH+Security::GCM_IV_LEN);
-    string clients_ciphertext = aad.substr(MESSAGE_TYPE_LENGTH+COUNTER_LENGTH+Security::GCM_IV_LEN+DH_PUBK_LENGTH, aad.length());
+int Message::handle_message_7(unsigned char ** clients_ciphertext, char * message, size_t message_len, User* sender, vector<User>users){
+    int i;
+    string msg = "";
+    for (i = 0; i < message_len; i++) {
+        msg = msg + message[i];
+    }
+    string tag = msg.substr(msg.length() - Security::GCM_TAG_LEN, Security::GCM_TAG_LEN);
+    string gcm_ciphertext = msg.substr(msg.length() - Security::GCM_TAG_LEN - 2 * USERNAME_LENGTH, 2 * USERNAME_LENGTH);
+    string aad = msg.substr(0, msg.length() - gcm_ciphertext.length() - tag.length());
+    string gcm_iv = msg.substr(COUNTER_LENGTH, Security::GCM_IV_LEN);
+    string clients_ciphertext_str = aad.substr(COUNTER_LENGTH + Security::GCM_IV_LEN + DH_PUBK_LENGTH, 
+                                            aad.length() - MESSAGE_TYPE_LENGTH - COUNTER_LENGTH - Security::GCM_IV_LEN - DH_PUBK_LENGTH);
+    ///TODO:remove it (just for testing)
+    *clients_ciphertext=(unsigned char *)malloc(clients_ciphertext_str.length());
+    memcpy(*clients_ciphertext, clients_ciphertext_str.c_str(), clients_ciphertext_str.length());
+
     unsigned char *gcm_decryptedtext{nullptr};
     if(-1==(Security::gcm_decrypt((unsigned char*)aad.c_str(), aad.length(), 
                                 (unsigned char*)gcm_ciphertext.c_str(), gcm_ciphertext.length(),
@@ -435,14 +468,13 @@ int Message::parse_message_7(char**message_buf, char * message, User* sender, ve
     }
     string gcm_decryptedtext_str ((char*)gcm_decryptedtext);
     free(gcm_decryptedtext);
-    uint16_t received_counter = 0;
-    received_counter = message[1] << 8;  
-    received_counter |= message[2];
+    uint16_t received_counter = (uint16_t) *(message+1);
     if(!sender->replay_check(false, received_counter)){
         return -1;
     }
-    sender->set_peer_username(gcm_decryptedtext_str.substr(USERNAME_LENGTH,gcm_decryptedtext_str.length()));
-    string dh_key = aad.substr(MESSAGE_TYPE_LENGTH+COUNTER_LENGTH+Security::GCM_IV_LEN, MESSAGE_TYPE_LENGTH+COUNTER_LENGTH+Security::GCM_IV_LEN+DH_PUBK_LENGTH);
+    sender->set_peer_username(gcm_decryptedtext_str.substr(sender->get_username().length(), 
+                                                            gcm_decryptedtext_str.length() - sender->get_username().length()));
+    string dh_key = aad.substr(COUNTER_LENGTH + Security::GCM_IV_LEN, DH_PUBK_LENGTH);
     sender->set_clients_pubk_char((unsigned char *)dh_key.c_str());
     return 1;
 }
@@ -450,33 +482,34 @@ int Message::parse_message_7(char**message_buf, char * message, User* sender, ve
 unsigned int Message::send_message_8(char**message_buf, User* sender, string clients_ciphertext, vector<User>users){
     //
     User *receiver{nullptr};
+    ///TODO:receiver->get_username returns Null! I dont know why!
     if(!(receiver = find_user(sender->get_peer_username(), users))) return 0;
     //initialization vector
     unsigned char* iv{nullptr};
     if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)){return 0;}
-    //retrieve and send the rsa_public key of the sender
+    //load and send the rsa_public key of the sender
     // load rsa public key:
-    string filename = "./users/"+sender->get_username() + "rsa_pubkey.pem";
+    string filename = "./users/"+sender->get_username() + "/rsa_pubkey.pem";
     FILE* pubk_file = fopen(filename.c_str(), "r");
     if(!pubk_file){ cerr << "Error: cannot open file '" << filename << "' (missing?)\n"; exit(1); }
     EVP_PKEY* pubk = PEM_read_PUBKEY(pubk_file, NULL, NULL, NULL);
     fclose(pubk_file);
     if(!pubk){ cerr << "Error: PEM_read_PUBKEY returned NULL\n"; exit(1); }
-    //serialize the public key
-    BIO *bio;
+
+    //serialize the rsa public key
     unsigned char *pk_buf{nullptr};
-    int pk_buf_size = 0;
-    if(-1==(pk_buf_size = Security::EVP_PKEY_to_chars(bio, pubk, &pk_buf))){
+    int rsa_buf_size = 0;
+    if(-1==(rsa_buf_size = Security::EVP_PKEY_to_chars(pubk, &pk_buf))){
         free(iv);
         EVP_PKEY_free(pubk);
         return 0;
     }
-    BIO_free(bio);
     //creating aad: message type, client_to_server_counter, iv, generated dh public key, rsa publick key, encrypted signature
     int aad_len = MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN + DH_PUBK_LENGTH + 
-                    pk_buf_size + clients_ciphertext.length() + 1;
+                    (rsa_buf_size - 1) + clients_ciphertext.length();
     char * aad = (char*)malloc(aad_len);
     if(!aad){
+        free(pk_buf);
         free(iv);
         EVP_PKEY_free(pubk);
         cerr<< "Error: malloc for AAD returned NULL (too big AAD?)\n"; return 0;
@@ -485,25 +518,34 @@ unsigned int Message::send_message_8(char**message_buf, User* sender, string cli
     aad[0] = 8;
     //put the counter into aad
     uint16_t * counter_pointer = (uint16_t *) (aad+1);
-    *counter_pointer = sender->get_client_coutner() + 1;
+    *counter_pointer = receiver->get_server_counter() + 1;
     //put the iv into the aad
     memcpy(aad + COUNTER_LENGTH , iv, Security::GCM_IV_LEN);
     //put the generated dh public key into the aad
     memcpy(aad + COUNTER_LENGTH + Security::GCM_IV_LEN, sender->get_clients_pubk_char(), DH_PUBK_LENGTH);
     //put the rsa public key into the aad 
-    memcpy(aad + COUNTER_LENGTH + Security::GCM_IV_LEN + DH_PUBK_LENGTH, pk_buf, pk_buf_size);
+    memcpy(aad + COUNTER_LENGTH + Security::GCM_IV_LEN + DH_PUBK_LENGTH, pk_buf, (rsa_buf_size - 1));
     //put the encrypted signature into the aad
-    memcpy(aad + COUNTER_LENGTH + Security::GCM_IV_LEN + DH_PUBK_LENGTH + pk_buf_size, clients_ciphertext.c_str(),
+    memcpy(aad + COUNTER_LENGTH + Security::GCM_IV_LEN + DH_PUBK_LENGTH + (rsa_buf_size - 1), clients_ciphertext.c_str(),
                                                                                         clients_ciphertext.length());
 
-    //plain text for gcm: source username||destination username
-    int gcm_plaintext_len = sender->get_username().length() + receiver->get_username().length() + 1;
-    unsigned char* gcm_plaintext = (unsigned char*)malloc(gcm_plaintext_len);
-    strcpy((char*)gcm_plaintext, (sender->get_username()+receiver->get_username()).c_str());
+    //generate the gcm plaintext: sender username||receiver username
+    int gcm_plaintext_len = 2*USERNAME_LENGTH;
+    unsigned char* gcm_plaintext = (unsigned char*)calloc(gcm_plaintext_len, 1);
+    if(!gcm_plaintext){
+        free(pk_buf);
+        free(iv);
+        free(aad);
+        EVP_PKEY_free(pubk);
+        cerr<< "Error: malloc for gcm plaintext returned NULL (too big usernames?)\n"; return 0;
+    }
+    memcpy(gcm_plaintext, (sender->get_username()+receiver->get_username()).c_str(), 
+                            sender->get_username().length()+receiver->get_username().length());
     //GCM encryption
     unsigned char* gcm_ciphertext{nullptr};
     unsigned char* tag{nullptr};
     int gcm_ciphertext_len = 0;
+
     if(-1 == (gcm_ciphertext_len = Security::gcm_encrypt((unsigned char *)aad, aad_len , gcm_plaintext, gcm_plaintext_len, 
                                                         receiver->get_server_client_key(), 
                                                         iv, &gcm_ciphertext, &tag))){
@@ -514,9 +556,16 @@ unsigned int Message::send_message_8(char**message_buf, User* sender, string cli
         free(tag);
         free(iv);
         free(aad);
+        free(pk_buf);
         return gcm_ciphertext_len;
     }
 
+    int message_buf_len = aad_len + gcm_ciphertext_len + Security::GCM_TAG_LEN;
+    *message_buf = (char*)malloc(message_buf_len);
+    memcpy(*message_buf, aad, aad_len);
+    memcpy(*message_buf + aad_len, gcm_ciphertext, gcm_ciphertext_len);
+    memcpy(*message_buf + aad_len + gcm_ciphertext_len, tag, Security::GCM_TAG_LEN);
+    cout << "Server sends message 8 to " << receiver->get_username() <<endl;
     ///TODO:Send the data to the network!
 
     ////
@@ -526,17 +575,24 @@ unsigned int Message::send_message_8(char**message_buf, User* sender, string cli
     free(gcm_plaintext);
     free(gcm_ciphertext);
     free(tag);
+    free(pk_buf);
     EVP_PKEY_free(pubk);
     receiver->set_peer_username(sender->get_username());
-    return gcm_ciphertext_len;
+    return message_buf_len;
 }
 //received by the client A
-int Message::parse_message_8(char**message_buf, char* message, User * my_user){
-    string msg (message);
-    string tag = msg.substr(msg.length()-Security::GCM_TAG_LEN, msg.length());
-    string gcm_ciphertext = msg.substr(msg.length()-Security::GCM_TAG_LEN -2*USERNAME_LENGTH, msg.length()-Security::GCM_TAG_LEN);
-    string aad = msg.substr(0,msg.length() - tag.length() - gcm_ciphertext.length());
-    string gcm_iv = msg.substr(MESSAGE_TYPE_LENGTH+COUNTER_LENGTH,MESSAGE_TYPE_LENGTH+COUNTER_LENGTH+Security::GCM_IV_LEN);
+int Message::handle_message_8( char* message, size_t message_len, User * my_user){
+    int i;
+    string msg = "";
+    for (i = 0; i < message_len; i++) {
+        msg = msg + message[i];
+    }
+    string tag = msg.substr(msg.length() - Security::GCM_TAG_LEN, Security::GCM_TAG_LEN);
+    string gcm_ciphertext = msg.substr(msg.length() - Security::GCM_TAG_LEN - 2 * USERNAME_LENGTH, 2 * USERNAME_LENGTH);
+    string aad = msg.substr(0, msg.length() - gcm_ciphertext.length() - tag.length());
+    string gcm_iv = msg.substr(COUNTER_LENGTH, Security::GCM_IV_LEN);
+    string clients_ciphertext_str = aad.substr(COUNTER_LENGTH + Security::GCM_IV_LEN + DH_PUBK_LENGTH, 
+                                            aad.length() - MESSAGE_TYPE_LENGTH - COUNTER_LENGTH - Security::GCM_IV_LEN - DH_PUBK_LENGTH);
     unsigned char *gcm_decryptedtext{nullptr};
     if(-1==(Security::gcm_decrypt((unsigned char*)aad.c_str(), aad.length(), 
                                 (unsigned char*)gcm_ciphertext.c_str(), gcm_ciphertext.length(),
@@ -546,27 +602,22 @@ int Message::parse_message_8(char**message_buf, char* message, User * my_user){
     }
     string gcm_decryptedtext_str ((char*)gcm_decryptedtext);
     free(gcm_decryptedtext);
-    uint16_t received_counter = 0;
-    received_counter = message[1] << 8;  
-    received_counter |= message[2];
+    uint16_t received_counter = (uint16_t) *(message+1);
     if(!my_user->replay_check(true, received_counter)){
         return -1;
     }
-    string dh_key = aad.substr(MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN, 
-                                MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN + DH_PUBK_LENGTH); 
-
-    //generate the clients session key
-    BIO *mbio;
+    string dh_key = aad.substr(COUNTER_LENGTH + Security::GCM_IV_LEN, DH_PUBK_LENGTH);
+    //deserialize the peer dh public key
     EVP_PKEY *peers_pubk{nullptr};
-    if(Security::chars_to_EVP_PKEY(mbio, &peers_pubk,(unsigned char *) dh_key.c_str()) == -1){
+    if(Security::chars_to_EVP_PKEY(&peers_pubk,(unsigned char *) dh_key.c_str()) == -1){
         return -1;
     }
-    BIO_free(mbio);
+    //BIO_dump_fp (stdout, (char *)my_user->get_clients_pubk_char(), DH_PUBK_LENGTH);
     unsigned char * clients_key{nullptr};
-    // if(-1 == Security::generate_dh_key(peers_pubk, my_user->get_clients_pubk(), &clients_key)){
-    //     EVP_PKEY_free(peers_pubk);
-    //     return -1;
-    // }
+    if(-1 == Security::generate_dh_key(peers_pubk, my_user->get_clients_pubk(), &clients_key)){
+        EVP_PKEY_free(peers_pubk);
+        return -1;
+    }
     //decrypt the clients cipher text
     string clients_ciphertext = aad.substr(MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN + DH_PUBK_LENGTH + SIGNATURE_LENGTH,
                                             aad.length());
@@ -582,14 +633,12 @@ int Message::parse_message_8(char**message_buf, char* message, User * my_user){
     string rsa_pubk = aad.substr(MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN + DH_PUBK_LENGTH, 
                                 MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN + DH_PUBK_LENGTH + SIGNATURE_LENGTH).c_str();
     //desrialize the rsa public key
-    BIO *bio;
     EVP_PKEY *pkey{nullptr};
-    if(-1 == Security::chars_to_EVP_PKEY(bio, &pkey, (unsigned char *)rsa_pubk.c_str())){
+    if(-1 == Security::chars_to_EVP_PKEY(&pkey, (unsigned char *)rsa_pubk.c_str())){
         free(clients_decryptext);
         EVP_PKEY_free(peers_pubk);
         return -1;
     }
-    BIO_free(bio);
     //generating the clear text for verification of the signature
     //concatenation g^a'||g^b'
     unsigned char* text_to_sign = (unsigned char*)malloc(2*DH_PUBK_LENGTH);
@@ -728,7 +777,7 @@ unsigned int Message::send_message_9(char**message_buf, User* my_user){
     return gcm_ciphertext_len;
 }
 //received by the server
-int Message::parse_message_9(char**message_buf, char * message, User* sender, vector<User>users){
+int Message::handle_message_9(char**message_buf, char * message, User* sender, vector<User>users){
 
     //extract the tag from the message
     string msg (message);
@@ -736,7 +785,7 @@ int Message::parse_message_9(char**message_buf, char * message, User* sender, ve
      //calculate the inner encryption length
     string aad = msg.substr(0, msg.length() - tag.length() - 2*USERNAME_LENGTH);
     string ciphertext = msg.substr(aad.length(), msg.length()-tag.length());
-    string gcm_iv = msg.substr(MESSAGE_TYPE_LENGTH+COUNTER_LENGTH,MESSAGE_TYPE_LENGTH+COUNTER_LENGTH+Security::GCM_IV_LEN);
+    string gcm_iv = msg.substr(COUNTER_LENGTH, Security::GCM_IV_LEN);
     unsigned char*decryptedtext{nullptr};
     int decryptedtext_len = 0;
     if(-1 == (decryptedtext_len = Security::gcm_decrypt((unsigned char*)aad.c_str(), aad.length(), 
@@ -778,15 +827,13 @@ unsigned int Message::send_message_10(char**message_buf, User* sender, string cl
     fclose(pubk_file);
     if(!pubk){ cerr << "Error: PEM_read_PUBKEY returned NULL\n"; exit(1); }
     //serialize the rsa public key
-    BIO *bio;
     unsigned char *pk_buf{nullptr};
     int pk_buf_size = 0;
-    if(-1==(pk_buf_size = Security::EVP_PKEY_to_chars(bio, pubk, &pk_buf))){
+    if(-1==(pk_buf_size = Security::EVP_PKEY_to_chars(pubk, &pk_buf))){
         free(iv);
         EVP_PKEY_free(pubk);
         return 0;
     }
-    BIO_free(bio);
     //creating aad: message type, client_to_server_counter, iv, rsa public key, encrypted signature
     int aad_len = MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN + 
                     pk_buf_size + clients_ciphertext.length() + 1;
@@ -848,7 +895,7 @@ unsigned int Message::send_message_10(char**message_buf, User* sender, string cl
     return gcm_ciphertext_len;
 }
 //received by a client B
-int Message::parse_message_10(char**message_buf, char* message, User* my_user){
+int Message::handle_message_10(char**message_buf, char* message, User* my_user){
     string msg (message);
     string tag = msg.substr(msg.length()-Security::GCM_TAG_LEN, msg.length());
     string gcm_ciphertext = msg.substr(msg.length()-Security::GCM_TAG_LEN -2*USERNAME_LENGTH, msg.length()-Security::GCM_TAG_LEN);
@@ -883,13 +930,11 @@ int Message::parse_message_10(char**message_buf, char* message, User* my_user){
     string rsa_pubk = aad.substr(MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN, 
                                 MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN + SIGNATURE_LENGTH).c_str();
     //desrialize the rsa public key
-    BIO *bio;
     EVP_PKEY *pkey{nullptr};
-    if(-1 == Security::chars_to_EVP_PKEY(bio, &pkey, (unsigned char *)rsa_pubk.c_str())){
+    if(-1 == Security::chars_to_EVP_PKEY(&pkey, (unsigned char *)rsa_pubk.c_str())){
         free(clients_decryptext);
         return -1;
     }
-    BIO_free(bio);
     //generating the clear text for verification of the signature
     //concatenation g^a'||g^b'
     unsigned char* text_to_sign = (unsigned char*)malloc(2*DH_PUBK_LENGTH);

@@ -7,7 +7,12 @@ User::User(){
     
 }
 User::User(string username, string IP, unsigned short port, int client_socket):
-    username{username}, IP{IP}, port{port}, client_socket{client_socket}{
+    username{username}, IP{IP}, port{port}, client_socket{client_socket}, 
+    server_client_key{nullptr}, clients_key{nullptr}, clients_pubk{nullptr},
+    clients_pubk_char{nullptr}, client_server_pubk{nullptr}, 
+    client_server_pubk_char{nullptr}, server_pubk{nullptr}, server_pubk_char{nullptr},
+    peer_pubk{nullptr}, peer_pubk_char{nullptr}, server_counter{0}, 
+    client_counter{0}, peer_username{nullptr}{
 }
 User::User(const User &source):
     username(source.username), IP(source.IP), port(source.port), client_socket(source.client_socket),
@@ -52,4 +57,6 @@ bool User::replay_check(bool from_server, uint16_t received_counter){
 User::~User(){
     if(this->peer_pubk_char)
         free(this->peer_pubk_char);
+    if(this->clients_pubk_char)
+        free(this->clients_pubk_char);
 }
