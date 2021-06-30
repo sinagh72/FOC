@@ -31,7 +31,7 @@ public:
     static int handle_message_7(unsigned char ** clients_ciphertext, char * message, size_t message_len, User* sender, vector<User>users);
     //=================================================================================================================== 
     ///TODO:remove **message_buf fom the functions
-    static unsigned int send_message_8(char**message_buf, User* sender, string clients_ciphertext, vector<User>users);
+    static unsigned int send_message_8(char**message_buf, User* sender, unsigned char * clients_ciphertext, int clients_ciphertext_len, vector<User>users);
     //=================================================================================================================== 
     static  int handle_message_8(char * message, size_t message_len, User* my_user);
     //===================================================================================================================

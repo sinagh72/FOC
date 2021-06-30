@@ -396,47 +396,46 @@ int Security::generate_dh_pubk(EVP_PKEY ** pubk){
     EVP_PKEY_free(params);
     return 1;
 }
-size_t Security::generate_dh_key(EVP_PKEY * my_dhkey, EVP_PKEY * peers_dhk, unsigned char ** skey){
+unsigned int Security::generate_dh_key(EVP_PKEY * my_dhkey, EVP_PKEY * peers_dhk, unsigned char ** digest){
     /*creating a context, the buffer for the shared key and an int for its length*/
     EVP_PKEY_CTX *derive_ctx;
     size_t skeylen;
+    unsigned char * skey{nullptr};
     derive_ctx = EVP_PKEY_CTX_new(my_dhkey,NULL);
-    if (!derive_ctx) { cerr << "Error: EVP_PKEY_CTX_new returned NULL\n"; return -1; }
-    if (EVP_PKEY_derive_init(derive_ctx) <= 0) { cerr << "Error: EVP_PKEY_derive_init Failed\n"; return -1; }
+    if (!derive_ctx) { cerr << "Error: EVP_PKEY_CTX_new returned NULL\n"; return 0; }
+    if (EVP_PKEY_derive_init(derive_ctx) <= 0) { cerr << "Error: EVP_PKEY_derive_init Failed\n"; return 0; }
     /*Setting the peer with its pubkey*/
     if (EVP_PKEY_derive_set_peer(derive_ctx, peers_dhk) <= 0) { 
         EVP_PKEY_CTX_free(derive_ctx);
         cerr << "Error: EVP_PKEY_derive_set_peer Failed\n"; 
-        return -1; 
+        return 0; 
     }
     /* Determine buffer length, by performing a derivation but writing the result nowhere */
     EVP_PKEY_derive(derive_ctx, NULL, &skeylen);
     /*allocate buffer for the shared secret*/
-    *skey = (unsigned char*)(malloc(int(skeylen)));
-    if (!*skey) { EVP_PKEY_CTX_free(derive_ctx);cerr << "Error: malloc returns NULL (skey is too big?)\n"; return -1; }
+    skey = (unsigned char*)(malloc(int(skeylen)));
+    if (!skey) { EVP_PKEY_CTX_free(derive_ctx);cerr << "Error: malloc returns NULL (skey is too big?)\n"; return 0; }
     /*Perform again the derivation and store it in skey buffer*/
-    if (EVP_PKEY_derive(derive_ctx, *skey, &skeylen) <= 0) { EVP_PKEY_CTX_free(derive_ctx);free(skey);cerr << "Error: EVP_PKEY_derive Failed\n"; return -1; }
+    if (EVP_PKEY_derive(derive_ctx, skey, &skeylen) <= 0) { EVP_PKEY_CTX_free(derive_ctx);free(skey);cerr << "Error: EVP_PKEY_derive Failed\n"; return 0; }
     //FREE EVERYTHING INVOLVED WITH THE EXCHANGE (not the shared secret tho)
     EVP_PKEY_CTX_free(derive_ctx);
 
     //Hashing the shared seret to obtain a key
     //create digest pointer and length variable
-    unsigned char* digest;
     unsigned int digest_len;
     //Create and init context
     EVP_MD_CTX * Hctx;
     Hctx = EVP_MD_CTX_new();
-    if(!Hctx){ free(skey);cerr << "Error: EVP_MD_CTX_new returned NULL\n"; return -1; }
+    if(!Hctx){ free(skey);cerr << "Error: EVP_MD_CTX_new returned NULL\n"; return 0; }
     //allocate memory for digest
-    digest = (unsigned char*)malloc(EVP_MD_size(SHA_256));
-    if(!digest){ free(skey); EVP_MD_CTX_free(Hctx); cerr << "Error: EVP_MD_CTX_new returned NULL\n"; return -1; }
+    *digest = (unsigned char*)malloc(EVP_MD_size(SHA_256));
+    if(!*digest){ free(skey); EVP_MD_CTX_free(Hctx); cerr << "Error: EVP_MD_CTX_new returned NULL\n"; return 0; }
     //init, update, and finalize
-    if(1 != EVP_DigestInit(Hctx, SHA_256)){ free(skey); EVP_MD_CTX_free(Hctx); cerr << "Error: EVP_DigestInit returned NULL\n"; return -1; }
-    if(1 != EVP_DigestUpdate(Hctx, skey, skeylen)){ free(skey); EVP_MD_CTX_free(Hctx); cerr << "Error: EVP_DigestUpdate returned NULL\n"; return -1; }
-    if(1 != EVP_DigestFinal(Hctx, digest, &digest_len)){ free(skey); EVP_MD_CTX_free(Hctx); cerr << "Error: EVP_DigestFinal returned NULL\n"; return -1; }
+    if(1 != EVP_DigestInit(Hctx, SHA_256)){ free(skey); EVP_MD_CTX_free(Hctx); cerr << "Error: EVP_DigestInit returned NULL\n"; return 0; }
+    if(1 != EVP_DigestUpdate(Hctx, skey, skeylen)){ free(skey); EVP_MD_CTX_free(Hctx); cerr << "Error: EVP_DigestUpdate returned NULL\n"; return 0; }
+    if(1 != EVP_DigestFinal(Hctx, *digest, &digest_len)){ free(skey); EVP_MD_CTX_free(Hctx); cerr << "Error: EVP_DigestFinal returned NULL\n"; return 0; }
 
     EVP_MD_CTX_free(Hctx);
-
     return digest_len;
 }
 

@@ -275,7 +275,6 @@ unsigned int Message::send_message_7(char**message_buf, User* my_user){
         my_user->set_clients_pubk_char(nullptr);
         return 0;
     }
-    if(!peer_pubk) cout << peer_pubk <<endl;
     my_user->set_peer_pubk(peer_pubk);
     //concatenation g^a'||g^b'
     unsigned char* text_to_sign = (unsigned char*)malloc(2*DH_PUBK_LENGTH);
@@ -308,8 +307,8 @@ unsigned int Message::send_message_7(char**message_buf, User* my_user){
     }
     //generating session key between two client
     unsigned char * clients_key{nullptr};
-    if(!peer_pubk) cout<<"WTF2"<<endl;
-    if(Security::generate_dh_key(my_user->get_clients_pubk(), my_user->get_peer_pubk(), &clients_key) == -1){
+    unsigned int clients_key_len = 0;
+    if((clients_key_len = Security::generate_dh_key(my_user->get_clients_pubk(), my_user->get_peer_pubk(), &clients_key)) == -1){
         EVP_PKEY_free(newB);
         free(text_to_sign);
         my_user->set_clients_pubk(nullptr);
@@ -319,7 +318,7 @@ unsigned int Message::send_message_7(char**message_buf, User* my_user){
         EVP_PKEY_free(peer_pubk);
         return 0;
     }
-
+    BIO_dump_fp (stdout, (char *)clients_key, clients_key_len);
     my_user->set_clients_key(clients_key);
     //encrypt the signature with the session key
     unsigned char* ciphertext{nullptr};
@@ -476,10 +475,10 @@ int Message::handle_message_7(unsigned char ** clients_ciphertext, char * messag
                                                             gcm_decryptedtext_str.length() - sender->get_username().length()));
     string dh_key = aad.substr(COUNTER_LENGTH + Security::GCM_IV_LEN, DH_PUBK_LENGTH);
     sender->set_clients_pubk_char((unsigned char *)dh_key.c_str());
-    return 1;
+    return clients_ciphertext_str.length();
 }
 //sent by the server to client A
-unsigned int Message::send_message_8(char**message_buf, User* sender, string clients_ciphertext, vector<User>users){
+unsigned int Message::send_message_8(char**message_buf, User* sender, unsigned char * clients_ciphertext, int clients_ciphertext_len, vector<User>users){
     //
     User *receiver{nullptr};
     ///TODO:receiver->get_username returns Null! I dont know why!
@@ -506,7 +505,7 @@ unsigned int Message::send_message_8(char**message_buf, User* sender, string cli
     }
     //creating aad: message type, client_to_server_counter, iv, generated dh public key, rsa publick key, encrypted signature
     int aad_len = MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN + DH_PUBK_LENGTH + 
-                    (rsa_buf_size - 1) + clients_ciphertext.length();
+                    (rsa_buf_size - 1) + clients_ciphertext_len;
     char * aad = (char*)malloc(aad_len);
     if(!aad){
         free(pk_buf);
@@ -526,8 +525,8 @@ unsigned int Message::send_message_8(char**message_buf, User* sender, string cli
     //put the rsa public key into the aad 
     memcpy(aad + COUNTER_LENGTH + Security::GCM_IV_LEN + DH_PUBK_LENGTH, pk_buf, (rsa_buf_size - 1));
     //put the encrypted signature into the aad
-    memcpy(aad + COUNTER_LENGTH + Security::GCM_IV_LEN + DH_PUBK_LENGTH + (rsa_buf_size - 1), clients_ciphertext.c_str(),
-                                                                                        clients_ciphertext.length());
+    memcpy(aad + COUNTER_LENGTH + Security::GCM_IV_LEN + DH_PUBK_LENGTH + (rsa_buf_size - 1), clients_ciphertext,
+                                                                                        clients_ciphertext_len);
 
     //generate the gcm plaintext: sender username||receiver username
     int gcm_plaintext_len = 2*USERNAME_LENGTH;
@@ -612,7 +611,6 @@ int Message::handle_message_8( char* message, size_t message_len, User * my_user
     if(Security::chars_to_EVP_PKEY(&peers_pubk,(unsigned char *) dh_key.c_str()) == -1){
         return -1;
     }
-    //BIO_dump_fp (stdout, (char *)my_user->get_clients_pubk_char(), DH_PUBK_LENGTH);
     unsigned char * clients_key{nullptr};
     if(-1 == Security::generate_dh_key(peers_pubk, my_user->get_clients_pubk(), &clients_key)){
         EVP_PKEY_free(peers_pubk);

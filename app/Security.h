@@ -118,12 +118,12 @@ public:
     /**
     * generates a DH session key with two public keys. The input keys are not deallocated in this function
     * So their memory should be deallocated! 
-    * @param my_pubk the public key of they client that calls the function
-    * @param peers_pubk the public key of the peers
-    * @param skey the established session key
-    * @return intger to specify that the generating is succeeded (length of skey) or not -1 
+    * @param my_dhkey the public key of they client that calls the function (g^a)
+    * @param peers_dhk the public key of the peers (g^b)
+    * @param digest the digest of the established session key
+    * @return intger to specify that the generating is succeeded (length of digest) or not -1 
     */
-    static size_t generate_dh_key(EVP_PKEY * my_pubk, EVP_PKEY * peers_pubk,  unsigned char **skey);    
+    static unsigned int generate_dh_key(EVP_PKEY * my_dhkey, EVP_PKEY * peers_dhk, unsigned char ** digest);    
     //======================================================================================
     /**
     * convert the EVP_PKEY into char*

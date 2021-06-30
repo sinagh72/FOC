@@ -1,5 +1,6 @@
 #include "message_sina.h"
 #include "user.h"
+#include <cstring>
 #include <vector>
 
 int main(){
@@ -41,24 +42,23 @@ int main(){
     cout << "Message 7 len: "<<msg_len << endl;
     //server receives the message 7 and sends message 8
     unsigned char* clients_ciphertext{nullptr};
-    Message::handle_message_7(&clients_ciphertext, message3, msg_len, lore_s, users);
+    msg_len = Message::handle_message_7(&clients_ciphertext, message3, msg_len, lore_s, users);
     char*message4{nullptr};
-    string clients_ciphertext_str((char*)clients_ciphertext);
-    msg_len = Message::send_message_8(&message4, lore_s , clients_ciphertext_str, users);
+    msg_len = Message::send_message_8(&message4, lore_s , clients_ciphertext, msg_len, users);
     cout << "Message 8 len: "<<msg_len << endl;
     //client A receives message 8 and sends message 9 to server  
     Message::handle_message_8(message4, msg_len, sina);
 
 
 
-    //print counters
-    cout<<"clients: "<<endl;
-    cout <<"sina-> client counter:"<< sina->get_client_coutner()<<", server counter:"<< sina->get_server_counter()<<endl;
-    cout <<"lore-> client counter:"<< lore->get_client_coutner()<<", server counter:"<< lore->get_server_counter()<<endl;
+    // //print counters
+    // cout<<"clients: "<<endl;
+    // cout <<"sina-> client counter:"<< sina->get_client_coutner()<<", server counter:"<< sina->get_server_counter()<<endl;
+    // cout <<"lore-> client counter:"<< lore->get_client_coutner()<<", server counter:"<< lore->get_server_counter()<<endl;
 
-    cout<<"server: "<<endl;
-    cout <<"sina_s-> client counter:"<< sina_s->get_client_coutner()<<", server counter:"<< sina_s->get_server_counter()<<endl;
-    cout <<"lore_s-> client counter:"<< lore_s->get_client_coutner()<<", server counter:"<< lore_s->get_server_counter()<<endl;
+    // cout<<"server: "<<endl;
+    // cout <<"sina_s-> client counter:"<< sina_s->get_client_coutner()<<", server counter:"<< sina_s->get_server_counter()<<endl;
+    // cout <<"lore_s-> client counter:"<< lore_s->get_client_coutner()<<", server counter:"<< lore_s->get_server_counter()<<endl;
 
     free(message);
     free(message2);
