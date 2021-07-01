@@ -6,8 +6,8 @@
 User::User(){
     
 }
-User::User(string username, string IP, unsigned short port, int client_socket):
-    username{username}, IP{IP}, port{port}, client_socket{client_socket}, 
+User::User(string username, string password, string IP, unsigned short port, int client_socket):
+    username{username}, IP{IP}, port{port}, client_socket{client_socket}, password{password}, 
     server_client_key{nullptr}, clients_key{nullptr}, clients_pubk{nullptr},
     clients_pubk_char{nullptr}, client_server_pubk{nullptr}, 
     client_server_pubk_char{nullptr}, server_pubk{nullptr}, server_pubk_char{nullptr},
@@ -20,7 +20,7 @@ User::User(const User &source):
     clients_pubk_char(source.clients_pubk_char), client_server_pubk(source.client_server_pubk), 
     client_server_pubk_char(source.client_server_pubk_char), server_pubk(source.server_pubk), server_pubk_char(source.server_pubk_char),
     peer_pubk(source.peer_pubk), peer_pubk_char(source.peer_pubk_char), server_counter(source.server_counter), 
-    client_counter(source.client_counter), peer_username(source.peer_username)
+    client_counter(source.client_counter), peer_username(source.peer_username), password(source.password)
     {
     
 }
@@ -59,4 +59,6 @@ User::~User(){
         free(this->peer_pubk_char);
     if(this->clients_pubk_char)
         free(this->clients_pubk_char);
+    if(this->clients_key)
+        free(this->clients_key);
 }

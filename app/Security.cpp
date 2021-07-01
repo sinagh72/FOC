@@ -13,7 +13,7 @@
 #include <stdio.h>
 #include <mcheck.h>
 #include "dimensions.h"
-
+ #include <openssl/rsa.h>
 
 const EVP_CIPHER* const Security::AES_CIPHER = EVP_aes_256_cbc();
 const int Security::AES_IV_LEN = EVP_CIPHER_iv_length(Security::AES_CIPHER);
@@ -105,11 +105,13 @@ int Security::decryption_AES(unsigned char *ciphertext, int ciphertext_len, unsi
     return plaintext_len;
 }
 
-int Security::signature(string prvk_filename, unsigned char * text_to_sign, int text_to_sign_len, unsigned char ** signature){
+int Security::signature(string prvk_filename, unsigned char * password, 
+                        unsigned char * text_to_sign, int text_to_sign_len, 
+                        unsigned char ** signature){
     // load private key:    
     FILE* prvk_file = fopen(prvk_filename.c_str(), "r");
     if(!prvk_file){ cerr << "Error: cannot open file '" << prvk_filename << "' (missing?)\n"; return -1; }
-    EVP_PKEY* prvk = PEM_read_PrivateKey(prvk_file, NULL, NULL, NULL);
+    EVP_PKEY* prvk = PEM_read_PrivateKey(prvk_file, NULL, NULL, password);
     fclose(prvk_file);
     if(!prvk){ cerr << "Error: PEM_read_PrivateKey returned NULL\n"; return -1; }
     // allocate buffer for signature:
@@ -144,13 +146,6 @@ int Security::signature(string prvk_filename, unsigned char * text_to_sign, int 
 
 int Security::verify_signature(EVP_PKEY* pubk, unsigned char * signature, int signature_len, unsigned char * clear_text, int clear_text_len){
     int ret;
-    // load my public key:
-    // FILE* pubk_file = fopen(pubk_filename.c_str(), "r");
-    // if(!pubk_file){ cerr << "Error: cannot open file '" << pubk_filename << "' (missing?)\n"; exit(1); }
-    // EVP_PKEY* pubk = PEM_read_PUBKEY(pubk_file, NULL, NULL, NULL);
-    // fclose(pubk_file);
-    // if(!pubk){ cerr << "Error: PEM_read_PUBKEY returned NULL\n"; exit(1); }
-
     // create the signature context:
     EVP_MD_CTX* md_ctx = EVP_MD_CTX_new();
     if(!md_ctx){ EVP_MD_CTX_free(md_ctx);cerr << "Error: EVP_MD_CTX_new returned NULL\n"; return -1; }
@@ -181,7 +176,6 @@ int Security::verify_signature(EVP_PKEY* pubk, unsigned char * signature, int si
     cout << "The Signature has been correctly verified! The message is authentic!\n";
     // deallocate data:
     EVP_MD_CTX_free(md_ctx);
-    EVP_PKEY_free(pubk);
     return 1;
 }
 
@@ -396,30 +390,43 @@ int Security::generate_dh_pubk(EVP_PKEY ** pubk){
     EVP_PKEY_free(params);
     return 1;
 }
-unsigned int Security::generate_dh_key(EVP_PKEY * my_dhkey, EVP_PKEY * peers_dhk, unsigned char ** digest){
+unsigned int Security::generate_dh_key(EVP_PKEY * my_dhkey, EVP_PKEY * peer_pubkey, unsigned char ** digest){
     /*creating a context, the buffer for the shared key and an int for its length*/
-    EVP_PKEY_CTX *derive_ctx;
+    EVP_PKEY_CTX *derive_ctx{nullptr};
     size_t skeylen;
     unsigned char * skey{nullptr};
-    derive_ctx = EVP_PKEY_CTX_new(my_dhkey,NULL);
+    derive_ctx = EVP_PKEY_CTX_new(my_dhkey, NULL);
     if (!derive_ctx) { cerr << "Error: EVP_PKEY_CTX_new returned NULL\n"; return 0; }
     if (EVP_PKEY_derive_init(derive_ctx) <= 0) { cerr << "Error: EVP_PKEY_derive_init Failed\n"; return 0; }
     /*Setting the peer with its pubkey*/
-    if (EVP_PKEY_derive_set_peer(derive_ctx, peers_dhk) <= 0) { 
+    if (EVP_PKEY_derive_set_peer(derive_ctx, peer_pubkey) <= 0) { 
         EVP_PKEY_CTX_free(derive_ctx);
         cerr << "Error: EVP_PKEY_derive_set_peer Failed\n"; 
         return 0; 
     }
+
     /* Determine buffer length, by performing a derivation but writing the result nowhere */
-    EVP_PKEY_derive(derive_ctx, NULL, &skeylen);
+    if (EVP_PKEY_derive(derive_ctx, NULL, &skeylen) <= 0){
+        EVP_PKEY_CTX_free(derive_ctx);
+        cerr << "Error: EVP_PKEY_derive Failed\n"; 
+        return 0; 
+    }
+
     /*allocate buffer for the shared secret*/
     skey = (unsigned char*)(malloc(int(skeylen)));
     if (!skey) { EVP_PKEY_CTX_free(derive_ctx);cerr << "Error: malloc returns NULL (skey is too big?)\n"; return 0; }
     /*Perform again the derivation and store it in skey buffer*/
-    if (EVP_PKEY_derive(derive_ctx, skey, &skeylen) <= 0) { EVP_PKEY_CTX_free(derive_ctx);free(skey);cerr << "Error: EVP_PKEY_derive Failed\n"; return 0; }
+    int res = EVP_PKEY_derive(derive_ctx, skey, &skeylen);
+
+    if (res <= 0 ) {
+        cout <<"RESULT: " <<res <<endl;
+        EVP_PKEY_CTX_free(derive_ctx);
+        free(skey);
+        cerr << "Error: EVP_PKEY_derive Failed\n"; 
+        return 0; 
+    }
     //FREE EVERYTHING INVOLVED WITH THE EXCHANGE (not the shared secret tho)
     EVP_PKEY_CTX_free(derive_ctx);
-
     //Hashing the shared seret to obtain a key
     //create digest pointer and length variable
     unsigned int digest_len;
@@ -492,4 +499,3 @@ bool Security::generate_iv(unsigned char**iv, int iv_len){
     RAND_bytes((unsigned char*)iv[0], iv_len);
     return true;
 }
-

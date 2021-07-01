@@ -1,6 +1,7 @@
 #ifndef APP_USER_H
 #define APP_USER_H
 
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <string>
@@ -19,6 +20,7 @@ private:
     string username;
     string IP;
     uint16_t port;
+    string password;
     unsigned char* server_client_key; // the key between the server and the client
     unsigned char* clients_key; // the key between two clients
     EVP_PKEY* clients_pubk; // dh pub key for generating a'
@@ -39,7 +41,7 @@ private:
 public:
     //constructor
     User();
-    User(string username, string IP, uint16_t port, int client_socket);
+    User(string username, string password, string IP, uint16_t port, int client_socket);
     //copyructor
     User(const User &source);
     //methods
@@ -65,8 +67,16 @@ public:
         this->server_client_key = key;
     }
     //set the key between clients
-    void set_clients_key(unsigned char * key){
-        this->clients_key = key;
+    void set_clients_key(unsigned char * key, size_t key_len){
+        if(!key){
+            if(!this->clients_key) free(this->clients_key);
+            this->clients_key = key;
+            return;
+        }
+        if(!this->clients_key){
+            this->clients_key = (unsigned char*)malloc(key_len);
+        }
+        memcpy(this->clients_key,key,key_len);
     }
 
     //set server socket with that client (user)
@@ -98,6 +108,12 @@ public:
     }
     //set public key for the server_client communication 
     void set_clients_pubk_char(unsigned char*dh_pubk_char){
+        if(!dh_pubk_char){
+            if(!this->clients_pubk_char) free(this->clients_pubk_char);
+            this->clients_pubk_char = dh_pubk_char;
+            return;
+        }
+
         if(!this->clients_pubk_char){
             this->clients_pubk_char = (unsigned char*)malloc(DH_PUBK_LENGTH);
         }
@@ -113,12 +129,15 @@ public:
     }
       //set public key
     void set_peer_pubk(EVP_PKEY*peer_pubk){
-        if(!this->peer_pubk_char){
-        }
         this->peer_pubk = peer_pubk;
     }
      //set public key char
     void set_peer_pubk_char(unsigned char*peer_pubk_char){
+        if(!peer_pubk_char){
+            if(!this->peer_pubk_char) free(this->peer_pubk_char);
+            this->peer_pubk_char = peer_pubk_char;
+            return;
+        }
         if(!this->peer_pubk_char){
             this->peer_pubk_char = (unsigned char*)malloc(DH_PUBK_LENGTH);
         }
@@ -134,6 +153,11 @@ public:
     }
     void set_peer_username(string username){
         this->peer_username.assign(username);
+    }
+
+    void set_password(string password){
+        this->password.assign(password);
+        
     }
     //return the status
     STATUS get_status() {
@@ -206,6 +230,10 @@ public:
     //get peer username
     string get_peer_username(){
         return this->peer_username;
+    }
+    string get_password(){
+        return this->password;
+        
     }
     //serialize the object
     void serialize();

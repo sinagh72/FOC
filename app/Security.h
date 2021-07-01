@@ -45,12 +45,13 @@ public:
     /**
     * digitally signed the input text
     * @param prvk_filename address of the private key file name for digital signature
+    * @param password the password of the private key file
     * @param text_to_sign the input text we want to signed with the private key
     * @param text_to_sign_len the lenght of the input text
     * @param signature the digitally signed signature. 
     * @return intger to specify that the signing is succeeded (length of plaintext) or not -1 
     */
-    static int signature(string prvk_filename, unsigned char * text_to_sign, int text_to_sign_len,
+    static int signature(string prvk_filename, unsigned char * password, unsigned char * text_to_sign, int text_to_sign_len,
      unsigned char ** signature);
     //======================================================================================
     /**
