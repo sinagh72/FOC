@@ -52,7 +52,12 @@ public:
     static int handle_message_10(char * message, size_t message_len, User* my_user);
     //===================================================================================================================
     ///TODO:remove **message_buf fom the functions
-    static unsigned int send_message_11(char**message_buf, User* my_user);
+    /**
+     * send message type 11. This message check for wrap around!
+     * @param my_user the User of that is sending the message!
+     * @param return if it returns -17, it means the session is not secure (wrap around) and message 17 is sent inside. 
+     */
+    static int send_message_11(char**message_buf, User* my_user);
     //===================================================================================================================
     static int handle_message_11(char * message, size_t message_len, User* sender);
     //===================================================================================================================
@@ -61,7 +66,12 @@ public:
     static int handle_message_12(char* message, size_t message_len, User*my_user);
     //=================================================================================================================== 
     ///TODO:remove **message_buf fom the functions 
-    static unsigned int send_message_13(char**message_buf, unsigned char* message, size_t message_len, User* my_user);
+    /**
+     * send message type 13. This message check for wrap around!
+     * @param my_user the User of that is sending the message!
+     * @param return if it returns -17, it means the session is not secure (wrap around) and message 17 is sent inside. 
+     */
+    static int send_message_13(char**message_buf, unsigned char* message, size_t message_len, User* my_user);
     //=================================================================================================================== 
     ///TODO:remove **message_buf fom the functions 
     static int handle_message_13(unsigned char ** clients_ciphertext, char * message, size_t message_len, User* sender);

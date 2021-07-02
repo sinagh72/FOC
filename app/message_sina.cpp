@@ -1008,18 +1008,24 @@ int Message::handle_message_10(char * message, size_t message_len, User* my_user
 }
 
 //sent by client B to the server 
-unsigned int Message::send_message_11(char**message_buf, User* my_user){
+int Message::send_message_11(char**message_buf, User* my_user){
+    //wrap around check
+    if(my_user->get_sent_counter() > UINT16_MAX - 2){
+        cout <<"This session is not secure anymore! Try to loggin again" <<endl;
+        char * msg {nullptr};
+        return send_message_17(&msg, my_user);
+    }
     //initialization vector
     unsigned char* iv{nullptr};
     if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)){
-        return 0;
+        return -1;
     }
     //creating aad: message type, client_to_received_counter, iv
     int aad_len = MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN;
     char * aad = (char*)malloc(aad_len);
     if(!aad){
         free(iv);
-        cerr<< "Error: malloc for AAD returned NULL (too big AAD?)\n"; return 0;
+        cerr<< "Error: malloc for AAD returned NULL (too big AAD?)\n"; return -1;
     }
     
     aad[0] = 11;
@@ -1033,7 +1039,7 @@ unsigned int Message::send_message_11(char**message_buf, User* my_user){
      if(!gcm_plaintext){
         free(iv);
         free(aad);
-        cerr<< "Error: malloc for gcm plaintext returned NULL (too big usernames?)\n"; return 0;
+        cerr<< "Error: malloc for gcm plaintext returned NULL (too big usernames?)\n"; return -1;
     }
     memcpy(gcm_plaintext, (my_user->get_username()+my_user->get_peer_username()).c_str(), 
                             my_user->get_username().length()+my_user->get_peer_username().length());
@@ -1049,7 +1055,7 @@ unsigned int Message::send_message_11(char**message_buf, User* my_user){
         free(tag);
         free(iv);
         free(aad);
-        return 0;
+        return -1;
     }
     //
     int message_buf_len = aad_len + gcm_ciphertext_len + Security::GCM_TAG_LEN;
@@ -1167,7 +1173,7 @@ unsigned int Message::send_message_12(char**message_buf, User* sender, User* rec
     sender->set_peer_username("");//remove it
     return message_buf_len;
 }
-//received by the client A
+//received by the client B
 int Message::handle_message_12(char* message, size_t message_len, User*my_user){
    int i;
     string msg = "";
@@ -1205,8 +1211,13 @@ int Message::handle_message_12(char* message, size_t message_len, User*my_user){
 }
 
 //sent by client A to the server 
-unsigned int Message::send_message_13(char**message_buf, unsigned char* message, size_t message_len, User* my_user){
-
+int Message::send_message_13(char**message_buf, unsigned char* message, size_t message_len, User* my_user){
+    //wrap around check
+    if(my_user->get_sent_counter() > UINT16_MAX - 2){
+        cout <<"This session is not secure anymore! Try to loggin again" <<endl;
+        char * msg {nullptr};
+        return send_message_17(&msg, my_user);
+    }
     //encrypt the message with the session key
     unsigned char* ciphertext{nullptr};
     int ciphertext_len = 0;
@@ -1505,7 +1516,10 @@ int Message::handle_message_17(char * message, size_t message_len, User* sender)
     if(!sender->replay_check(false, received_counter)){
         return -1;
     }
+    if(!sender->get_peer_username().empty()){
+        ///TODO:inform the peer that this client has logged out by message 16
+    }
     sender->clear();
     cout << sender->get_username() << " has logged out!"<<endl;
-    return 1;
+    return -17;
 }
