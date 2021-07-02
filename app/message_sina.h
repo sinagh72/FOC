@@ -230,7 +230,7 @@ public:
     */
     static unsigned int send_message_17(char**message_buf, User* my_user);
     //===================================================================================================================
-        /**
+    /**
      * handle message type 17. This function will be called inside the server applcation
      * @param message the buffer which is received from the socket.
      * @param message_len the size of the received message
