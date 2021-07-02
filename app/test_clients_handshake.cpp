@@ -79,14 +79,48 @@ int main(){
     cout << "Message 10 len: "<<msg_len << endl;
     //client B receives message 10
     Message::handle_message_10(message6, msg_len, lore);
-    // //print counters
+    cout <<"=======================================================================================\n";
+    //cilent A sends a message
+    char*message13{nullptr};
+    unsigned char * clients_plaintext = (unsigned char*) "sina";
+    msg_len = Message::send_message_13(&message13, clients_plaintext, strlen((char*)clients_plaintext), sina);
+    cout << "Message 13 len: "<<msg_len << endl;
+    //server receives the message 13 and sends message 14
+    unsigned char*clients_ciphertext13{nullptr};
+    msg_len = Message::handle_message_13(&clients_ciphertext13, message13, msg_len, sina_s);
+    char*message14{nullptr};
+    msg_len = Message::send_message_14(&message14, sina_s, lore_s, clients_ciphertext13, msg_len);
+    cout << "Message 14 len: "<<msg_len << endl;
+    //client B receives message 14
+    Message::handle_message_14(message14, msg_len, lore);
+    cout <<"=======================================================================================\n";
+    //cilent B declined request to talk
+    char*message11{nullptr};
+    msg_len = Message::send_message_11(&message11, lore);
+    cout << "Message 11 len: "<<msg_len << endl;
+    //server receives the message 11 and sends message 12
+    Message::handle_message_11(message11, msg_len, lore_s);
+    char*message12{nullptr};
+    Message::send_message_12(&message12, lore_s, sina_s);
+    cout << "Message 12 len: "<<msg_len << endl;
+    //client A receives message 12
+    Message::handle_message_12(message12, msg_len, sina);
+    cout <<"=======================================================================================\n";
+    // // //print counters
     cout<<"clients: "<<endl;
-    cout <<"sina-> client counter:"<< sina->get_client_coutner()<<", server counter:"<< sina->get_server_counter()<<endl;
-    cout <<"lore-> client counter:"<< lore->get_client_coutner()<<", server counter:"<< lore->get_server_counter()<<endl;
+    cout <<"sina-> sent counter:"<< sina->get_sent_counter()<<", received counter:"<< sina->get_received_counter()<<endl;
+    cout <<"lore-> sent counter:"<< lore->get_sent_counter()<<", received counter:"<< lore->get_received_counter()<<endl;
 
     cout<<"server: "<<endl;
-    cout <<"sina_s-> client counter:"<< sina_s->get_client_coutner()<<", server counter:"<< sina_s->get_server_counter()<<endl;
-    cout <<"lore_s-> client counter:"<< lore_s->get_client_coutner()<<", server counter:"<< lore_s->get_server_counter()<<endl;
+    cout <<"sina_s-> sent counter:"<< sina_s->get_sent_counter()<<", received counter:"<< sina_s->get_received_counter()<<endl;
+    cout <<"lore_s-> sent counter:"<< lore_s->get_sent_counter()<<", received counter:"<< lore_s->get_received_counter()<<endl;
+    cout <<"=======================================================================================\n";
+    //cilent A sends log out message
+    char*message17{nullptr};
+    msg_len = Message::send_message_17(&message17, sina);
+    //server receive the log out message
+    Message::handle_message_17(message17, msg_len, sina_s);
+    cout <<"=======================================================================================\n";
 
     free(message);
     free(message2);
@@ -94,6 +128,11 @@ int main(){
     free(message4);
     free(message5);
     free(message6);
+    free(message11);
+    free(message12);
+    free(message14);
+    free(message13);
+    free(message17);
     free(clients_ciphertext);
     free(clients_ciphertext2);
 
