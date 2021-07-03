@@ -6,8 +6,8 @@
 User::User(){
     
 }
-User::User(string username, string password, string IP, unsigned short port, int client_socket):
-    username{username}, IP{IP}, port{port}, client_socket{client_socket}, password{password}, 
+User::User(string username, string password, string IP, unsigned short port, int socket):
+    username{username}, IP{IP}, port{port}, socket{socket}, password{password}, 
     server_client_key{nullptr}, clients_key{nullptr}, clients_pubk{nullptr},
     clients_pubk_char{nullptr}, client_server_pubk{nullptr}, 
     client_server_pubk_char{nullptr}, server_pubk{nullptr}, server_pubk_char{nullptr},
@@ -15,7 +15,7 @@ User::User(string username, string password, string IP, unsigned short port, int
     sent_counter{0}, peer_username{nullptr}{
 }
 User::User(const User &source):
-    username(source.username), IP(source.IP), port(source.port), client_socket(source.client_socket),
+    username(source.username), IP(source.IP), port(source.port), socket(source.socket),
     server_client_key(source.server_client_key), clients_key(source.clients_key), clients_pubk(source.clients_pubk),
     clients_pubk_char(source.clients_pubk_char), client_server_pubk(source.client_server_pubk), 
     client_server_pubk_char(source.client_server_pubk_char), server_pubk(source.server_pubk), server_pubk_char(source.server_pubk_char),
@@ -57,9 +57,8 @@ bool User::replay_check(bool from_server, uint16_t received_counter){
 void User::clear(){
     this->IP.clear();
     this->port = 0;
-    this->client_socket = 0;
+    this->socket = 0;
     this->client_server_pubk = nullptr;
-    this->client_server_pubk_char = nullptr;
     this->clients_pubk = nullptr;
     this->peer_username.clear();
     this->sent_counter = 0;
@@ -75,6 +74,8 @@ void User::clear(){
         free(this->clients_pubk_char);
     if(this->clients_key)
         free(this->clients_key);
+    if(this->client_server_pubk_char)
+        free(client_server_pubk_char);
 
 }
 User::~User(){
@@ -84,5 +85,7 @@ User::~User(){
         free(this->clients_pubk_char);
     if(this->clients_key)
         free(this->clients_key);
+    if(this->client_server_pubk_char)
+        free(client_server_pubk_char);
 }
 

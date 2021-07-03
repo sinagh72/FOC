@@ -1,6 +1,5 @@
 //Example code: A simple server side code, which echos back the received message.
 //Handle multiple socket connections with select and fd_set on Linux 
-#include <iostream>
 #include <stdio.h> 
 #include <string.h>   //strlen 
 #include <stdlib.h> 
@@ -13,7 +12,6 @@
 #include <sys/time.h> //FD_SET, FD_ISSET, FD_ZERO macros
 #include <vector>
 #include "user.h"
-#include "dimensions.h"
      
 #define TRUE   1 
 #define FALSE  0 
@@ -21,7 +19,7 @@
 using namespace std;
      
 int main(int argc , char *argv[]) {
-    const int port;
+    int port;
     int opt = TRUE;
     int master_socket;
     int addrlen;
@@ -40,14 +38,14 @@ int main(int argc , char *argv[]) {
     if(argc!=2) {
         string port_string(argv[1]);
         try {
-            port= stoi(port_string);
+            port = stoi(port_string);
             if(port<1024 or port>65535) throw out_of_range("Not valid port");
         } catch (invalid_argument const &exception) {
             cout<<"Error: server port number is not an integer"<<endl;
-            return;
+            return -1;
         } catch (out_of_range const &exception) {
             cout<<"Error: server port number outside range 1024-65535"<<endl;
-            return;
+            return - 1;
         }
     }
 
@@ -82,7 +80,7 @@ int main(int argc , char *argv[]) {
         exit(EXIT_FAILURE);  
     }
 
-    printf("Listening on port %d \n", PORT);
+    printf("Listening on port %d \n", port);
          
     //try to specify maximum of 3 pending connections for the master socket 
     if (listen(master_socket, 50) < 0)
@@ -111,7 +109,7 @@ int main(int argc , char *argv[]) {
         {  
             //socket descriptor
             int sd;
-            sd = it->get_client_socket();
+            sd = it->get_socket();
                  
             //if valid socket descriptor then add to read list 
             if(sd > 0){

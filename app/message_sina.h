@@ -1,5 +1,6 @@
 #ifndef APP_MESSAGE_SINA_H
 #define APP_MESSAGE_SINA_H
+
 #include <vector>
 #include "user.h"
 #include "Security.h"

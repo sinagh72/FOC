@@ -1,14 +1,8 @@
 #ifndef APP_USER_H
 #define APP_USER_H
 
-#include <cstddef>
-#include <cstdint>
-#include <cstring>
-#include <string>
-#include <openssl/evp.h>
-#include <iostream>
 #include "Security.h"
-#include "dimensions.h"
+
 using namespace std;
 
 
@@ -21,6 +15,7 @@ private:
     string IP;
     uint16_t port;
     string password;
+    int socket;
     unsigned char* server_client_key; // the key between the server and the client
     unsigned char* clients_key; // the key between two clients
     EVP_PKEY* clients_pubk; // dh pub key for generating a'
@@ -33,7 +28,6 @@ private:
     unsigned char *peer_pubk_char;// dh pub key of other peer or g^b' in characters
     uint16_t received_counter{0};//server to client counter: #messages that the user has received from the server
     uint16_t sent_counter{0};//client to server counter: #messages that the user has sent to the server
-    int client_socket;
     string peer_username;//the username of the user that we are communicating with
 
 
@@ -41,7 +35,7 @@ private:
 public:
     //constructor
     User();
-    User(string username, string password, string IP, uint16_t port, int client_socket);
+    User(string username, string password, string IP, uint16_t port, int socket);
     //copyructor
     User(const User &source);
     //methods
@@ -80,8 +74,8 @@ public:
     }
 
     //set server socket with that client (user)
-    void set_client_socket(int socket) {
-        this->client_socket = socket;
+    void set_socket(int socket) {
+        this->socket = socket;
     }
 
     //increment the server counter
@@ -121,7 +115,16 @@ public:
     }
         //set public key for the client_client communication 
     void set_client_server_pubk_char(unsigned char*dh_pubk_char){
-        this->client_server_pubk_char = dh_pubk_char;
+         if(!dh_pubk_char){
+            if(!this->client_server_pubk_char) free(this->client_server_pubk_char);
+            this->client_server_pubk_char = dh_pubk_char;
+            return;
+        }
+
+        if(!this->client_server_pubk_char){
+            this->client_server_pubk_char = (unsigned char*)malloc(DH_PUBK_LENGTH);
+        }
+        memcpy(this->clients_pubk_char, dh_pubk_char, DH_PUBK_LENGTH);
     }
     //set public key for the server_client communication 
     void set_client_server_pubk(EVP_PKEY*dh_pubk){
@@ -196,8 +199,8 @@ public:
         return this->sent_counter;
     }
     // get the client socket
-    int get_client_socket(){
-        return this->client_socket;
+    int get_socket(){
+        return this->socket;
     }
     // get the public key
     EVP_PKEY* get_clients_pubk(){
