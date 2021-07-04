@@ -1,21 +1,22 @@
 #include "message_alycia.h"
+#include <vector>
+#include "user.h"
 #include "Security.h"
-#include <cstddef>
-#include <cstdint>
+#include <stdint.h>
 #include <cstring>
-#include <openssl/bio.h>
+#include <openssl/conf.h>
+#include <openssl/dh.h>
 #include <openssl/evp.h>
-#include <openssl/ossl_typ.h>
-#include <string.h>
-#include <iostream>
-#include <cstdlib>
-#include <stdio.h>
+#include <openssl/pem.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include "utility.h"
 
 using namespace std;
 
 // message 3
 
-unsigned int Message::create_message_3(char ** msg_buf, User * my_user) {
+unsigned int Message::send_message_3(char ** msg_buf, User * my_user) {
 
     // generate iv
     unsigned char* iv{nullptr};
@@ -55,6 +56,10 @@ unsigned int Message::create_message_3(char ** msg_buf, User * my_user) {
     memcpy(*msg_buf, aad, aad_len);
     memcpy(*msg_buf + aad_len, id_ct, id_ct_len);
     memcpy(*msg_buf + aad_len + id_ct_len, tag, Security::GCM_TAG_LEN);
+
+    if (msg_buf_len != send(my_user->get_socket(), * msg_buf, msg_buf_len , 0)){
+        return -1;
+    }
 
     my_user->increment_sent_counter();
     free(aad);
@@ -103,7 +108,7 @@ int Message::handle_message_3(char * msg_buf, size_t msg_len, User * my_user){
 
 // message 4
 
-unsigned int Message::create_message_4(char** msg_buf, vector<User> * act_usr, User * dest_user) {
+unsigned int Message::send_message_4(char** msg_buf, vector<User> * act_usr, User * dest_user) {
 
     // generate iv
     unsigned char* iv{nullptr};
@@ -171,6 +176,9 @@ unsigned int Message::create_message_4(char** msg_buf, vector<User> * act_usr, U
     memcpy(*msg_buf + aad_len + act_usr_ct_len, id_ct, id_ct_len);
     memcpy(*msg_buf + aad_len + act_usr_ct_len + id_ct_len, tag, Security::GCM_TAG_LEN);
 
+    if (msg_buf_len != send(dest_user->get_socket(), * msg_buf, msg_buf_len , 0)){
+        return -1;
+    }
 
     dest_user->increment_received_counter();
     free(aad);
