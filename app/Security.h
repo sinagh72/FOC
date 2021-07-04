@@ -151,7 +151,6 @@ public:
     /**
     * convert char* into EVP_PKEY 
     * @param pk_buf the public key in character
-    * @param bio BIO serialization, null pointer to BIO should pass to this function
     * @param pkey the output pubk 
     * @return intger to specify that serialization is succeeded (length of output buffer) or not -1  
     */

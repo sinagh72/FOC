@@ -36,6 +36,11 @@ public:
      * @param online_users : vector of Users that are online
      */
     static void handle_message_0(char* buffer, int client_socket, char* ip, uint16_t port, vector<User> online_users);
+
+
+    static void handle_message_1(char* buffer, User *client);
+
+    static void handle_message_2(char* buffer, User *client);
      /**
      * create a message type 5. This funciton will be called inside the client application
      * @param message_buf buffer which contains the whole dataframe. It will be intialized and sent to the socket.

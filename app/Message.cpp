@@ -1675,3 +1675,43 @@ int Message::handle_message_17(char * message, size_t message_len, User* sender)
     cout << sender->get_username() << " has logged out!"<<endl;
     return -17;
 }
+
+
+void Message::handle_message_1(char *buffer, int buffer_len, User *client) {
+    //parsing the incoming message
+    uint16_t *counter_server= buffer+1;
+    if(*counter_server != client->get_server_counter()) {
+        cerr<<"Server counter verification failed";
+        return;
+    }
+    client->increment_server_counter();
+
+    char* iv = (char*) malloc(Security::GCM_IV_LEN);
+    memcpy(iv, buffer+3, Security::GCM_IV_LEN);
+
+    string server_certificate_serialized(buffer+3+Security::GCM_IV_LEN);
+    string server_dh_pubkey_serialized(buffer+3+Security::GCM_IV_LEN+server_certificate_serialized.length()+1);
+
+    char* tag = (char*) malloc(Security::GCM_TAG_LEN);
+    buffer_len-3-Security::GCM_IV_LEN-Security::GCM_TAG_LEN-
+    memcpy(tag, buffer+buffer_len-Security::GCM_TAG_LEN, Security::GCM_TAG_LEN);
+
+    int ciphertext_len = buffer_len-3-Security::GCM_IV_LEN-Security::GCM_TAG_LEN-
+                         server_certificate_serialized.length()-1-server_dh_pubkey_serialized.length()-1;
+    char* ciphertext = (char*) malloc(ciphertext_len);
+    memcpy(ciphertext, buffer+buffer_len-Security::GCM_TAG_LEN-ciphertext_len, ciphertext_len);
+
+    // compute symmetric key with DH pubkey
+
+
+    //verify tag and decrypt signature
+
+    // TODO: introduce server certificate validation
+
+    //make the new message
+
+}
+
+void Message::handle_message_2(char *buffer, User *client) {
+    //verify the signature and set status of the user ONLINE
+}
