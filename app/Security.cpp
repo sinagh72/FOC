@@ -474,7 +474,7 @@ int Security::chars_to_EVP_PKEY(EVP_PKEY ** pkey, unsigned char * pk_buf){
     }
     *pkey= PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL);
     BIO_free(bio);
-    return DH_PUBK_LENGTH;   
+    return DH_PUBK_LENGTH;
 }
 bool Security::generate_iv(unsigned char**iv, int iv_len){
     *iv = (unsigned char *)malloc(iv_len);
@@ -483,4 +483,58 @@ bool Security::generate_iv(unsigned char**iv, int iv_len){
     RAND_poll();
     RAND_bytes((unsigned char*)iv[0], iv_len);
     return true;
+}
+
+bool Security::load_server_certificate(X509 **cert) {
+    FILE* cert_file = fopen("./certificates/ChatApp_cert.pem", "r");
+    if(!cert_file)  {
+        printf("Error opening server certificate file");
+        return false;
+    }
+
+    *cert = PEM_read_X509(cert_file, NULL, NULL, NULL);
+    if(!*cert) {
+        printf("Error loading server certificate");
+        fclose(cert_file);
+        return false;
+    }
+    fclose(cert_file);
+    return true;
+}
+
+int Security::X509_serialization(X509 *cert, unsigned char **buffer) {
+    BIO* bio = BIO_new(BIO_s_mem());
+    if(PEM_write_bio_X509(bio, cert)!=1) {
+        printf("Error serializing the certificate");
+        return -1;
+    }
+
+    char* certificate_serialized= nullptr;
+    int cert_size= (int)BIO_get_mem_data(bio, &certificate_serialized);
+    *buffer =(unsigned char*) malloc(cert_size);
+    memcpy(*buffer, certificate_serialized, cert_size);
+
+    BIO_free(bio);
+    return cert_size;
+}
+
+bool Security::X509_deserialization(unsigned char *buffer, X509 **cert) {
+    BIO * bio{nullptr};
+    if (cert == NULL){
+        cerr << "Error: X509 cert is NULL\n";
+        return false;
+    }
+    if((bio = BIO_new(BIO_s_mem())) == NULL){
+        cerr << "Error: MBIO is NULL\n";
+        return false;
+    }
+    if (0 == BIO_write(bio, buffer, strlen((char*)buffer))){
+        BIO_free(bio);
+        cerr << "Error: BIO_write Failed\n";
+        return false;
+    }
+    *cert= PEM_read_bio_X509(bio, NULL, NULL, NULL);
+    BIO_free(bio);
+    return true;
+}
 }

@@ -164,6 +164,11 @@ public:
     static bool generate_iv(unsigned char**iv, int iv_len);
     //======================================================================================
 
+    static bool load_server_certificate(X509** cert);
+
+    static int X509_serialization(X509 *cert, unsigned char** buffer);
+
+    static bool X509_deserialization(unsigned char* buffer, X509** cert);
 };
 
 #endif
