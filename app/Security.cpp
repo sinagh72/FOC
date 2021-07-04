@@ -129,39 +129,36 @@ int Security::signature(string prvk_filename, unsigned char * password,
     return signature_len;
 }
 
-int Security::verify_signature(EVP_PKEY* pubk, unsigned char * signature, int signature_len, unsigned char * clear_text, int clear_text_len){
+bool Security::verify_signature(EVP_PKEY* pubk, unsigned char * signature, int signature_len, unsigned char * clear_text, int clear_text_len){
     int ret;
     // create the signature context:
     EVP_MD_CTX* md_ctx = EVP_MD_CTX_new();
-    if(!md_ctx){ EVP_MD_CTX_free(md_ctx);cerr << "Error: EVP_MD_CTX_new returned NULL\n"; return -1; }
+    if(!md_ctx){ EVP_MD_CTX_free(md_ctx);cerr << "Error: EVP_MD_CTX_new returned NULL\n"; return false; }
 
-    // verify the plaintext:(perform a single update on the whole plaintext, 
-    // assuming that the plaintext is not huge)
+    // verify the plaintext
     ret = EVP_VerifyInit(md_ctx, SHA_256);
     if(ret == 0){ 
         EVP_PKEY_free(pubk);EVP_MD_CTX_free(md_ctx);
-        cerr << "Error: EVP_VerifyInit returned " << ret << "\n"; return -1; }
+        cerr << "Error: EVP_VerifyInit returned " << ret << "\n"; return false; }
     ret = EVP_VerifyUpdate(md_ctx, clear_text, clear_text_len);  
     if(ret == 0){ 
         EVP_PKEY_free(pubk);EVP_MD_CTX_free(md_ctx);
-        cerr << "Error: EVP_VerifyUpdate returned " << ret << "\n"; return -1; 
+        cerr << "Error: EVP_VerifyUpdate returned " << ret << "\n"; return false;
     }
     ret = EVP_VerifyFinal(md_ctx, signature, signature_len, pubk);
     if(ret == -1){ 
         EVP_PKEY_free(pubk);EVP_MD_CTX_free(md_ctx);
-        // it is 0 if invalid signature, -1 if some other error, 1 if success.
         cerr << "Error: EVP_VerifyFinal returned " << ret << " (invalid signature?)\n";
-        return -1;
+        return false;
     }else if(ret == 0){
         EVP_PKEY_free(pubk);EVP_MD_CTX_free(md_ctx);
         cerr << "Error: Invalid signature!\n";
-        return -1;
+        return false;
     }
-    // print the successful signature verification to screen:
-    cout << "The Signature has been correctly verified! The message is authentic!\n";
+
     // deallocate data:
     EVP_MD_CTX_free(md_ctx);
-    return 1;
+    return true;
 }
 
 int Security::verify_certificate(string cert_file_name){
@@ -537,4 +534,67 @@ bool Security::X509_deserialization(unsigned char *buffer, X509 **cert) {
     BIO_free(bio);
     return true;
 }
+
+bool Security::certificate_verification(X509 *cert) {
+    int ret; // used for return values
+    // load the CA's certificate:
+    string cacert_file_name="certificates/Foc_cert.pem";
+    FILE* cacert_file = fopen(cacert_file_name.c_str(), "r");
+    if(!cacert_file){ cerr << "Error: cannot open file '" << cacert_file_name << "' (missing?)\n"; return false; }
+    X509* cacert = PEM_read_X509(cacert_file, NULL, NULL, NULL);
+    fclose(cacert_file);
+    if(!cacert){ cerr << "Error: PEM_read_X509 returned NULL\n"; return false; }
+
+    // load the CRL:
+    string crl_file_name="certificates/Foc_crl.pem";
+    FILE* crl_file = fopen(crl_file_name.c_str(), "r");
+    if(!crl_file){ X509_free(cacert);cerr << "Error: cannot open file '" << crl_file_name << "' (missing?)\n"; return false; }
+    X509_CRL* crl = PEM_read_X509_CRL(crl_file, NULL, NULL, NULL);
+    fclose(crl_file);
+    if(!crl){ X509_free(cacert); cerr << "Error: PEM_read_X509_CRL returned NULL\n"; return false; }
+
+    // build a store with the CA's certificate and the CRL:
+    X509_STORE* store = X509_STORE_new();
+    if(!store) { X509_free(cacert);X509_CRL_free(crl);cerr << "Error: X509_STORE_new returned NULL\n" << ERR_error_string(ERR_get_error(), NULL) << "\n"; return false; }
+    ret = X509_STORE_add_cert(store, cacert);
+    if(ret != 1) { X509_free(cacert);X509_CRL_free(crl);cerr << "Error: X509_STORE_add_cert returned " << ret << "\n" << ERR_error_string(ERR_get_error(), NULL) << "\n"; return false; }
+    ret = X509_STORE_add_crl(store, crl);
+    if(ret != 1) { X509_free(cacert);X509_CRL_free(crl);cerr << "Error: X509_STORE_add_crl returned " << ret << "\n" << ERR_error_string(ERR_get_error(), NULL) << "\n"; return false; }
+    ret = X509_STORE_set_flags(store, X509_V_FLAG_CRL_CHECK);
+    if(ret != 1) { X509_free(cacert);X509_CRL_free(crl);
+        cerr << "Error: X509_STORE_set_flags returned " << ret << "\n" << ERR_error_string(ERR_get_error(), NULL) << "\n"; return false;
+    }
+
+    // verify the certificate:
+    X509_STORE_CTX* certvfy_ctx = X509_STORE_CTX_new();
+    if(!certvfy_ctx) { X509_free(cacert);X509_CRL_free(crl); X509_STORE_free(store);X509_free(cert);cerr << "Error: X509_STORE_CTX_new returned NULL\n" << ERR_error_string(ERR_get_error(), NULL) << "\n"; return false; }
+    ret = X509_STORE_CTX_init(certvfy_ctx, store, cert, NULL);
+    if(ret != 1) { X509_free(cacert);X509_CRL_free(crl); X509_STORE_free(store);X509_free(cert);cerr << "Error: X509_STORE_CTX_init returned " << ret << "\n" << ERR_error_string(ERR_get_error(), NULL) << "\n"; return false; }
+    ret = X509_verify_cert(certvfy_ctx);
+    if(ret != 1) { X509_free(cacert);X509_CRL_free(crl); X509_STORE_free(store);X509_free(cert);cerr << "Error: X509_verify_cert returned " << ret << "\n" << ERR_error_string(ERR_get_error(), NULL) << "\n"; return false; }
+
+    // print the successful verification to screen:
+    char* tmp = X509_NAME_oneline(X509_get_subject_name(cert), NULL, 0);
+    char* tmp2 = X509_NAME_oneline(X509_get_issuer_name(cert), NULL, 0);
+
+    if(strcmp(tmp, "ChatApp")!=0 || strcmp(tmp2, "FoC")!=0) {
+        cerr<<"Server certificate not valid"<<endl;
+        free(tmp);
+        free(tmp2);
+        X509_free(cert);
+        X509_STORE_free(store);
+        X509_free(cacert);
+        X509_CRL_free(crl);
+        X509_STORE_CTX_free(certvfy_ctx);
+        return false;
+    }
+    free(tmp);
+    free(tmp2);
+    X509_free(cert);
+    X509_STORE_free(store);
+    X509_free(cacert); // already deallocated by X509_STORE_free()
+    X509_CRL_free(crl); // already deallocated by X509_STORE_free()
+    X509_STORE_CTX_free(certvfy_ctx);
+
+    return true;
 }

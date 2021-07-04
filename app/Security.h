@@ -67,15 +67,15 @@ public:
      unsigned char ** signature);
     //======================================================================================
     /**
-    * verify signature according to the public key
-    * @param pubk the public key of the peer to verify the signature
-    * @param signature address of the private key file name for digital signature
-    * @param signature_len the input text we want to signed with the private key
-    * @param clear_text the lenght of the input text
-    * @param clear_text_len the digitally signed signature. 
-    * @return intger to specify that the verification is succeeded (length of plaintext) or not -1 
-    */
-    static int verify_signature(EVP_PKEY* pubk, unsigned char * signature, int signature_len, unsigned char * clear_text, int clear_text_len);
+     * Verify the digital signature of a given message
+     * @param pubk public key of the user who signed the message
+     * @param signature signature
+     * @param signature_len length of the signature
+     * @param clear_text the text that has been signed
+     * @param clear_text_len length of the cleartext
+     * @return true if the signature is valid, false otherwise
+     */
+    static bool verify_signature(EVP_PKEY* pubk, unsigned char * signature, int signature_len, unsigned char * clear_text, int clear_text_len);
     //======================================================================================
     /**
     * verify the input certificate and verify it according to the store
@@ -163,12 +163,34 @@ public:
     */
     static bool generate_iv(unsigned char**iv, int iv_len);
     //======================================================================================
-
+    /**
+     * Load the server certificate
+     * @param cert address to X509 pointer to be initializated with server certificate
+     * @return true if loaded correctly, false otherwise
+     */
     static bool load_server_certificate(X509** cert);
 
+    /**
+     * Serialize the X509 certificate in PEM format
+     * @param cert the certificate to be serialized
+     * @param buffer the address of a pointer that will point to the allocated array of char
+     * @return the lenght of the allocated buffer, -1 on error
+     */
     static int X509_serialization(X509 *cert, unsigned char** buffer);
-
+    /**
+     * Deserialize certificate from PEM format to X509
+     * @param buffer array of char containing the certificate serialized
+     * @param cert address of a X509 pointer to be initialized
+     * @return
+     */
     static bool X509_deserialization(unsigned char* buffer, X509** cert);
+
+    /**
+     * Server certificate verification. It checks also the CN of CA and Server to match with the provided one.
+     * @param cert the certificate to be validated
+     * @return true if the certificate is valid, false is certificate is invalid or some error occurred
+     */
+    static bool certificate_verification(X509* cert);
 };
 
 #endif
