@@ -134,9 +134,9 @@ public:
     * @param my_dhkey the public key of they client that calls the function (g^a)
     * @param peers_dhk the public key of the peers (g^b)
     * @param digest the digest of the established session key
-    * @return intger to specify that the generating is succeeded (length of digest) or not -1 
+    * @return intger to specify that the generating is succeeded (length of the key) or not -1
     */
-    static unsigned int generate_dh_key(EVP_PKEY * my_dhkey, EVP_PKEY * peers_dhk, unsigned char ** digest);    
+    static unsigned int generate_dh_key(EVP_PKEY * my_dhkey, EVP_PKEY * peers_dhk, unsigned char ** key);
     //======================================================================================
     /**
     * convert the EVP_PKEY into char*
