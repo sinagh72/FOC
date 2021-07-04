@@ -13,7 +13,10 @@
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Message.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Message.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Message.h" beforeDir="false" afterPath="$PROJECT_DIR$/Message.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/user.h" beforeDir="false" afterPath="$PROJECT_DIR$/user.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Security.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Security.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Security.h" beforeDir="false" afterPath="$PROJECT_DIR$/Security.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/a.out" beforeDir="false" afterPath="$PROJECT_DIR$/a.out" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_pubkey.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/test_pubkey.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -106,7 +109,9 @@
       <workItem from="1624454057819" duration="28405000" />
       <workItem from="1624607182348" duration="14279000" />
       <workItem from="1624889233146" duration="6253000" />
-      <workItem from="1624910431571" duration="10755000" />
+      <workItem from="1624910431571" duration="10852000" />
+      <workItem from="1624963156102" duration="15715000" />
+      <workItem from="1625086329285" duration="4605000" />
     </task>
     <servers />
   </component>
