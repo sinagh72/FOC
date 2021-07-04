@@ -14,10 +14,12 @@ class Message {
 public:
 
     // message 3
-    static unsigned int send_message_3(char** msg_buf, User* my_user);
-    static int parse_message_3(char * message, size_t message_len, User* sender, vector<User>users);
+    static unsigned int create_message_3(char ** msg_buf, User * my_user);
+    static unsigned int send_message_3(char ** msg, User * my_user);
+    static int handle_message_3(char * msg_buf, size_t msg_len, User * my_user);
 
     // message 4
-    static unsigned int send_message_4(char** msg_buf, vector<User> * act_usr, User * dest_user);
-    static int parse_message_4(char * message, size_t message_len, User* sender, vector<User>users);
+    static unsigned int create_message_4(char ** msg_buf, vector<User> * act_usr, User * dest_user);
+    static unsigned int send_message_4(char ** msg, User * dest_user);
+    static int handle_message_4(char * msg_buf, size_t msg_len, User * dest_user);
 };
