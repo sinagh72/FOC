@@ -290,7 +290,7 @@ void Message::handle_message_1(char *buffer, int buffer_len, User *client) {
     }
 
     char* signature_answ = nullptr;
-    int signature_answ_len = Security::signature("./users/"+username+"/rsa_privkey.pem", username, concat, concat_len, &signature_answ);
+    int signature_answ_len = Security::signature("./users/"+client->get_username()+"/rsa_privkey.pem", username, concat, concat_len, &signature_answ);
     if(signature_answ_len==-1) {
         cerr<<"Message2 concat failed"<<endl;
         free(skey);
@@ -351,8 +351,54 @@ void Message::handle_message_1(char *buffer, int buffer_len, User *client) {
 }
 
 void Message::handle_message_2(char *buffer, int buffer_len, User *client) {
-    //verify the signature and set status of the user ONLINE
+    //verify message counter
+    uint16_t* counter = buffer + MESSAGE_TYPE_LENGTH;
+    if(*counter != client->get_received_counter()) {
+        return;
+    }
+    client->increment_received_counter();
 
+    //set pointer in the incoming buffer
+    char* aad = buffer;
+    int aad_len = MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN;
+    char* ciphertext = buffer + aad_len;
+    int ciphertext_len = buffer_len - Security::GCM_TAG_LEN - aad_len;
+    char* tag = buffer + buffer_len - Security::GCM_TAG_LEN;
+    char* iv = buffer + MESSAGE_TYPE_LENGTH + COUNTER_LENGTH;
+
+    //verify the tag
+    char* signature = nullptr;
+    int signature_len = Security::gcm_decrypt(aad, add_len, ciphertext, ciphertext_len, client->get_server_client_key(), iv, &signature, tag);
+    if(plaintext_len==-1) {
+        return;
+    }
+
+    char* concatenated = nullptr;
+    int concatenated_len = Security::serialize_concat_dh_pubkey(client->get_server_pubk(), client->get_client_server_pubk(), &concatenated);
+    if (concatenated_len==-1) {
+        return;
+    }
+
+    //verify the signature and set status of the user ONLINE
+    FILE* pubkey_file = fopen("./users/"+client->get_username()+"/rsa_pubkey.pem", "r");
+    if(!pubkey_file) {
+        printf("User %s not registered", username);
+        return;
+    }
+    EVP_PKEY* evpPkey;
+    evpPkey= PEM_read_PUBKEY(pubkey_file, NULL, NULL, NULL);
+    if(!evpPkey) {
+        printf("Error: pubkey of user %s not loaded correctly", username);
+        fclose(pubkey_file);
+        return;
+    }
+    fclose(pubkey_file);
+
+    if(!Security::verify_signature(evpPkey, signature, signature_len, concatenated, concatenated_len)) {
+        return;
+    }
+
+    client->set_status(ONLINE);
 
 }
 

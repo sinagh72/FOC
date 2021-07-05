@@ -12,9 +12,6 @@
     <list default="true" id="701079ee-8794-440d-9495-26407b2b0549" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Message.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Message.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Message.h" beforeDir="false" afterPath="$PROJECT_DIR$/Message.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Security.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Security.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Security.h" beforeDir="false" afterPath="$PROJECT_DIR$/Security.h" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -111,7 +108,7 @@
       <workItem from="1624910431571" duration="10852000" />
       <workItem from="1624963156102" duration="15715000" />
       <workItem from="1625086329285" duration="4605000" />
-      <workItem from="1625391395334" duration="33972000" />
+      <workItem from="1625391395334" duration="35457000" />
     </task>
     <servers />
   </component>
