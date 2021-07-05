@@ -44,7 +44,7 @@ void Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16
     string dh_pubkey_peer(buffer+32);
 
 
-    //find the user RSA pubkey
+    //find the user RSA pubkey to be sure that he is registered
     FILE* pubkey_file = fopen("./users/"+username+"/rsa_pubkey.pem", "r");
     if(!pubkey_file) {
         printf("User %s not registered", username);
@@ -58,37 +58,25 @@ void Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16
         return;
     }
     fclose(pubkey_file);
+    EVP_PKEY_free(evpPkey);
 
     User *client = new User(username, ip, port, evpPkey, client_socket);
     client->set_status(CONNECTING);
     online_users.insert(online_users.begin(), client);
 
     //load server certificate from file and serialize it
-    FILE* cert_file = fopen("./certificates/ChatApp_cert.pem", "r");
-    if(!cert_file)  {
-        printf("Error opening server certificate file");
-        return;
-    }
     X509* cert;
-    cert = PEM_read_X509(cert_file, NULL, NULL, NULL);
-    if(!cert) {
-        printf("Error loading server certificate");
-        fclose(cert_file);
-        return;
-    }
-    fclose(cert_file);
-    BIO* bio = BIO_new(BIO_s_mem());
-    if(PEM_write_bio_X509(bio, cert)==1) {
-        printf("Error serializing the certificate");
+    if(!Security::load_server_certificate(&cert)) {
         return;
     }
 
     char* certificate_serialized= nullptr;
-    long cert_size= BIO_get_mem_data(bio, &certificate_serialized);
+    if(Security::X509_serialization(cert, &certificate_serialized) ==-1) {
+        X509_free(cert);
+        return;
+    };
 
-    BIO_free(bio);
-
-
+    // TODO : use functions
     //server DH pubkey serialization
     long dh_pubkey_server_size;
     char* dh_pubkey_server_serialized = nullptr;
@@ -136,7 +124,7 @@ void Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16
     }
 
 
-    int aad_len = 1 + 2 + cert_size + dh_pubkey_server_size+Security::GCM_IV_LEN;
+    int aad_len = MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + cert_size + dh_pubkey_server_size+Security::GCM_IV_LEN;
     char* aad = (char*)malloc(aad_len);
     if(!aad) {
         cerr<<"Error during space allocation for AAD";
@@ -178,9 +166,195 @@ void Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16
 }
 
 
+void Message::handle_message_1(char *buffer, int buffer_len, User *client) {
+    //parsing the incoming message
+    uint16_t *counter_server= buffer+MESSAGE_TYPE_LENGTH;
+    if(*counter_server != client->get_server_counter()) {
+        cerr<<"Server counter verification failed"<<endl;
+        return;
+    }
+    client->increment_server_counter();
+
+    char* iv = (char*) malloc(Security::GCM_IV_LEN);
+    memcpy(iv, buffer+MESSAGE_TYPE_LENGTH + COUNTER_LENGTH, Security::GCM_IV_LEN);
+
+    string server_certificate_serialized(buffer+MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN);
+    string server_dh_pubkey_serialized(buffer+MESSAGE_TYPE_LENGTH + COUNTER_LENGTH+Security::GCM_IV_LEN+server_certificate_serialized.length()+1);
+
+    char* tag = buffer+buffer_len-Security::GCM_TAG_LEN;
+
+    int ciphertext_len = buffer_len-MESSAGE_TYPE_LENGTH+COUNTER_LENGTH-Security::GCM_IV_LEN-Security::GCM_TAG_LEN-
+                         server_certificate_serialized.length()-1-server_dh_pubkey_serialized.length()-1;
+    char* ciphertext = buffer+buffer_len-Security::GCM_TAG_LEN-ciphertext_len;
+
+    //deserialize DH server pubkey
+    EVP_PKEY *server_dh_pubkey= nullptr;
+    if(Security::chars_to_EVP_PKEY(&server_dh_pubkey, server_dh_pubkey_serialized.c_str()) <0) {
+        cerr<<"Error deserializing DH server pubkey"<<endl;
+        free(iv);
+        EVP_PKEY_free(server_dh_pubkey)
+        return;
+    }
+
+    // compute symmetric key with DH pubkey
+    unsigned char* skey = nullptr;
+    if(Security::generate_dh_key(client->get_clients_pubk(), server_dh_pubkey, &skey)==-1) {
+        cerr<<"Error deserializing DH server pubkey"<<endl;
+        free(iv);
+        free(skey);
+        EVP_PKEY_free(server_dh_pubkey);
+        return;
+    }
+
+    client->set_server_client_key(skey);
+
+    //verify tag and decrypt signature
+    char* signature = nullptr;
+    int aad_len= MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN + server_certificate_serialized.length()+1+
+                 server_dh_pubkey_serialized.length()+1;
+    int signature_len = Security::gcm_decrypt(buffer, aad_len, ciphertext,ciphertext_len, skey, iv, &signature, tag);
 
 
+    // server certificate validation
+    X509* cert = nullptr;
+    Security::X509_deserialization(server_certificate_serialized.c_str(), &cert);
+    if(Security::certificate_verification(cert)) {
+        cerr<<"Error in server certificate validation"<<endl;
+        free(iv);
+        free(skey);
+        EVP_PKEY_free(server_dh_pubkey);
+        free(signature);
+        return;
+    }
 
+    //get server public key
+    client->set_server_pubk(X509_get_pubkey(cert));
+
+    //verify signature
+    char* serialized_pair = nullptr;
+    int serialized_pair_len = Security::serialize_concat_dh_pubkey(client->get_client_server_pubk(), client->get_server_pubk(), &serialized_pair);
+    if(serialized_pair_len==-1) {
+        cerr<<"Error in server signature verification"<<endl;
+        free(iv);
+        free(skey);
+        EVP_PKEY_free(server_dh_pubkey);
+        X509_free(cert)
+        free(signature);
+        free(serialized_pair);
+        return;
+    }
+
+    if(!Security::verify_signature(client->get_server_pubk(), signature, signature_len, serialized_pair, serialized_pair_len)) {
+        cerr<<"Error in server signature verification"<<endl;
+        free(iv);
+        free(skey);
+        EVP_PKEY_free(server_dh_pubkey);
+        X509_free(cert)
+        free(signature);
+        free(serialized_pair);
+        return;
+    }
+    free(iv);
+    free(serialized_pair);
+    free(signature);
+    X509_free(cert);
+
+    //signature is good, lets make the answer message
+    int aad_len = MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN;
+    char* aad = (char*) malloc(aad_len);
+    if(!aad) {
+        cerr<<"Message2 aad malloc failed"<<endl;
+        free(skey);
+        EVP_PKEY_free(server_dh_pubkey);
+        return;
+    }
+
+    memset(aad, 2, 1);
+    uint16_t* counter = client->get_received_counter();
+    client->increment_received_counter();
+
+    char* iv_answ= nullptr;
+    Security::generate_iv(&iv_answ, Security::GCM_IV_LEN);
+    memcpy(aad+MESSAGE_TYPE_LENGTH+COUNTER_LENGTH, iv_answ, Security::GCM_IV_LEN);
+
+    //generate the concatenation and sign it
+    char* concat = nullptr;
+    int concat_len = Security::serialize_concat_dh_pubkey(client->get_server_pubk(), client->get_client_server_pubk(), &concat);
+    if(concat_len==-1) {
+        cerr<<"Message2 DH Key concat failed"<<endl;
+        free(skey);
+        free(iv_answ);
+        free(aad);
+        EVP_PKEY_free(server_dh_pubkey);
+        return;
+    }
+
+    char* signature_answ = nullptr;
+    int signature_answ_len = Security::signature("./users/"+username+"/rsa_privkey.pem", username, concat, concat_len, &signature_answ);
+    if(signature_answ_len==-1) {
+        cerr<<"Message2 concat failed"<<endl;
+        free(skey);
+        free(iv_answ);
+        free(aad);
+        free(concat);
+        free(signature_answ);
+        EVP_PKEY_free(server_dh_pubkey);
+        return;
+    }
+
+    //GCM encryption
+    char* ciphertext_answ = nullptr;
+    char* tag_answ = nullptr;
+    int ciphertext_answ_len = Security::gcm_encrypt(aad, aad_len, signature_answ, signature_answ_len, skey, iv_answ, &ciphertext_answ, &tag_answ);
+    if(ciphertext_answ_len==-1) {
+        cerr<<"Message2 encryption failed"<<endl;
+        free(skey);
+        free(iv_answ);
+        free(aad);
+        free(concat);
+        free(signature_answ);
+        EVP_PKEY_free(server_dh_pubkey);
+        return;
+    }
+
+    free(iv_answ);
+
+    int msg_len = Security::GCM_TAG_LEN +  aad_len + ciphertext_answ_len;
+    char* msg_to_send = (char*) malloc(msg_len);
+    if(!msg_to_send) {
+        cerr<<"Message2 allocation failed"<<endl;
+        free(skey);
+        free(iv_answ);
+        free(aad);
+        free(concat);
+        free(signature_answ);
+        free(ciphertext_answ);
+        free(tag_answ);
+        EVP_PKEY_free(server_dh_pubkey);
+        return;
+    }
+
+    memcpy(msg_to_send, aad, aad_len);
+    free(aad);
+    memcpy(msg_to_send+ aad_len, ciphertext_answ, ciphertext_answ_len);
+    free(ciphertext_answ);
+    memcpy((msg_to_send + aad_len + ciphertext_answ_len, tag_answ, Security::GCM_TAG_LEN));
+    free(tag_answ);
+
+    //send the message
+    send(client->get_socket(), msg_to_send, msg_len, 0);
+
+    free(buffer);
+    free(concat);
+    free(signature_answ);
+
+}
+
+void Message::handle_message_2(char *buffer, int buffer_len, User *client) {
+    //verify the signature and set status of the user ONLINE
+
+
+}
 
 
 
@@ -1676,42 +1850,29 @@ int Message::handle_message_17(char * message, size_t message_len, User* sender)
     return -17;
 }
 
-
-void Message::handle_message_1(char *buffer, int buffer_len, User *client) {
-    //parsing the incoming message
-    uint16_t *counter_server= buffer+1;
-    if(*counter_server != client->get_server_counter()) {
-        cerr<<"Server counter verification failed";
-        return;
+/**
+ * serialize and concatenate two DH pubkey. Obtain the text ready to be signed
+ * @param a first pubkey
+ * @param b second pubkey
+ * @param concatenated the address of a pointer that will point to the concatenated string.
+ * @return the size of the concatenated string, or -1 on error
+*/
+int serialize_concat_dh_pubkey(EVP_PKEY* a, EVP_PKEY b, char** concatenated) {
+    *concatenated = nullptr;
+    char* a_char, b_char;
+    int a_len = Security::EVP_PKEY_to_chars(a, &a_char);
+    int b_len = Security::EVP_PKEY_to_chars(b, b_char);
+    if(a_len==-1 || b_len==-1) {
+        return -1;
     }
-    client->increment_server_counter();
+    //debug
+    cout<<"A_LEN: "<<a_len<<"   B_LEN: "<<b_len<<endl;
+    cout<<"A_LEN: "<<strlen(a_char)<<"   B_LEN: "<<strlen(b_char)<<endl;
 
-    char* iv = (char*) malloc(Security::GCM_IV_LEN);
-    memcpy(iv, buffer+3, Security::GCM_IV_LEN);
+    *concatenated = (char*) calloc(a_len+b_len);
+    *concatenated[0] = '\0';
+    strcat(*concatenated, a_char);
+    strcat(*concatenated, b_char);
 
-    string server_certificate_serialized(buffer+3+Security::GCM_IV_LEN);
-    string server_dh_pubkey_serialized(buffer+3+Security::GCM_IV_LEN+server_certificate_serialized.length()+1);
-
-    char* tag = (char*) malloc(Security::GCM_TAG_LEN);
-    buffer_len-3-Security::GCM_IV_LEN-Security::GCM_TAG_LEN-
-    memcpy(tag, buffer+buffer_len-Security::GCM_TAG_LEN, Security::GCM_TAG_LEN);
-
-    int ciphertext_len = buffer_len-3-Security::GCM_IV_LEN-Security::GCM_TAG_LEN-
-                         server_certificate_serialized.length()-1-server_dh_pubkey_serialized.length()-1;
-    char* ciphertext = (char*) malloc(ciphertext_len);
-    memcpy(ciphertext, buffer+buffer_len-Security::GCM_TAG_LEN-ciphertext_len, ciphertext_len);
-
-    // compute symmetric key with DH pubkey
-
-
-    //verify tag and decrypt signature
-
-    // TODO: introduce server certificate validation
-
-    //make the new message
-
-}
-
-void Message::handle_message_2(char *buffer, User *client) {
-    //verify the signature and set status of the user ONLINE
+    return a_len+b_len;
 }

@@ -61,7 +61,7 @@ public:
     * @param text_to_sign the input text we want to signed with the private key
     * @param text_to_sign_len the lenght of the input text
     * @param signature the digitally signed signature. 
-    * @return intger to specify that the signing is succeeded (length of plaintext) or not -1 
+    * @return intger to specify that the signing is succeeded (length of signature) or not -1
     */
     static int signature(string prvk_filename, unsigned char * password, unsigned char * text_to_sign, int text_to_sign_len,
      unsigned char ** signature);
@@ -191,6 +191,15 @@ public:
      * @return true if the certificate is valid, false is certificate is invalid or some error occurred
      */
     static bool certificate_verification(X509* cert);
+
+    /**
+ * serialize and concatenate two DH pubkey. Obtain the text ready to be signed
+ * @param a first pubkey
+ * @param b second pubkey
+ * @param concatenated the address of a pointer that will point to the concatenated string.
+ * @return the size of the concatenated string, or -1 on error
+*/
+    static int serialize_concat_dh_pubkey(EVP_PKEY* a, EVP_PKEY b, char** concatenated)
 };
 
 #endif

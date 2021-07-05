@@ -598,3 +598,24 @@ bool Security::certificate_verification(X509 *cert) {
 
     return true;
 }
+
+
+int Security::serialize_concat_dh_pubkey(EVP_PKEY* a, EVP_PKEY b, char** concatenated) {
+    *concatenated = nullptr;
+    char* a_char, b_char;
+    int a_len = Security::EVP_PKEY_to_chars(a, &a_char);
+    int b_len = Security::EVP_PKEY_to_chars(b, b_char);
+    if(a_len==-1 || b_len==-1) {
+        return -1;
+    }
+    //debug
+    cout<<"A_LEN: "<<a_len<<"   B_LEN: "<<b_len<<endl;
+    cout<<"A_LEN: "<<strlen(a_char)<<"   B_LEN: "<<strlen(b_char)<<endl;
+
+    *concatenated = (char*) malloc(a_len+b_len);
+    *concatenated[0] = '\0';
+    strcat(*concatenated, a_char);
+    strcat(*concatenated, b_char);
+
+    return a_len+b_len;
+}

@@ -15,8 +15,6 @@
       <change beforePath="$PROJECT_DIR$/Message.h" beforeDir="false" afterPath="$PROJECT_DIR$/Message.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Security.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Security.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Security.h" beforeDir="false" afterPath="$PROJECT_DIR$/Security.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/a.out" beforeDir="false" afterPath="$PROJECT_DIR$/a.out" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test_pubkey.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/test_pubkey.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -24,6 +22,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="ClangdSettings">
+    <option name="clangTidyViaClangd" value="false" />
     <option name="formatViaClangd" value="false" />
   </component>
   <component name="ExternalProjectsManager">
@@ -65,9 +64,9 @@
     <property name="settings.editor.selected.configurable" value="Errors" />
   </component>
   <component name="RunManager">
-    <configuration default="true" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true">
+    <configuration default="true" type="GradleAppRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true">
       <method v="2">
-        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+        <option name="com.jetbrains.cidr.cpp.gradle.execution.GradleNativeBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
     <configuration name="/home/lorenzo/Scrivania/FOC/app" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
@@ -112,6 +111,7 @@
       <workItem from="1624910431571" duration="10852000" />
       <workItem from="1624963156102" duration="15715000" />
       <workItem from="1625086329285" duration="4605000" />
+      <workItem from="1625391395334" duration="33972000" />
     </task>
     <servers />
   </component>
