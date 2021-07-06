@@ -1,6 +1,7 @@
 #include "message_sina.h"
 #include "user.h"
 #include <cstring>
+#include <openssl/bio.h>
 #include <vector>
 
 User* find_user(string user, vector<User>users){

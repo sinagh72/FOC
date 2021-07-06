@@ -73,9 +73,9 @@ public:
      * @param signature_len length of the signature
      * @param clear_text the text that has been signed
      * @param clear_text_len length of the cleartext
-     * @return true if the signature is valid, false otherwise
+     * @return -1 if verification of the signature failed and 1 if it is successful
      */
-    static bool verify_signature(EVP_PKEY* pubk, unsigned char * signature, int signature_len, unsigned char * clear_text, int clear_text_len);
+    static int verify_signature(EVP_PKEY* pubk, unsigned char * signature, int signature_len, unsigned char * clear_text, int clear_text_len);
     //======================================================================================
     /**
     * verify the input certificate and verify it according to the store
@@ -193,13 +193,15 @@ public:
     static bool certificate_verification(X509* cert);
 
     /**
- * serialize and concatenate two DH pubkey. Obtain the text ready to be signed
- * @param a first pubkey
- * @param b second pubkey
- * @param concatenated the address of a pointer that will point to the concatenated string.
- * @return the size of the concatenated string, or -1 on error
-*/
+    * serialize and concatenate two DH pubkey. Obtain the text ready to be signed
+    * @param a first pubkey
+    * @param b second pubkey
+    * @param concatenated the address of a pointer that will point to the concatenated string.
+    * @return the size of the concatenated string, or -1 on error
+    */
     static int serialize_concat_dh_pubkey(EVP_PKEY* a, EVP_PKEY* b, char** concatenated);
+
+
 };
 
 #endif

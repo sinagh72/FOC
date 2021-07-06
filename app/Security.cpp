@@ -129,36 +129,36 @@ int Security::signature(string prvk_filename, unsigned char * password,
     return signature_len;
 }
 
-bool Security::verify_signature(EVP_PKEY* pubk, unsigned char * signature, int signature_len, unsigned char * clear_text, int clear_text_len){
+int Security::verify_signature(EVP_PKEY* pubk, unsigned char * signature, int signature_len, unsigned char * clear_text, int clear_text_len){
     int ret;
     // create the signature context:
     EVP_MD_CTX* md_ctx = EVP_MD_CTX_new();
-    if(!md_ctx){ EVP_MD_CTX_free(md_ctx);cerr << "Error: EVP_MD_CTX_new returned NULL\n"; return false; }
+    if(!md_ctx){ EVP_MD_CTX_free(md_ctx);cerr << "Error: EVP_MD_CTX_new returned NULL\n"; return -1; }
 
     // verify the plaintext
     ret = EVP_VerifyInit(md_ctx, SHA_256);
     if(ret == 0){ 
         EVP_PKEY_free(pubk);EVP_MD_CTX_free(md_ctx);
-        cerr << "Error: EVP_VerifyInit returned " << ret << "\n"; return false; }
+        cerr << "Error: EVP_VerifyInit returned " << ret << "\n"; return -1; }
     ret = EVP_VerifyUpdate(md_ctx, clear_text, clear_text_len);  
     if(ret == 0){ 
         EVP_PKEY_free(pubk);EVP_MD_CTX_free(md_ctx);
-        cerr << "Error: EVP_VerifyUpdate returned " << ret << "\n"; return false;
+        cerr << "Error: EVP_VerifyUpdate returned " << ret << "\n"; return -1;
     }
     ret = EVP_VerifyFinal(md_ctx, signature, signature_len, pubk);
     if(ret == -1){ 
         EVP_PKEY_free(pubk);EVP_MD_CTX_free(md_ctx);
         cerr << "Error: EVP_VerifyFinal returned " << ret << " (invalid signature?)\n";
-        return false;
+        return -1;
     }else if(ret == 0){
         EVP_PKEY_free(pubk);EVP_MD_CTX_free(md_ctx);
         cerr << "Error: Invalid signature!\n";
-        return false;
+        return -1;
     }
 
     // deallocate data:
     EVP_MD_CTX_free(md_ctx);
-    return true;
+    return 1;
 }
 
 int Security::verify_certificate(string cert_file_name){
