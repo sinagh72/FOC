@@ -440,6 +440,7 @@ int Security::EVP_PKEY_to_chars(EVP_PKEY *pkey, unsigned char ** pk_buf){
     }
     if (0 == PEM_write_bio_PUBKEY(bio, pkey)){
       cerr << "Error: PEM_write_bio_PUBKEY Failed\n";
+      BIO_free(bio);
       return -1;
     }
     unsigned char* buf{nullptr};
@@ -500,9 +501,14 @@ bool Security::load_server_certificate(X509 **cert) {
 }
 
 int Security::X509_serialization(X509 *cert, unsigned char **buffer) {
-    BIO* bio = BIO_new(BIO_s_mem());
+    BIO* bio = nullptr;
+    if((bio = BIO_new(BIO_s_mem())) == NULL){
+        cerr << "Error: MBIO is NULL\n";
+        return -1;
+    }
     if(PEM_write_bio_X509(bio, cert)!=1) {
         printf("Error serializing the certificate");
+        BIO_free(bio);
         return -1;
     }
 
@@ -614,6 +620,11 @@ int Security::serialize_concat_dh_pubkey(EVP_PKEY* a, EVP_PKEY *b, char** concat
     cout<<"A_LEN: "<<strlen((char *)a_char)<<"   B_LEN: "<<strlen((char *)b_char)<<endl;
 
     *concatenated = (char*) malloc(a_len+b_len);
+    if(!(*concatenated)) {
+        free(a_char);
+        free(b_char);
+        return -1;
+    }
     *concatenated[0] = '\0';
     strcat(*concatenated, (char *)a_char);
     strcat(*concatenated, (char *)b_char);

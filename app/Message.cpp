@@ -27,6 +27,9 @@ int Message::send_message_0(char **buffer, User* my_user) {
     ///TODO: check for the timeout
     ///https://stackoverflow.com/questions/9847441/setting-socket-timeout
     if (message_len != send(my_user->get_socket() , *buffer , message_len , 0)){
+        my_user->set_client_server_pubk(nullptr);
+        free(a_char);
+        EVP_PKEY_free(g_a);
         return -1;
     }
 
@@ -63,10 +66,11 @@ void Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16
     EVP_PKEY_free(evpPkey);
     User *client = new User(username,"sina",ip, port, client_socket);
     client->set_status(CONNECTING);
-    online_users.insert(online_users.begin(), client);
+    online_users.insert(online_users.begin(), *client);
     //load server certificate from file and serialize it
     X509* cert;
     if(!Security::load_server_certificate(&cert)) {
+        delete client;
         return;
     }
 
@@ -123,6 +127,7 @@ void Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16
     unsigned char* aad = (unsigned char*)malloc(aad_len);
     if(!aad) {
         cerr<<"Error during space allocation for AAD";
+        free(iv);
         return;
     }
 
@@ -145,6 +150,9 @@ void Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16
     char* msg_buffer = (char*)malloc(msg_buffer_len);
     if(!msg_buffer) {
         cerr<<"Error allocating buffer for sending message type 1";
+        free(iv);
+        free(aad);
+        return;
     }
     memcpy(msg_buffer, aad, aad_len);
     memcpy(msg_buffer+aad_len, ciphertext, ciphertext_len);

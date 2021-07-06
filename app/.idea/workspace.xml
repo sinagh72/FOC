@@ -11,7 +11,6 @@
   <component name="ChangeListManager">
     <list default="true" id="701079ee-8794-440d-9495-26407b2b0549" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Message.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Message.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -61,11 +60,6 @@
     <property name="settings.editor.selected.configurable" value="Errors" />
   </component>
   <component name="RunManager">
-    <configuration default="true" type="GradleAppRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true">
-      <method v="2">
-        <option name="com.jetbrains.cidr.cpp.gradle.execution.GradleNativeBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
-      </method>
-    </configuration>
     <configuration name="/home/lorenzo/Scrivania/FOC/app" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
       <ExternalSystemSettings>
         <option name="executionName" />
@@ -108,7 +102,8 @@
       <workItem from="1624910431571" duration="10852000" />
       <workItem from="1624963156102" duration="15715000" />
       <workItem from="1625086329285" duration="4605000" />
-      <workItem from="1625391395334" duration="35457000" />
+      <workItem from="1625391395334" duration="36057000" />
+      <workItem from="1625556256585" duration="1201000" />
     </task>
     <servers />
   </component>
