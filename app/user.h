@@ -124,7 +124,7 @@ public:
         if(!this->client_server_pubk_char){
             this->client_server_pubk_char = (unsigned char*)malloc(DH_PUBK_LENGTH);
         }
-        memcpy(this->clients_pubk_char, dh_pubk_char, DH_PUBK_LENGTH);
+        memcpy(this->client_server_pubk_char, dh_pubk_char, DH_PUBK_LENGTH);
     }
     //set public key for the server_client communication 
     void set_client_server_pubk(EVP_PKEY*dh_pubk){

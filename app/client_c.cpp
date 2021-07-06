@@ -49,42 +49,42 @@ int main(int argc, char const *argv[])
 {
 
     // log in
-    string username;
-    string password;
+    string username("sina");
+    string password("sina");
     bool valid = false;
     cout << "====================**Welcome to ChatApp**====================\n";
-    do{
-        cout << "Please Enter Your Username:\n";
-        cin >> username;
-        if(!cin){
-            cerr << "Invalid Input.\n";
-            valid = false;
-        }
-        else {
-            string privk_file = "users/" + username + "/rsa_privkey.pem";
-            struct stat buffer;   
-            if (!(stat(privk_file.c_str(), &buffer) == 0)){
-                cout << "No private key is generate for " << username << "\n";
-                valid = false;
-            }
-            else{
-                cout << "Please Enter Your Password:\n";
-                cin >> password;
-                //check if the password is similar to the PEM file    
-                FILE* prvk_file = fopen(privk_file.c_str(), "r");
-                if(!prvk_file){ cerr << "Error: cannot open file '" << privk_file << "' (missing?)\n"; return -1; }
-                EVP_PKEY* prvk = PEM_read_PrivateKey(prvk_file, NULL, NULL, (unsigned char*)password.c_str());
-                fclose(prvk_file);
-                if(!prvk){ cerr << "Error: PEM_read_PrivateKey returned NULL\n"; return -1; }
-                valid = true;
-            }
-        }
-    }
-    while(!valid);
+    // do{
+    //     cout << "Please Enter Your Username:\n";
+    //     cin >> username;
+    //     if(!cin){
+    //         cerr << "Invalid Input.\n";
+    //         valid = false;
+    //     }
+    //     else {
+    //         string privk_file = "users/" + username + "/rsa_privkey.pem";
+    //         struct stat buffer;   
+    //         if (!(stat(privk_file.c_str(), &buffer) == 0)){
+    //             cout << "No private key is generate for " << username << "\n";
+    //             valid = false;
+    //         }
+    //         else{
+    //             cout << "Please Enter Your Password:\n";
+    //             cin >> password;
+    //             //check if the password is similar to the PEM file    
+    //             FILE* prvk_file = fopen(privk_file.c_str(), "r");
+    //             if(!prvk_file){ cerr << "Error: cannot open file '" << privk_file << "' (missing?)\n"; return -1; }
+    //             EVP_PKEY* prvk = PEM_read_PrivateKey(prvk_file, NULL, NULL, (unsigned char*)password.c_str());
+    //             fclose(prvk_file);
+    //             if(!prvk){ cerr << "Error: PEM_read_PrivateKey returned NULL\n"; return -1; }
+    //             valid = true;
+    //         }
+    //     }
+    // }
+    // while(!valid);
     //User *this_user = new User(username, "localhost", PORT);
     int sock = 0, valread;
     struct sockaddr_in serv_addr;
-    char buffer[2048] = {0};
+    char *buffer = (char*)malloc(10100);
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
     {
         printf("\n Socket creation error \n");
@@ -107,7 +107,7 @@ int main(int argc, char const *argv[])
         return -1;
     }
     //creating the user
-    User * my_user = new User(username, password, IP, PORT, 0);
+    User * my_user = new User(username, password, IP, PORT, sock);
     //send message 0
     char *buffer_0 {nullptr};
     int buffer_len = Message::send_message_0(&buffer_0, my_user);
@@ -116,11 +116,10 @@ int main(int argc, char const *argv[])
         return -1;
     }
     //handle message type 1
-    valread = read( sock , buffer, 2048);
+    valread = read( sock , buffer, 10100);
     ///TODO:follow this steps
-    //Message::handle_message_1(...);
-    //Message::send_message_2(...);
-
+    Message::handle_message_1(buffer, valread, my_user);
+    free(buffer);
     //now the key between server and the client is established
     cout <<"Secure Connection is Established" <<endl;
     string input;

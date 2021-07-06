@@ -1,9 +1,8 @@
 //Example code: A simple server side code, which echos back the received message.
 //Handle multiple socket connections with select and fd_set on Linux 
-#include <stdio.h> 
-#include <string.h>   //strlen 
-#include <stdlib.h> 
+#include <cstdint>
 #include <errno.h> 
+#include <openssl/bio.h>
 #include <unistd.h>   //close 
 #include <arpa/inet.h>    //close 
 #include <sys/types.h> 
@@ -12,6 +11,7 @@
 #include <sys/time.h> //FD_SET, FD_ISSET, FD_ZERO macros
 #include <vector>
 #include "user.h"
+#include "Message.h"
      
 #define TRUE   1 
 #define FALSE  0 
@@ -19,7 +19,8 @@
 using namespace std;
      
 int main(int argc , char *argv[]) {
-    int port;
+    //
+    uint16_t port = 8888;
     int opt = TRUE;
     int master_socket;
     int addrlen;
@@ -35,19 +36,19 @@ int main(int argc , char *argv[]) {
     fd_set readfds;
 
 
-    if(argc!=2) {
-        string port_string(argv[1]);
-        try {
-            port = stoi(port_string);
-            if(port<1024 or port>65535) throw out_of_range("Not valid port");
-        } catch (invalid_argument const &exception) {
-            cout<<"Error: server port number is not an integer"<<endl;
-            return -1;
-        } catch (out_of_range const &exception) {
-            cout<<"Error: server port number outside range 1024-65535"<<endl;
-            return - 1;
-        }
-    }
+    // if(argc!=2) {
+    //     string port_string(argv[1]);
+    //     try {
+    //         port = stoi(port_string);
+    //         if(port<1024 or port>65535) throw out_of_range("Not valid port");
+    //     } catch (invalid_argument const &exception) {
+    //         cout<<"Error: server port number is not an integer"<<endl;
+    //         return -1;
+    //     } catch (out_of_range const &exception) {
+    //         cout<<"Error: server port number outside range 1024-65535"<<endl;
+    //         return - 1;
+    //     }
+    // }
 
          
     //create a master socket
@@ -124,7 +125,7 @@ int main(int argc , char *argv[]) {
         //so wait indefinitely 
         ready_socket = select( max_sd + 1 , &readfds , NULL , NULL , NULL);
        
-        if ((activity < 0) && (errno!=EINTR))  
+        if ((ready_socket < 0) && (errno!=EINTR))  
         {  
             printf("select error");  
         }  
@@ -140,45 +141,37 @@ int main(int argc , char *argv[]) {
                 printf("accept error");   
                 exit(EXIT_FAILURE);  
             }
-            char* buffer=(char*) malloc(MESSAGE_TYPE_0_DIMENSION);
-            read(new_socket, buffer, MESSAGE_TYPE_0_DIMENSION);
-
+            char* buffer=(char*) malloc(10100);
+            valread = read(new_socket, buffer, 10100);
+            BIO_dump_fp(stdout, buffer, valread);
             //check for message type 0
-            if(buffer[0]==0) handle_message_0(buffer, new_socket, inet_ntoa(address.sin_addr), ntohs(address.sin_port), online_users)
-
-
-            //send new connection greeting message 
-            if(send(new_socket, message, strlen(message), 0) != strlen(message))  
-            {  
-                perror("send");
-                printf("send error");    
-            }  
-                 
-            puts("Welcome message sent successfully");  
-                 
-            //add new socket to array of sockets 
-            for (i = 0; i < max_clients; i++)  
-            {  
-                //if position is empty 
-                if( client_socket[i] == 0 )  
-                {  
-                    client_socket[i] = new_socket;  
-                    printf("Adding to list of sockets as %d\n" , i);   
-                    break;  
-                }  
-            }  
+            if(buffer[0]==0){
+                Message::handle_message_0(buffer, new_socket, inet_ntoa(address.sin_addr), ntohs(address.sin_port), online_users);
+                free(buffer);
+            }
+            // //add new socket to array of sockets 
+            // for (i = 0; i < max_clients; i++)  
+            // {  
+            //     //if position is empty 
+            //     if( client_socket[i] == 0 )  
+            //     {  
+            //         client_socket[i] = new_socket;  
+            //         printf("Adding to list of sockets as %d\n" , i);   
+            //         break;  
+            //     }  
+            // }  
         }  
-             
         //else its some IO operation on some other socket
-        for (i = 0; i < max_clients; i++)  
+        for (auto user : online_users)  
         {  
-            sd = client_socket[i];  
+            int sd = user.get_socket();  
                  
             if (FD_ISSET( sd , &readfds))  
             {  
                 //Check if it was for closing , and also read the 
                 //incoming message 
-                if ((valread = read( sd , buffer, 1024)) == 0)
+                char *buffer = (char*)malloc(10100);
+                if ((valread = read( sd , buffer, 10100)) == 0)
                 {  
                     //Somebody disconnected , get his details and print 
                     getpeername(sd , (struct sockaddr*)&address , \
@@ -189,22 +182,32 @@ int main(int argc , char *argv[]) {
                     //Close the socket and mark as 0 in list for reuse 
                     close( sd ); 
                     FD_CLR(sd , &readfds); 
-                    client_socket[i] = 0;  
+                    user.clear();
+                    break;  
                 }  
                      
                 //Echo back the message that came in 
                 else 
                 {  
                     //set the string terminating NULL byte on the end 
-                    //of the data read 
-                    buffer[valread] = '\0';
-                    std::cout<< "Client " << inet_ntoa(address.sin_addr) <<"_" << ntohs(address.sin_port) << ": "
-                    << buffer << std::endl; 
-                    std::cout<< "valread is: " << valread << std::endl;
-                    if(send(sd , buffer , strlen(buffer) , 0 )!= strlen(buffer)){
-                        perror("send");
-                        exit(EXIT_FAILURE); 
-                    }  
+                    //of the data read
+                    switch (buffer[0]) {
+                        case 2:
+                            Message::handle_message_2(buffer, valread, &user);
+                            break;
+                        case 4:
+                            Message::handle_message_4(buffer, valread, &user);
+                            break;
+                    }
+                    // buffer[valread] = '\0';
+                    // std::cout<< "Client " << inet_ntoa(address.sin_addr) <<"_" << ntohs(address.sin_port) << ": "
+                    // << buffer << std::endl; 
+                    // std::cout<< "valread is: " << valread << std::endl;
+                    // if(send(sd , buffer , strlen(buffer) , 0 )!= strlen(buffer)){
+                    //     perror("send");
+                    //     exit(EXIT_FAILURE); 
+                    // }
+                    free(buffer);  
                 }  
             }  
         }  

@@ -41,6 +41,16 @@ public:
     static void handle_message_1(char* buffer, int buffer_len, User *client);
 
     static void handle_message_2(char* buffer, int buffer_len, User *client);
+
+
+        // message 3
+    static unsigned int send_message_3(char ** msg_buf, User * my_user);
+    static int handle_message_3(char * msg_buf, size_t msg_len, User * my_user);
+
+    // message 4
+    static unsigned int send_message_4(char ** msg_buf, vector<User> * act_usr, User * dest_user);
+    static int handle_message_4(char * msg_buf, size_t msg_len, User * dest_user);
+    
      /**
      * create a message type 5. This function will be called inside the client application
      * @param message_buf buffer which contains the whole dataframe. It will be initialized and sent to the socket.
