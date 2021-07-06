@@ -199,7 +199,7 @@ public:
  * @param concatenated the address of a pointer that will point to the concatenated string.
  * @return the size of the concatenated string, or -1 on error
 */
-    static int serialize_concat_dh_pubkey(EVP_PKEY* a, EVP_PKEY b, char** concatenated)
+    static int serialize_concat_dh_pubkey(EVP_PKEY* a, EVP_PKEY* b, char** concatenated);
 };
 
 #endif
