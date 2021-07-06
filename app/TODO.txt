@@ -1,4 +1,4 @@
 1- remove +1 in the send/receive counter and modify check replay attack
 2- received message buffer freed outside the handle function
 3- change counter naming
-
+4- not ask buffer(as a parameter) in send_message_0
