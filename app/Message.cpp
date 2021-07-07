@@ -41,7 +41,7 @@ int Message::send_message_0(char **buffer, User* my_user) {
     return message_len;
 }
 
-void Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16_t port, vector <User> online_users) {
+int Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16_t port, vector <User*> online_users) {
 
     string ip_str(ip);
     //extract the username
@@ -55,32 +55,32 @@ void Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16
     FILE* pubkey_file = fopen(file_addr.c_str(), "r");
     if(!pubkey_file) {
         printf("User %s not registered", username.c_str());
-        return;
+        return -1;
     }
     EVP_PKEY* evpPkey;
     evpPkey= PEM_read_PUBKEY(pubkey_file, NULL, NULL, NULL);
     if(!evpPkey) {
         printf("Error: pubkey of user %s not loaded correctly", username.c_str());
         fclose(pubkey_file);
-        return;
+        return -1;
     }
     fclose(pubkey_file);
     EVP_PKEY_free(evpPkey);
     User *client = new User(username,"sina",ip, port, client_socket);
     client->set_status(CONNECTING);
-    online_users.insert(online_users.begin(), *client);
+    online_users.insert(online_users.begin(), client);
     //load server certificate from file and serialize it
     X509* cert;
     if(!Security::load_server_certificate(&cert)) {
         delete client;
-        return;
+        return -1;
     }
 
     unsigned char* certificate_serialized= nullptr;
     int cert_size = 0;
     if((cert_size = Security::X509_serialization(cert, &certificate_serialized)) ==-1) {
         X509_free(cert);
-        return;
+        return -1;
     };
 
     // TODO : use functions
@@ -96,7 +96,7 @@ void Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16
     char* dh_param_to_sign =(char*) malloc(2*DH_PUBK_LENGTH);
     if(!dh_param_to_sign) {
         cerr <<"malloc returned NULL! (too big dh param to sign?)" <<endl;
-        return;
+        return -1;
     }
     memcpy(dh_param_to_sign, dh_pubkey_peer.c_str(), DH_PUBK_LENGTH);
     memcpy(dh_param_to_sign + DH_PUBK_LENGTH, (char*)dh_pubkey_server_serialized, DH_PUBK_LENGTH);
@@ -115,9 +115,9 @@ void Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16
     int shared_key_len = Security::generate_dh_key(dh_pubkey_server, peer_pubk, &shared_key);
     if(shared_key_len==-1) {
         cerr<<"Error generating shared key"<<endl;
-        return;
+        return -1;
     }
-    client->set_server_client_key(shared_key);
+    client->set_server_client_key(shared_key, shared_key_len);
     EVP_PKEY_free(dh_pubkey_server);
     EVP_PKEY_free(peer_pubk);
 
@@ -125,7 +125,7 @@ void Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16
     unsigned char* iv= nullptr;
     if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)) {
         cerr<<"Error generating IV for message type 1";
-        return;
+        return -1;
     }
 
 
@@ -134,7 +134,7 @@ void Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16
     if(!aad) {
         cerr<<"Error during space allocation for AAD";
         free(iv);
-        return;
+        return -1;
     }
 
     memset(aad, 1, 1);
@@ -165,14 +165,13 @@ void Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16
         cerr<<"Error allocating buffer for sending message type 1";
         free(iv);
         free(aad);
-        return;
+        return -1;
     }
     memcpy(msg_buffer, aad, aad_len);
     memcpy(msg_buffer+aad_len, ciphertext, ciphertext_len);
     memcpy(msg_buffer+aad_len+ciphertext_len, tag, Security::GCM_TAG_LEN);
     //send the message to the client
     send(client->get_socket(), msg_buffer, msg_buffer_len, 0);
-
     free(msg_buffer);
     free(aad);
     free(ciphertext);
@@ -180,7 +179,7 @@ void Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16
     free(dh_pubkey_server_serialized);
     free(tag);
     free(iv);
-
+    return msg_buffer_len;
 }
 
 
@@ -233,7 +232,7 @@ void Message::handle_message_1(char *buffer, int buffer_len, User *client) {
         return;
     }
 
-    client->set_server_client_key(skey);
+    client->set_server_client_key(skey, skey_len);
 
     //verify tag and decrypt signature
     unsigned char* signature = nullptr;

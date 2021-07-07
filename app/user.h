@@ -57,8 +57,16 @@ public:
         this->port = port;
     }
     //set the key between client and server
-    void set_server_client_key(unsigned char * key){
-        this->server_client_key = key;
+    void set_server_client_key(unsigned char * key, size_t key_len){
+        if(!key){
+            if(!this->server_client_key) free(this->server_client_key);
+            this->server_client_key = key;
+            return;
+        }
+        if(!this->server_client_key){
+            this->server_client_key = (unsigned char*)malloc(key_len);
+        }
+        memcpy(this->server_client_key,key, key_len);
     }
     //set the key between clients
     void set_clients_key(unsigned char * key, size_t key_len){
@@ -115,7 +123,7 @@ public:
     }
         //set public key for the client_client communication 
     void set_client_server_pubk_char(unsigned char*dh_pubk_char){
-         if(!dh_pubk_char){
+        if(!dh_pubk_char){
             if(!this->client_server_pubk_char) free(this->client_server_pubk_char);
             this->client_server_pubk_char = dh_pubk_char;
             return;
@@ -128,7 +136,12 @@ public:
     }
     //set public key for the server_client communication 
     void set_client_server_pubk(EVP_PKEY*dh_pubk){
+        // RSA *rsa = EVP_PKEY_get1_RSA(dh_pubk); // Get the underlying RSA key
+        // RSA *dup_rsa = RSAPrivateKey_dup(rsa); // Duplicate the RSA key
+        // RSA_free(rsa); // Decrement reference count
+        // EVP_PKEY_set1_RSA(this->client_server_pubk, dup_rsa);
         this->client_server_pubk = dh_pubk;
+
     }
       //set public key
     void set_peer_pubk(EVP_PKEY*peer_pubk){

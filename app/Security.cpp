@@ -363,7 +363,7 @@ int Security::generate_dh_pubk(EVP_PKEY ** pubk){
     //DH_free(temp);
     /* Create context for the key generation */
     EVP_PKEY_CTX *DHctx;
-    if(!(DHctx = EVP_PKEY_CTX_new(params, NULL))){ cerr << "Error: EVP_PKEY_CTX_new returned NULL\n"; return -1; }
+    if(!(DHctx = EVP_PKEY_CTX_new(params, NULL))){ cerr << "Error: EVP_PKEY_CTX_new returned in generate dh pubkNULL\n"; return -1; }
     /* Generate a new key */
     if(1 != EVP_PKEY_keygen_init(DHctx)){ cerr << "Error: EVP_PKEY_keygen_init Failed\n"; return -1; }
     if(1 != EVP_PKEY_keygen(DHctx, pubk)){ cerr << "Error: EVP_PKEY_keygen Failed\n"; return -1; }
@@ -378,7 +378,7 @@ unsigned int Security::generate_dh_key(EVP_PKEY * my_dhkey, EVP_PKEY * peer_pubk
     size_t skeylen;
     unsigned char * skey{nullptr};
     derive_ctx = EVP_PKEY_CTX_new(my_dhkey, NULL);
-    if (!derive_ctx) { cerr << "Error: EVP_PKEY_CTX_new returned NULL\n"; return 0; }
+    if (!derive_ctx) { cerr << "Error: EVP_PKEY_CTX_new returned NULL in generate dh shared key\n"; return 0; }
     if (EVP_PKEY_derive_init(derive_ctx) <= 0) { cerr << "Error: EVP_PKEY_derive_init Failed\n"; return 0; }
     /*Setting the peer with its pubkey*/
     if (EVP_PKEY_derive_set_peer(derive_ctx, peer_pubkey) <= 0) { 

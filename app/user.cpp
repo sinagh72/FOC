@@ -73,7 +73,6 @@ void User::clear(){
     this->peer_pubk = nullptr;
     this->server_pubk = nullptr;
     this->server_pubk_char = nullptr;
-    this->server_client_key = nullptr;
     if(this->peer_pubk_char)
         free(this->peer_pubk_char);
     if(this->clients_pubk_char)
@@ -82,6 +81,8 @@ void User::clear(){
         free(this->clients_key);
     if(this->client_server_pubk_char)
         free(client_server_pubk_char);
+    if(this->server_client_key)
+        free(server_client_key);
 
 }
 User::~User(){
@@ -92,6 +93,8 @@ User::~User(){
     if(this->clients_key)
         free(this->clients_key);
     if(this->client_server_pubk_char)
-        free(client_server_pubk_char);
+        free(client_server_pubk_char);    
+    if(this->server_client_key)
+        free(server_client_key);
 }
 
