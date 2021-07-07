@@ -514,11 +514,12 @@ int Security::X509_serialization(X509 *cert, unsigned char **buffer) {
 
     char* certificate_serialized= nullptr;
     int cert_size= (int)BIO_get_mem_data(bio, &certificate_serialized);
-    *buffer =(unsigned char*) malloc(cert_size);
+    *buffer =(unsigned char*) malloc(cert_size+1);
     memcpy(*buffer, certificate_serialized, cert_size);
+    memset(*buffer+cert_size, 0, 1);
 
     BIO_free(bio);
-    return cert_size;
+    return cert_size+1;
 }
 
 bool Security::X509_deserialization(unsigned char *buffer, X509 **cert) {
@@ -583,7 +584,7 @@ bool Security::certificate_verification(X509 *cert) {
     char* tmp = X509_NAME_oneline(X509_get_subject_name(cert), NULL, 0);
     char* tmp2 = X509_NAME_oneline(X509_get_issuer_name(cert), NULL, 0);
 
-    if(strcmp(tmp, "ChatApp")!=0 || strcmp(tmp2, "FoC")!=0) {
+    if(strcmp(tmp, "/C=IT/CN=ChatApp")!=0 || strcmp(tmp2, "/C=IT/O=FoC/OU=Certification Authority/CN=Foc")!=0) {
         cerr<<"Server certificate not valid"<<endl;
         free(tmp);
         free(tmp2);

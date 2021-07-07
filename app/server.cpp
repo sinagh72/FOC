@@ -18,7 +18,7 @@
 
 using namespace std;
      
-int main(int argc , char *argv[]) {
+int main(int argc , char* argv[]) {
     //
     uint16_t port = 8888;
     int opt = TRUE;
@@ -147,7 +147,7 @@ int main(int argc , char *argv[]) {
             //check for message type 0
             if(buffer[0]==0){
                 Message::handle_message_0(buffer, new_socket, inet_ntoa(address.sin_addr), ntohs(address.sin_port), online_users);
-                free(buffer);
+                //free(buffer);
             }
             // //add new socket to array of sockets 
             // for (i = 0; i < max_clients; i++)  
