@@ -1,4 +1,5 @@
 #include "user.h"
+#include <openssl/ossl_typ.h>
 
 //constructors
 User::User(){
@@ -71,28 +72,18 @@ void User::clear(){
     this->peer_pubk = nullptr;
     this->server_pubk = nullptr;
     this->server_pubk_char = nullptr;
-    if(this->peer_pubk_char)
-        free(this->peer_pubk_char);
-    if(this->clients_pubk_char)
-        free(this->clients_pubk_char);
-    if(this->clients_key)
-        free(this->clients_key);
-    if(this->client_server_pubk_char)
-        free(client_server_pubk_char);
-    // if(this->server_client_key)
-    //     free(server_client_key);
+    set_peer_pubk_char(nullptr);
+    set_clients_pubk_char(nullptr);
+    set_client_server_pubk_char(nullptr);
+    set_clients_key(nullptr, 0);
+    set_server_client_key(nullptr, 0);
 
 }
 User::~User(){
-    if(this->peer_pubk_char)
-        free(this->peer_pubk_char);
-    if(this->clients_pubk_char)
-        free(this->clients_pubk_char);
-    if(this->clients_key)
-        free(this->clients_key);
-    if(this->client_server_pubk_char)
-        free(client_server_pubk_char);    
-    // if(this->server_client_key)
-    //     free(server_client_key);
+    set_peer_pubk_char(nullptr);
+    set_clients_pubk_char(nullptr);
+    set_client_server_pubk_char(nullptr);
+    set_clients_key(nullptr, 0);
+    set_server_client_key(nullptr, 0); 
 }
 

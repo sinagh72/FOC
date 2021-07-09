@@ -60,7 +60,7 @@ public:
     void set_server_client_key(unsigned char * key, size_t key_len){
         if(!key){
             if(this->server_client_key != nullptr) free(this->server_client_key);
-            this->server_client_key = key;
+            this->server_client_key = nullptr;
             return;
         }
         if(!this->server_client_key){
@@ -71,8 +71,8 @@ public:
     //set the key between clients
     void set_clients_key(unsigned char * key, size_t key_len){
         if(!key){
-            if(!this->clients_key) 
-                free(this->clients_key);
+            if(this->clients_key != nullptr) free(this->clients_key);
+            this->clients_key = nullptr;
             return;
         }
         if(!this->clients_key){
@@ -111,8 +111,8 @@ public:
     //set public key for the server_client communication 
     void set_clients_pubk_char(unsigned char*dh_pubk_char){
         if(!dh_pubk_char){
-            if(!this->clients_pubk_char) 
-                free(this->clients_pubk_char);
+            if(this->clients_pubk_char != nullptr) free(this->clients_pubk_char);
+                clients_pubk_char = nullptr;
             return;
         }
 
@@ -124,8 +124,9 @@ public:
         //set public key for the client_client communication 
     void set_client_server_pubk_char(unsigned char*dh_pubk_char){
         if(!dh_pubk_char){
-            if(!this->client_server_pubk_char) 
-                free(this->client_server_pubk_char);
+            if(this->client_server_pubk_char != nullptr) free(this->client_server_pubk_char);
+                client_server_pubk_char = nullptr;
+
             return;
         }
 

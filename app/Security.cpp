@@ -237,26 +237,41 @@ int Security::gcm_encrypt(unsigned char * aad, int aad_len, unsigned char * plai
     if (!*ciphertext){ free(*ciphertext);cerr << "Error: malloc returned NULL (tag is too big?)\n"; return -1; }
 
     // Create and initialise the context
-    if(!(ctx = EVP_CIPHER_CTX_new())){ free(*ciphertext);free(tag);cerr << "Error: EVP_CIPHER_CTX_new returned NULL\n"; return -1; }
+    if(!(ctx = EVP_CIPHER_CTX_new())){ free(*ciphertext);free(*tag);cerr << "Error: EVP_CIPHER_CTX_new returned NULL\n"; return -1; }
     // Initialise the encryption operation.
-    if(1 != EVP_EncryptInit(ctx, GCM_CIPHER, key, iv)) { free(*ciphertext);free(tag);EVP_CIPHER_CTX_free(ctx);cerr << "Error: EVP_EncryptInit Failed\n"; return -1; }
+    if(1 != EVP_EncryptInit(ctx, GCM_CIPHER, key, iv)) { free(*ciphertext);free(*tag);EVP_CIPHER_CTX_free(ctx);cerr << "Error: EVP_EncryptInit Failed\n"; return -1; }
 
     //Provide any AAD data. This can be called zero or more times as required
-    if(1 != EVP_EncryptUpdate(ctx, NULL, &len, aad, aad_len)) { free(*ciphertext);free(tag);EVP_CIPHER_CTX_free(ctx);cerr << "Error: EVP_EncryptUpdate AAD Failed\n"; return -1; }
+    if(1 != EVP_EncryptUpdate(ctx, NULL, &len, aad, aad_len)) { free(*ciphertext);free(*tag);EVP_CIPHER_CTX_free(ctx);cerr << "Error: EVP_EncryptUpdate AAD Failed\n"; return -1; }
 
     if(1 != EVP_EncryptUpdate(ctx, *ciphertext, &len, plaintext, plaintext_len)) { 
-        free(*ciphertext);free(tag);EVP_CIPHER_CTX_free(ctx);
+        free(*ciphertext);free(*tag);EVP_CIPHER_CTX_free(ctx);
         cerr << "Error: EVP_EncryptUpdate Failed\n"; return -1;
     }
     ciphertext_len = len;
 	//Finalize Encryption
-    if(1 != EVP_EncryptFinal(ctx, *ciphertext + len, &len)){ free(*ciphertext);free(tag);EVP_CIPHER_CTX_free(ctx);cerr << "Error: EVP_EncryptFinal Failed\n"; return -1; }
+    if(1 != EVP_EncryptFinal(ctx, *ciphertext + len, &len)){ free(*ciphertext);free(*tag);EVP_CIPHER_CTX_free(ctx);cerr << "Error: EVP_EncryptFinal Failed\n"; return -1; }
     ciphertext_len += len;
     /* Get the tag */
     if(1 != EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG, GCM_TAG_LEN, *tag)) {
-        free(*ciphertext);free(tag);EVP_CIPHER_CTX_free(ctx);
+        free(*ciphertext);free(*tag);EVP_CIPHER_CTX_free(ctx);
         cerr << "Error: EVP_CIPHER_CTX_ctrl Failed\n"; return -1;
     }
+    // BIO_dump_fp(stdout, (char*)*decryptedtext, decryptedtext_len);
+    cout <<"====================inside enc=================================="<<endl;
+    cout <<"==================cipher txt===================================="<<endl;
+    BIO_dump_fp(stdout, (char*)*ciphertext, ciphertext_len);
+    cout <<"=====================tag================================="<<endl;
+    BIO_dump_fp(stdout, (char*)*tag, Security::GCM_TAG_LEN);
+    cout <<"=======================iv==============================="<<endl;
+    BIO_dump_fp(stdout, (char*)iv, Security::GCM_IV_LEN);
+    cout <<"=====================key================================="<<endl;
+    BIO_dump_fp(stdout, (char*)key, 16);
+    cout <<"===================aad==================================="<<endl;
+    BIO_dump_fp(stdout, (char*)aad, aad_len);
+    cout <<"===================key==================================="<<endl;
+    BIO_dump_fp(stdout, (char*)key, strlen((char*)key));
+
     /* Clean up */
     EVP_CIPHER_CTX_free(ctx);
     return ciphertext_len;
@@ -274,6 +289,7 @@ int Security::gcm_decrypt(unsigned char * aad, int aad_len, unsigned char * ciph
 
     // Create and initialise the context
     if(!(ctx = EVP_CIPHER_CTX_new())){ free(*decryptedtext); cerr << "Error: EVP_CIPHER_CTX_new returned NULL\n"; return -1; }
+
     // Initialise the encryption operation.
     if(1 != EVP_DecryptInit(ctx, GCM_CIPHER, key, iv)) { free(*decryptedtext);EVP_CIPHER_CTX_cleanup(ctx);cerr << "Error: EVP_DecryptInit Failed\n"; return -1; }
 
@@ -292,7 +308,7 @@ int Security::gcm_decrypt(unsigned char * aad, int aad_len, unsigned char * ciph
      */
     ret = EVP_DecryptFinal(ctx, *decryptedtext + len, &len);
     // cout <<"===================decryptedtext==================================="<<endl;
-    BIO_dump_fp(stdout, (char*)*decryptedtext, decryptedtext_len);
+    // BIO_dump_fp(stdout, (char*)*decryptedtext, decryptedtext_len);
     cout <<"====================inside dec=================================="<<endl;
     cout <<"==================cipher txt===================================="<<endl;
     BIO_dump_fp(stdout, (char*)ciphertext, ciphertext_len);
@@ -308,7 +324,7 @@ int Security::gcm_decrypt(unsigned char * aad, int aad_len, unsigned char * ciph
     BIO_dump_fp(stdout, (char*)key, strlen((char*)key));
 
     /* Clean up */
-    EVP_CIPHER_CTX_cleanup(ctx);
+    //EVP_CIPHER_CTX_cleanup(ctx);
     if(ret > 0) {
         /* Success */
         decryptedtext_len += len;

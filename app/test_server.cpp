@@ -34,10 +34,10 @@ int main(int argc , char* argv[]) {
     sina->set_peer_username("lorenzo");
     online_users.push_back(sina);
 
-    User * lorenzo = new User("lorenzo", "sina", "127.0.0.1", port, -1);
-    unsigned char* server_client_2 = (unsigned char*)"0987654321098765";
-    lorenzo->set_server_client_key(server_client_2 ,16);
-    online_users.push_back(lorenzo);
+    // User * lorenzo = new User("lorenzo", "sina", "127.0.0.1", port, -1);
+    // unsigned char* server_client_2 = (unsigned char*)"0987654321098765";
+    // lorenzo->set_server_client_key(server_client_2 ,16);
+    // online_users.push_back(lorenzo);
   
          
     //create a master socket
@@ -148,6 +148,7 @@ int main(int argc , char* argv[]) {
                 //Message::handle_message_0(buffer, new_socket, inet_ntoa(address.sin_addr), ntohs(address.sin_port), online_users);
                 //free(buffer);
             }
+            free(buffer);
            
         }  
         //else its some IO operation on some other socket
@@ -185,7 +186,7 @@ int main(int argc , char* argv[]) {
                         case 5:
                             cout << "handling message 5 from " << usr->get_username()<<endl;
                             //BIO_dump_fp(stdout, buffer, valread);
-                            if(Message::handle_message_5(buffer, valread, usr) == -1){
+                            if(Message::handle_message_5(buffer, valread, sina) == -1){
                                 cerr <<"Error in handling message 5" << endl;
                                 break;
                             }
