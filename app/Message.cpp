@@ -191,7 +191,6 @@ int Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16_
 
 void Message::handle_message_1(char *buffer, int buffer_len, User *client) {
     //parsing the incoming message
-    BIO_dump_fp(stdout, buffer, buffer_len);
     uint16_t counter_server = (uint16_t) *(buffer+MESSAGE_TYPE_LENGTH);
     if(counter_server != client->get_sent_counter()) {
         cerr<<"Server counter verification failed"<<endl;
@@ -209,10 +208,6 @@ void Message::handle_message_1(char *buffer, int buffer_len, User *client) {
     
     char* server_dh_pubkey_serialized = (char*) malloc(DH_PUBK_LENGTH);
     memcpy(server_dh_pubkey_serialized, buffer+MESSAGE_TYPE_LENGTH + COUNTER_LENGTH+Security::GCM_IV_LEN+server_certificate_serialized.length()+1, DH_PUBK_LENGTH);
-    //BIO_dump_fp(stdout, server_dh_pubkey_serialized, DH_PUBK_LENGTH);
-    //string server_dh_pubkey_serialized(buffer+MESSAGE_TYPE_LENGTH + COUNTER_LENGTH+Security::GCM_IV_LEN+server_certificate_serialized.length()+1);
-    //BIO_dump_fp(stdout, test, DH_PUBK_LENGTH);
-    //cout<<endl<<endl<<test<<endl;
 
     unsigned char* tag = (unsigned char*)buffer+buffer_len-Security::GCM_TAG_LEN;
     
@@ -274,7 +269,7 @@ void Message::handle_message_1(char *buffer, int buffer_len, User *client) {
     if(X509_get0_pubkey(cert)==NULL) {
         cout<<"no key in certificate"<<endl;
     }
-
+    
     //get server public key
     client->set_server_pubk(X509_get_pubkey(cert));
 
