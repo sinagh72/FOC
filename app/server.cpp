@@ -106,7 +106,7 @@ int main(int argc , char* argv[]) {
         max_sd = master_socket;  
              
         //add child sockets to set 
-        for ( vector<User>::iterator it= online_users.begin(); it != online_users.end() ; i++)
+        for ( vector<User>::iterator it= online_users.begin(); it != online_users.end() ; it++)
         {  
             //socket descriptor
             int sd;

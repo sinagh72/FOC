@@ -184,7 +184,7 @@ public:
     }
 
     //return the username
-    string get_username(){
+    string get_username() const{
         return this->username;
     }
     //return the ip
@@ -196,7 +196,7 @@ public:
         return this->port;
     }
     //return the key between client and server
-    unsigned char * get_server_client_key(){
+    unsigned char * get_server_client_key() const{
         return this->server_client_key;
     }
     //return the key between clients

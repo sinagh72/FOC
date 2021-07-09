@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <algorithm>
 #include "utility.h"
+#include <sys/socket.h>
 
 //sent by the client A
 unsigned int Message::send_message_5(char**message_buf, User* my_user, string receiver_username){
@@ -90,9 +91,12 @@ unsigned int Message::send_message_5(char**message_buf, User* my_user, string re
     memcpy(*message_buf + aad_len, gcm_ciphertext, gcm_ciphertext_len);
     memcpy(*message_buf + aad_len + gcm_ciphertext_len, tag, Security::GCM_TAG_LEN);
 
-    ///TODO:Send the data to the network!
+    if( send(my_user->get_socket(), *message_buf, message_buf_len, 0) != message_buf_len){
+        cerr <<"Error: sending message 5 over the socket failed" << endl;
+        return -1;
+    }
+    BIO_dump_fp(stdout, (char*)aad, aad_len);
 
-    ////
     my_user->increment_sent_counter();
     free(aad);
     free(iv);
@@ -115,6 +119,7 @@ int Message::handle_message_5(char * message, size_t message_len, User* sender){
     string gcm_iv = msg.substr(COUNTER_LENGTH + MESSAGE_TYPE_LENGTH, Security::GCM_IV_LEN);
     unsigned char *decryptedtext{nullptr};
     int decryptedtext_len = 0;
+    BIO_dump_fp(stdout, aad.c_str(), aad.length());
     if(-1==(decryptedtext_len = Security::gcm_decrypt((unsigned char*)aad.c_str(), aad.length(), 
                                 (unsigned char*)ciphertext.c_str(), ciphertext.length(),
                                 sender->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &decryptedtext, 
@@ -188,8 +193,12 @@ unsigned int Message::send_message_6(char**message_buf, User* sender, User* rece
     memcpy(*message_buf, aad, aad_len);
     memcpy(*message_buf + aad_len, gcm_ciphertext, gcm_ciphertext_len);
     memcpy(*message_buf + aad_len + gcm_ciphertext_len, tag, Security::GCM_TAG_LEN);
+
+    if(send(receiver->get_socket(), *message_buf, message_buf_len, 0) != message_buf_len){
+        cerr <<"Error: sending message 6 over the socket failed" << endl;
+        return -1;
+    }
     cout << "Server sends message 6 to " << receiver->get_username() <<endl;
-    ///TODO:Send the data to the network!
 
     ////
     receiver->increment_received_counter();
