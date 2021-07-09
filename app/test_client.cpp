@@ -1,16 +1,8 @@
-#include <cstdlib>
-#include <openssl/bio.h>
 #include <openssl/ossl_typ.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <string>
-#include <sys/socket.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <string.h>
-#include "user.h"
-#include <iostream>
-#include <vector>
 #include <filesystem>
 #include <fstream>
 #include <sys/stat.h>
@@ -29,25 +21,25 @@ bool establishe_handshake_clients(User * my_user, string receiver_username){
         cout << "Error: sending message 5 failed" <<endl;
         return false;
     }
-    ///TODO:
-    char buffer_8[MESSAGE_8_LENGTH] = {0};
-    val_read = read(my_user->get_socket() , buffer_8, MESSAGE_8_LENGTH);
-    if(val_read == -1){
-        ///TODO:error in reading
-        return false;
-    }
-    ///
-    if(-1 == Message::handle_message_8(buffer_8, MESSAGE_8_LENGTH, my_user)){
-         ///TODO:error in handling message 8
-        return false;
+    // ///TODO:
+    // char buffer_8[MESSAGE_8_LENGTH] = {0};
+    // val_read = read(my_user->get_socket() , buffer_8, MESSAGE_8_LENGTH);
+    // if(val_read == -1){
+    //     ///TODO:error in reading
+    //     return false;
+    // }
+    // ///
+    // if(-1 == Message::handle_message_8(buffer_8, MESSAGE_8_LENGTH, my_user)){
+    //      ///TODO:error in handling message 8
+    //     return false;
 
-    }
-    char *message_buf_9 {nullptr};
-    if(0 == Message::send_message_9(&message_buf_9, my_user)){
-         ///TODO:error in sending message 9
-        return false;
+    // }
+    // char *message_buf_9 {nullptr};
+    // if(0 == Message::send_message_9(&message_buf_9, my_user)){
+    //      ///TODO:error in sending message 9
+    //     return false;
 
-    }
+    // }
     return true;
 }
 
@@ -120,8 +112,8 @@ int main(int argc, char const *argv[])
     }
     //creating the user
     User * my_user = new User(username, password, IP, PORT, sock);
-    unsigned char* server_client_1 = (unsigned char*)"1234567890123456";
-    my_user->set_server_client_key(server_client_1 ,16);
+    unsigned char key_gcm[]="1234567890123456";
+    my_user->set_server_client_key(key_gcm ,16);
     //send message 0
     // char *buffer_0 {nullptr};
     // int buffer_len = Message::send_message_0(&buffer_0, my_user);

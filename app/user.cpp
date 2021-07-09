@@ -1,6 +1,4 @@
 #include "user.h"
-#include <cstddef>
-
 
 //constructors
 User::User(){
@@ -81,8 +79,8 @@ void User::clear(){
         free(this->clients_key);
     if(this->client_server_pubk_char)
         free(client_server_pubk_char);
-    if(this->server_client_key)
-        free(server_client_key);
+    // if(this->server_client_key)
+    //     free(server_client_key);
 
 }
 User::~User(){
@@ -94,7 +92,7 @@ User::~User(){
         free(this->clients_key);
     if(this->client_server_pubk_char)
         free(client_server_pubk_char);    
-    if(this->server_client_key)
-        free(server_client_key);
+    // if(this->server_client_key)
+    //     free(server_client_key);
 }
 

@@ -1,15 +1,10 @@
 #include <cstdint>
 #include <errno.h> 
-#include <iostream>
-#include <openssl/bio.h>
 #include <unistd.h>   //close 
 #include <arpa/inet.h>    //close 
-#include <sys/types.h> 
-#include <sys/socket.h> 
 #include <netinet/in.h> 
 #include <sys/time.h> //FD_SET, FD_ISSET, FD_ZERO macros
-#include "message_sina.h"
-#include "utility.h"
+#include "Message.h"
 
 #define TRUE   1 
 #define FALSE  0 
@@ -34,8 +29,8 @@ int main(int argc , char* argv[]) {
     fd_set readfds;
 
     User * sina = new User("sina", "sina", "127.0.0.1", port, -1);
-    unsigned char* server_client_1 = (unsigned char*)"1234567890123456";
-    sina->set_server_client_key(server_client_1 ,16);
+    unsigned char key_gcm[]="1234567890123456";
+    sina->set_server_client_key(key_gcm ,16);
     sina->set_peer_username("lorenzo");
     online_users.push_back(sina);
 
@@ -99,7 +94,7 @@ int main(int argc , char* argv[]) {
         max_sd = master_socket;  
              
         //add child sockets to set 
-        for ( vector<User*>::iterator it = online_users.begin(); it != online_users.end() ; it++)
+        for (vector<User*>::iterator it = online_users.begin(); it != online_users.end() ; it++)
         {  
             //socket descriptor
             int sd;
@@ -156,14 +151,14 @@ int main(int argc , char* argv[]) {
            
         }  
         //else its some IO operation on some other socket
-        for(vector<User*>::iterator it = online_users.begin(); it != online_users.end() ; it++){
-            int sd = (*it)->get_socket();  
+        for(User* usr : online_users){
+
+            int sd = usr->get_socket();  
             if (FD_ISSET( sd , &readfds)){  
                 //Check if it was for closing , and also read the 
                 //incoming message 
                 char *buffer = (char*)malloc(10100);
                 valread = read( sd , buffer, 10100);
-                cout << buffer[0] <<endl;
                 if (valread == 0){  
                     //Somebody disconnected , get his details and print 
                     getpeername(sd , (struct sockaddr*)&address , \
@@ -174,7 +169,7 @@ int main(int argc , char* argv[]) {
                     //Close the socket and mark as 0 in list for reuse 
                     close( sd ); 
                     FD_CLR(sd , &readfds); 
-                    (*it)->clear();
+                    usr->clear();
                     break;  
                 }  
                 else {  
@@ -188,9 +183,9 @@ int main(int argc , char* argv[]) {
                             // Message::handle_message_4(buffer, valread, &user);
                             break;
                         case 5:
-                            cout << "handling message 5 from " << (*it)->get_username()<<endl;
-                            BIO_dump_fp(stdout, buffer, valread);
-                            if(Message::handle_message_5(buffer, valread, (*it)) == -1){
+                            cout << "handling message 5 from " << usr->get_username()<<endl;
+                            //BIO_dump_fp(stdout, buffer, valread);
+                            if(Message::handle_message_5(buffer, valread, usr) == -1){
                                 cerr <<"Error in handling message 5" << endl;
                                 break;
                             }

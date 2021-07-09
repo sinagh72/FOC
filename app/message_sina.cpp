@@ -95,6 +95,15 @@ unsigned int Message::send_message_5(char**message_buf, User* my_user, string re
         cerr <<"Error: sending message 5 over the socket failed" << endl;
         return -1;
     }
+    cout <<"======================================================"<<endl;
+    BIO_dump_fp(stdout, (char*)gcm_ciphertext, gcm_ciphertext_len);
+    cout <<"======================================================"<<endl;
+    BIO_dump_fp(stdout, (char*)tag, Security::GCM_TAG_LEN);
+    cout <<"======================================================"<<endl;
+    BIO_dump_fp(stdout, (char*)iv, Security::GCM_IV_LEN);
+    cout <<"======================================================"<<endl;
+    BIO_dump_fp(stdout, (char*)my_user->get_server_client_key(), 16);
+    cout <<"======================================================"<<endl;
     BIO_dump_fp(stdout, (char*)aad, aad_len);
 
     my_user->increment_sent_counter();
@@ -119,7 +128,17 @@ int Message::handle_message_5(char * message, size_t message_len, User* sender){
     string gcm_iv = msg.substr(COUNTER_LENGTH + MESSAGE_TYPE_LENGTH, Security::GCM_IV_LEN);
     unsigned char *decryptedtext{nullptr};
     int decryptedtext_len = 0;
+    cout <<"======================================================"<<endl;
+    BIO_dump_fp(stdout, ciphertext.c_str(), ciphertext.length());
+    cout <<"======================================================"<<endl;
+    BIO_dump_fp(stdout, tag.c_str(), tag.length());
+    cout <<"======================================================"<<endl;
+    BIO_dump_fp(stdout, gcm_iv.c_str(), gcm_iv.length());
+    cout <<"======================================================"<<endl;
+    BIO_dump_fp(stdout, (char*)sender->get_server_client_key(), 16);
+    cout <<"======================================================"<<endl;
     BIO_dump_fp(stdout, aad.c_str(), aad.length());
+
     if(-1==(decryptedtext_len = Security::gcm_decrypt((unsigned char*)aad.c_str(), aad.length(), 
                                 (unsigned char*)ciphertext.c_str(), ciphertext.length(),
                                 sender->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &decryptedtext, 

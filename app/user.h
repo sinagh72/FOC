@@ -71,8 +71,8 @@ public:
     //set the key between clients
     void set_clients_key(unsigned char * key, size_t key_len){
         if(!key){
-            if(!this->clients_key) free(this->clients_key);
-            this->clients_key = key;
+            if(!this->clients_key) 
+                free(this->clients_key);
             return;
         }
         if(!this->clients_key){
@@ -111,8 +111,8 @@ public:
     //set public key for the server_client communication 
     void set_clients_pubk_char(unsigned char*dh_pubk_char){
         if(!dh_pubk_char){
-            if(!this->clients_pubk_char) free(this->clients_pubk_char);
-            this->clients_pubk_char = dh_pubk_char;
+            if(!this->clients_pubk_char) 
+                free(this->clients_pubk_char);
             return;
         }
 
@@ -124,8 +124,8 @@ public:
         //set public key for the client_client communication 
     void set_client_server_pubk_char(unsigned char*dh_pubk_char){
         if(!dh_pubk_char){
-            if(!this->client_server_pubk_char) free(this->client_server_pubk_char);
-            this->client_server_pubk_char = dh_pubk_char;
+            if(!this->client_server_pubk_char) 
+                free(this->client_server_pubk_char);
             return;
         }
 
@@ -150,8 +150,8 @@ public:
      //set public key char
     void set_peer_pubk_char(unsigned char*peer_pubk_char){
         if(!peer_pubk_char){
-            if(!this->peer_pubk_char) free(this->peer_pubk_char);
-            this->peer_pubk_char = peer_pubk_char;
+            if(!this->peer_pubk_char) 
+                free(this->peer_pubk_char);
             return;
         }
         if(!this->peer_pubk_char){
@@ -196,7 +196,7 @@ public:
         return this->port;
     }
     //return the key between client and server
-    unsigned char * get_server_client_key() const{
+    unsigned char * get_server_client_key(){
         return this->server_client_key;
     }
     //return the key between clients
