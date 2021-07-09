@@ -41,7 +41,7 @@ int Message::send_message_0(char **buffer, User* my_user) {
     return message_len;
 }
 
-int Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16_t port, vector <User*> online_users) {
+int Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16_t port, vector <User> online_users) {
 
     string ip_str(ip);
     //extract the username
@@ -68,7 +68,7 @@ int Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16_
     EVP_PKEY_free(evpPkey);
     User *client = new User(username,"sina",ip, port, client_socket);
     client->set_status(CONNECTING);
-    online_users.insert(online_users.begin(), client);
+    online_users.insert(online_users.begin(), *client);
     //load server certificate from file and serialize it
     X509* cert;
     if(!Security::load_server_certificate(&cert)) {
@@ -82,6 +82,13 @@ int Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16_
         X509_free(cert);
         return -1;
     };
+
+    //debug
+    cout<<"CERTIFICATE:"<<endl;
+    BIO_dump_fp(stdout, (char*)certificate_serialized, cert_size);
+
+
+
 
     // TODO : use functions
     //server DH pubkey serialization
@@ -186,6 +193,7 @@ int Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16_
 
 void Message::handle_message_1(char *buffer, int buffer_len, User *client) {
     //parsing the incoming message
+    BIO_dump_fp(stdout, buffer, buffer_len);
     uint16_t counter_server = (uint16_t) *(buffer+MESSAGE_TYPE_LENGTH);
     if(counter_server != client->get_sent_counter()) {
         cerr<<"Server counter verification failed"<<endl;
@@ -197,6 +205,9 @@ void Message::handle_message_1(char *buffer, int buffer_len, User *client) {
     memcpy(iv, buffer+MESSAGE_TYPE_LENGTH + COUNTER_LENGTH, Security::GCM_IV_LEN);
 
     string server_certificate_serialized(buffer+MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN);
+    cout<<"CERTIFICATE:"<<endl;
+    BIO_dump_fp(stdout, server_certificate_serialized.c_str(), server_certificate_serialized.length());
+    
     
     char* server_dh_pubkey_serialized = (char*) malloc(DH_PUBK_LENGTH);
     memcpy(server_dh_pubkey_serialized, buffer+MESSAGE_TYPE_LENGTH + COUNTER_LENGTH+Security::GCM_IV_LEN+server_certificate_serialized.length()+1, DH_PUBK_LENGTH);
@@ -221,6 +232,7 @@ void Message::handle_message_1(char *buffer, int buffer_len, User *client) {
         return;
     }
 
+    
     // compute symmetric key with DH pubkey
     unsigned char* skey = nullptr;
     int skey_len = Security::generate_dh_key(client->get_client_server_pubk(), server_dh_pubkey, &skey);
@@ -248,7 +260,7 @@ void Message::handle_message_1(char *buffer, int buffer_len, User *client) {
 
     int signature_len = Security::gcm_decrypt((unsigned char*)buffer, aad_len, ciphertext,ciphertext_len, skey, iv, &signature, tag);
 
-
+   
     // server certificate validation
     X509* cert = nullptr;
     Security::X509_deserialization((unsigned char*)server_certificate_serialized.c_str(), &cert);
