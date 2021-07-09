@@ -143,7 +143,6 @@ int main(int argc , char* argv[]) {
             }
             char* buffer=(char*) malloc(10100);
             valread = read(new_socket, buffer, 10100);
-            BIO_dump_fp(stdout, buffer, valread);
             //check for message type 0
             if(buffer[0]==0){
                 Message::handle_message_0(buffer, new_socket, inet_ntoa(address.sin_addr), ntohs(address.sin_port), online_users);

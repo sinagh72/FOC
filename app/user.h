@@ -16,16 +16,16 @@ private:
     uint16_t port;
     string password;
     int socket;
-    unsigned char* server_client_key; // the key between the server and the client
-    unsigned char* clients_key; // the key between two clients
-    EVP_PKEY* clients_pubk; // dh pub key for generating a'
-    unsigned char * clients_pubk_char; // dh pub key for generating a' in characters
-    EVP_PKEY* client_server_pubk; //dh pub key for generating a
-    unsigned char * client_server_pubk_char;// dh pub key for generating a in characters
-    EVP_PKEY* server_pubk;// dh pub key of the server or g^b
-    unsigned char *server_pubk_char;//h pub key of the server or g^b in characters
-    EVP_PKEY* peer_pubk;// dh pub key of other peer or g^b'
-    unsigned char *peer_pubk_char;// dh pub key of other peer or g^b' in characters
+    unsigned char* server_client_key{nullptr}; // the key between the server and the client
+    unsigned char* clients_key{nullptr}; // the key between two clients
+    EVP_PKEY* clients_pubk{nullptr}; // dh pub key for generating a'
+    unsigned char * clients_pubk_char{nullptr}; // dh pub key for generating a' in characters
+    EVP_PKEY* client_server_pubk{nullptr}; //dh pub key for generating a
+    unsigned char * client_server_pubk_char{nullptr};// dh pub key for generating a in characters
+    EVP_PKEY* server_pubk{nullptr};// dh pub key of the server or g^b
+    unsigned char *server_pubk_char{nullptr};//h pub key of the server or g^b in characters
+    EVP_PKEY* peer_pubk{nullptr};// dh pub key of other peer or g^b'
+    unsigned char *peer_pubk_char{nullptr};// dh pub key of other peer or g^b' in characters
     uint16_t received_counter{0};//server to client counter: #messages that the user has received from the server
     uint16_t sent_counter{0};//client to server counter: #messages that the user has sent to the server
     string peer_username;//the username of the user that we are communicating with
@@ -59,7 +59,7 @@ public:
     //set the key between client and server
     void set_server_client_key(unsigned char * key, size_t key_len){
         if(!key){
-            if(!this->server_client_key) free(this->server_client_key);
+            if(this->server_client_key != nullptr) free(this->server_client_key);
             this->server_client_key = key;
             return;
         }
