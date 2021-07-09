@@ -5,14 +5,10 @@
 #include "user.h"
 #include "Security.h"
 #include <stdint.h>
-#include <cstring>
-#include <openssl/conf.h>
-#include <openssl/dh.h>
-#include <openssl/evp.h>
-#include <openssl/pem.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include "utility.h"
+#include <cstddef>
 
 using namespace std;
 
