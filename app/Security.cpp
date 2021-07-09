@@ -628,7 +628,6 @@ bool Security::certificate_verification(X509 *cert) {
     }
     free(tmp);
     free(tmp2);
-    X509_free(cert);
     X509_STORE_free(store);
     X509_free(cacert); // already deallocated by X509_STORE_free()
     X509_CRL_free(crl); // already deallocated by X509_STORE_free()
