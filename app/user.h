@@ -2,6 +2,7 @@
 #define APP_USER_H
 
 #include "Security.h"
+#include <openssl/bio.h>
 
 using namespace std;
 
@@ -66,7 +67,8 @@ public:
         if(!this->server_client_key){
             this->server_client_key = (unsigned char*)malloc(key_len);
         }
-        memcpy(this->server_client_key,key, key_len);
+        //memcpy(this->server_client_key, key, key_len);
+        this->server_client_key = key;
     }
     //set the key between clients
     void set_clients_key(unsigned char * key, size_t key_len){

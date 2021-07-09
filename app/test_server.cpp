@@ -189,7 +189,7 @@ int main(int argc , char* argv[]) {
                             break;
                         case 5:
                             cout << "handling message 5 from " << (*it)->get_username()<<endl;
-                            BIO_dump_fp(stdout, buffer, valread);
+                            //BIO_dump_fp(stdout, buffer, valread);
                             if(Message::handle_message_5(buffer, valread, (*it)) == -1){
                                 cerr <<"Error in handling message 5" << endl;
                                 break;

@@ -293,7 +293,6 @@ int Security::gcm_decrypt(unsigned char * aad, int aad_len, unsigned char * ciph
     ret = EVP_DecryptFinal(ctx, *decryptedtext + len, &len);
     /* Clean up */
     EVP_CIPHER_CTX_cleanup(ctx);
-
     if(ret > 0) {
         /* Success */
         decryptedtext_len += len;

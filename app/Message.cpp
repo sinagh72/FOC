@@ -84,8 +84,8 @@ int Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16_
     };
 
     //debug
-    cout<<"CERTIFICATE:"<<endl;
-    BIO_dump_fp(stdout, (char*)certificate_serialized, cert_size);
+    // cout<<"CERTIFICATE:"<<endl;
+    // BIO_dump_fp(stdout, (char*)certificate_serialized, cert_size);
 
 
 
@@ -98,7 +98,6 @@ int Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16_
     //generate our own DH pubkey
     Security::generate_dh_pubk(&dh_pubkey_server);
     dh_pubkey_server_size = Security::EVP_PKEY_to_chars(dh_pubkey_server,&dh_pubkey_server_serialized);
-
     //concatenate and sign DH pubkey
     char* dh_param_to_sign =(char*) malloc(2*DH_PUBK_LENGTH);
     if(!dh_param_to_sign) {
@@ -124,9 +123,9 @@ int Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16_
         cerr<<"Error generating shared key"<<endl;
         return -1;
     }
+
     client->set_server_client_key(shared_key, shared_key_len);
-    EVP_PKEY_free(dh_pubkey_server);
-    EVP_PKEY_free(peer_pubk);
+    
 
     //generate IV
     unsigned char* iv= nullptr;
@@ -189,6 +188,8 @@ int Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16_
     free(dh_pubkey_server_serialized);
     free(tag);
     free(iv);
+    EVP_PKEY_free(dh_pubkey_server);
+    EVP_PKEY_free(peer_pubk);
     return msg_buffer_len;
 }
 
