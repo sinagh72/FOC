@@ -177,6 +177,9 @@ int Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16_
     memcpy(msg_buffer, aad, aad_len);
     memcpy(msg_buffer+aad_len, ciphertext, ciphertext_len);
     memcpy(msg_buffer+aad_len+ciphertext_len, tag, Security::GCM_TAG_LEN);
+
+    cout<<"MESSAGe SENT:"<<endl;
+    BIO_dump_fp(stdout, msg_buffer, msg_buffer_len);
     //send the message to the client
     send(client->get_socket(), msg_buffer, msg_buffer_len, 0);
     free(msg_buffer);

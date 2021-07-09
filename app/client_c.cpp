@@ -117,9 +117,13 @@ int main(int argc, char const *argv[])
     }
     //handle message type 1
     valread = read( sock , buffer, 10100);
+    cout<<valread<<endl;
+    BIO_dump_fp(stdout, buffer, valread);
+
     ///TODO:follow this steps
     Message::handle_message_1(buffer, valread, my_user);
     free(buffer);
+
     //now the key between server and the client is established
     cout <<"Secure Connection is Established" <<endl;
     string input;
