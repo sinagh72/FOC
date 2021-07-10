@@ -25,7 +25,7 @@ static string trim(const string &s) {
 }
 
 static void client_menu_0(){
-    cout << "Main Menu:\n" << "Please Select One Option:\n" << "1. Check Online Users\n" << "2. Listening\n" 
+    cout << "Main Menu:\n" << "Please Select an Option:\n" << "1. Check Online Users\n" << "2. Listening\n" 
     <<"0. Log out" <<endl;
 }
 
@@ -47,11 +47,14 @@ static void print_list_online_users(){
 }
 
 
-static User* find_user(vector<User>*users, string receiver){
-    for (int i = 0; i < users->size(); i++) {
-        if(users->at(i).get_username().compare(receiver) == 0){
-            return &users->at(i);
+static User* find_user(string username, vector<User*>*users){
+    for (User* usr : *users) // access by reference to avoid copying
+    {  
+        if (usr->get_username().compare(username)==0)
+        {   
+            return usr;
         }
     }
-    return nullptr;
+    cerr<< "Error: User '" << username << "' not found!" <<endl;
+    return NULL;
 }

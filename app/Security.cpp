@@ -42,12 +42,6 @@ int Security::encryption_AES(unsigned char *plaintext, int plaintext_len,
 
     total_len += update_len;
     int ciphertext_len = total_len;
-
-    
-    // cout << "Encrypted:\n";
-    // BIO_dump_fp (stdout, (const char *)ciphertext, ciphertext_len);
-    //delete the context and the plain_text from memory
-    EVP_CIPHER_CTX_free(ctx);
     return ciphertext_len;
 
 }
@@ -80,14 +74,17 @@ int Security::decryption_AES(unsigned char *ciphertext, int ciphertext_len, unsi
 
     //Encrypt Final. Finalize the encryption and adds the padding
     if (1 != EVP_DecryptFinal(ctx, *decryptedtext+total_len, &update_len)){ 
-        cerr << "Error: EVP_DecryptFinal Failed\n"; free(*decryptedtext); EVP_CIPHER_CTX_free(ctx); return -1; 
+        cerr << "Error: EVP_DecryptFinal Failed\n"; free(*decryptedtext); EVP_CIPHER_CTX_free(ctx);
+        return -1; 
     }
 
     total_len += update_len;
-    int plaintext_len = total_len;
+    int decryptedtext_len = total_len;
     //delete the context and the plain_text from memory
     EVP_CIPHER_CTX_free(ctx);
-    return plaintext_len;
+
+
+    return decryptedtext_len;
 }
 
 int Security::signature(string prvk_filename, unsigned char * password, 
@@ -258,19 +255,19 @@ int Security::gcm_encrypt(unsigned char * aad, int aad_len, unsigned char * plai
         cerr << "Error: EVP_CIPHER_CTX_ctrl Failed\n"; return -1;
     }
     // BIO_dump_fp(stdout, (char*)*decryptedtext, decryptedtext_len);
-    cout <<"====================inside enc=================================="<<endl;
-    cout <<"==================cipher txt===================================="<<endl;
-    BIO_dump_fp(stdout, (char*)*ciphertext, ciphertext_len);
-    cout <<"=====================tag================================="<<endl;
-    BIO_dump_fp(stdout, (char*)*tag, Security::GCM_TAG_LEN);
-    cout <<"=======================iv==============================="<<endl;
-    BIO_dump_fp(stdout, (char*)iv, Security::GCM_IV_LEN);
-    cout <<"=====================key================================="<<endl;
-    BIO_dump_fp(stdout, (char*)key, 16);
-    cout <<"===================aad==================================="<<endl;
-    BIO_dump_fp(stdout, (char*)aad, aad_len);
-    cout <<"===================key==================================="<<endl;
-    BIO_dump_fp(stdout, (char*)key, strlen((char*)key));
+    // cout <<"====================inside enc=================================="<<endl;
+    // cout <<"==================cipher txt===================================="<<endl;
+    // BIO_dump_fp(stdout, (char*)*ciphertext, ciphertext_len);
+    // cout <<"=====================tag================================="<<endl;
+    // BIO_dump_fp(stdout, (char*)*tag, Security::GCM_TAG_LEN);
+    // cout <<"=======================iv==============================="<<endl;
+    // BIO_dump_fp(stdout, (char*)iv, Security::GCM_IV_LEN);
+    // cout <<"=====================key================================="<<endl;
+    // BIO_dump_fp(stdout, (char*)key, 16);
+    // cout <<"===================aad==================================="<<endl;
+    // BIO_dump_fp(stdout, (char*)aad, aad_len);
+    // cout <<"===================key==================================="<<endl;
+    // BIO_dump_fp(stdout, (char*)key, strlen((char*)key));
 
     /* Clean up */
     EVP_CIPHER_CTX_free(ctx);
@@ -309,19 +306,19 @@ int Security::gcm_decrypt(unsigned char * aad, int aad_len, unsigned char * ciph
     ret = EVP_DecryptFinal(ctx, *decryptedtext + len, &len);
     // cout <<"===================decryptedtext==================================="<<endl;
     // BIO_dump_fp(stdout, (char*)*decryptedtext, decryptedtext_len);
-    cout <<"====================inside dec=================================="<<endl;
-    cout <<"==================cipher txt===================================="<<endl;
-    BIO_dump_fp(stdout, (char*)ciphertext, ciphertext_len);
-    cout <<"=====================tag================================="<<endl;
-    BIO_dump_fp(stdout, (char*)tag, Security::GCM_TAG_LEN);
-    cout <<"=======================iv==============================="<<endl;
-    BIO_dump_fp(stdout, (char*)iv, Security::GCM_IV_LEN);
-    cout <<"=====================key================================="<<endl;
-    BIO_dump_fp(stdout, (char*)key, 16);
-    cout <<"===================aad==================================="<<endl;
-    BIO_dump_fp(stdout, (char*)aad, aad_len);
-    cout <<"===================key==================================="<<endl;
-    BIO_dump_fp(stdout, (char*)key, strlen((char*)key));
+    // cout <<"====================inside dec=================================="<<endl;
+    // cout <<"==================cipher txt===================================="<<endl;
+    // BIO_dump_fp(stdout, (char*)ciphertext, ciphertext_len);
+    // cout <<"=====================tag================================="<<endl;
+    // BIO_dump_fp(stdout, (char*)tag, Security::GCM_TAG_LEN);
+    // cout <<"=======================iv==============================="<<endl;
+    // BIO_dump_fp(stdout, (char*)iv, Security::GCM_IV_LEN);
+    // cout <<"=====================key================================="<<endl;
+    // BIO_dump_fp(stdout, (char*)key, 16);
+    // cout <<"===================aad==================================="<<endl;
+    // BIO_dump_fp(stdout, (char*)aad, aad_len);
+    // cout <<"===================key==================================="<<endl;
+    // BIO_dump_fp(stdout, (char*)key, strlen((char*)key));
 
     /* Clean up */
     //EVP_CIPHER_CTX_cleanup(ctx);
@@ -385,7 +382,6 @@ DH * Security::get_dh2048(void)
     }
     return dh;
 }
-
 int Security::generate_dh_pubk(EVP_PKEY ** pubk){
     EVP_PKEY *params;
     if(NULL == (params = EVP_PKEY_new())) { cerr << "Error: EVP_PKEY_new returned NULL\n"; return -1; }
@@ -513,7 +509,6 @@ bool Security::generate_iv(unsigned char**iv, int iv_len){
     RAND_bytes((unsigned char*)iv[0], iv_len);
     return true;
 }
-
 bool Security::load_server_certificate(X509 **cert) {
     FILE* cert_file = fopen("./certificates/ChatApp_cert.pem", "r");
     if(!cert_file)  {

@@ -4,13 +4,14 @@
 #include <arpa/inet.h>    //close 
 #include <netinet/in.h> 
 #include <sys/time.h> //FD_SET, FD_ISSET, FD_ZERO macros
-#include "Message.h"
+#include "message_sina.h"
 
 #define TRUE   1 
 #define FALSE  0 
 
 using namespace std;
-     
+
+
 int main(int argc , char* argv[]) {
     //
     uint16_t port = 8888;
@@ -31,13 +32,12 @@ int main(int argc , char* argv[]) {
     User * sina = new User("sina", "sina", "127.0.0.1", port, -1);
     unsigned char key_gcm[]="1234567890123456";
     sina->set_server_client_key(key_gcm ,16);
-    sina->set_peer_username("lorenzo");
     online_users.push_back(sina);
 
-    // User * lorenzo = new User("lorenzo", "sina", "127.0.0.1", port, -1);
-    // unsigned char* server_client_2 = (unsigned char*)"0987654321098765";
-    // lorenzo->set_server_client_key(server_client_2 ,16);
-    // online_users.push_back(lorenzo);
+    User * lore = new User("lore", "sina", "127.0.0.1", port, -1);
+    unsigned char* server_client_2 = (unsigned char*)"0987654321098765";
+    lore->set_server_client_key(server_client_2 ,16);
+    online_users.push_back(lore);
   
          
     //create a master socket
@@ -138,7 +138,7 @@ int main(int argc , char* argv[]) {
                 [&tmp](const User *obj) {return obj->get_username() == tmp;});
                 (*it)->set_socket(new_socket);
             }else if (buffer[0] == 'l') {
-                string tmp = "lorenzo";
+                string tmp = "lore";
                 auto it = find_if(online_users.begin(), online_users.end(), 
                 [&tmp](const User *obj) {return obj->get_username() == tmp;});
                 (*it)->set_socket(new_socket);
@@ -152,9 +152,8 @@ int main(int argc , char* argv[]) {
            
         }  
         //else its some IO operation on some other socket
-        for(User* usr : online_users){
-
-            int sd = usr->get_socket();  
+        for(User* sender : online_users){
+            int sd = sender->get_socket(); 
             if (FD_ISSET( sd , &readfds)){  
                 //Check if it was for closing , and also read the 
                 //incoming message 
@@ -170,10 +169,10 @@ int main(int argc , char* argv[]) {
                     //Close the socket and mark as 0 in list for reuse 
                     close( sd ); 
                     FD_CLR(sd , &readfds); 
-                    usr->clear();
+                    sender->clear();
                     break;  
                 }  
-                else {  
+                else { 
                     //set the string terminating NULL byte on the end 
                     //of the data read
                     switch (buffer[0]) {
@@ -184,17 +183,24 @@ int main(int argc , char* argv[]) {
                             // Message::handle_message_4(buffer, valread, &user);
                             break;
                         case 5:
-                            cout << "handling message 5 from " << usr->get_username()<<endl;
-                            //BIO_dump_fp(stdout, buffer, valread);
-                            if(Message::handle_message_5(buffer, valread, sina) == -1){
-                                cerr <<"Error in handling message 5" << endl;
+                            if(Message::handle_message_5(buffer, valread, sender, online_users) == -1){
                                 break;
                             }
-                            // User* receiver = find_user(&online_users, (*it)->get_peer_username());
-                            // char*message_buf6{nullptr};
-                            // cout << "send message 6 to " << receiver->get_username()<<endl;
-                            // Message::send_message_6(&message_buf6, it.base(), receiver);
                             break;
+                        case 7:
+                            if(Message::handle_message_7(buffer, valread, sender, online_users) == -1){
+                                break;
+                            }
+                            break;
+                        case 9:
+                            if(Message::handle_message_9(buffer, valread, sender, online_users) == -1){
+                                break;
+                            }
+                            break;
+                        case 11:
+                            if(Message::handle_message_11(buffer, valread, sender, online_users) == -1){
+                                break;
+                            }
                         }
                 }
                     // buffer[valread] = '\0';

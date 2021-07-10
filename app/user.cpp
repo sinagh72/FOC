@@ -19,20 +19,43 @@ User::User(string username, string password, string IP, unsigned short port, int
         this->socket = socket;
 
 }
-User::User(const User &source):
-    username(source.username), IP(source.IP), port(source.port), socket(source.socket),
-    server_client_key(source.server_client_key), clients_key(source.clients_key), clients_pubk(source.clients_pubk),
-    clients_pubk_char(source.clients_pubk_char), client_server_pubk(source.client_server_pubk), 
-    client_server_pubk_char(source.client_server_pubk_char), server_pubk(source.server_pubk), server_pubk_char(source.server_pubk_char),
-    peer_pubk(source.peer_pubk), peer_pubk_char(source.peer_pubk_char), received_counter(source.received_counter), 
-    sent_counter(source.sent_counter), peer_username(source.peer_username), password(source.password)
-    {
+// User::User(const User &source):
+//     username(source.username), IP(source.IP), port(source.port), socket(source.socket),
+//     clients_key(source.clients_key), clients_pubk(source.clients_pubk),
+//     clients_pubk_char(source.clients_pubk_char), client_server_pubk(source.client_server_pubk), 
+//     client_server_pubk_char(source.client_server_pubk_char), server_pubk(source.server_pubk), server_pubk_char(source.server_pubk_char),
+//     peer_pubk(source.peer_pubk), peer_pubk_char(source.peer_pubk_char), received_counter(source.received_counter), 
+//     sent_counter(source.sent_counter), peer_username(source.peer_username), password(source.password), 
+//     server_client_key(source.server_client_key)
+//     {
+//         this->set_server_client_key(source.server_client_key, 16);
     
+// }
+
+User::User(const User &source){
+    //===================copy called
+    cout <<"=========================================copy called" <<endl;
+    this->username.assign(source.username);
+    this->password.assign(source.password); 
+    this->IP.assign(source.IP);
+    this->port = source.port;
+    this->socket = source.socket;
+    this->set_clients_key(source.clients_key, 16);
+    //this->set_server_client_key(source.server_client_key, 16);
+    this->set_clients_pubk(source.clients_pubk);
+    this->set_clients_pubk_char(source.clients_pubk_char);
+    this->set_client_server_pubk(source.client_server_pubk);
+    this->set_client_server_pubk_char(source.client_server_pubk_char);
+    this->set_server_pubk(source.server_pubk);
+    this->set_server_pubk_char(source.server_pubk_char);
+    this->set_peer_pubk(source.peer_pubk);
+    this->set_peer_pubk_char(source.peer_pubk_char);
+    this->received_counter = source.received_counter;
+    this->sent_counter = source.sent_counter;
+    this->peer_username.assign(source.peer_username);
+    this->status = source.status;
 }
 
-//serialize the object
-void User::serialize(){
-}
 
 bool User::replay_check(bool from_server, uint16_t received_counter){
     bool returned = false;

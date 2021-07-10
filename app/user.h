@@ -66,7 +66,7 @@ public:
         if(!this->server_client_key){
             this->server_client_key = (unsigned char*)malloc(key_len);
         }
-        memcpy(this->server_client_key,key, key_len);
+        memcpy(this->server_client_key, key, key_len);
     }
     //set the key between clients
     void set_clients_key(unsigned char * key, size_t key_len){
@@ -78,7 +78,7 @@ public:
         if(!this->clients_key){
             this->clients_key = (unsigned char*)malloc(key_len);
         }
-        memcpy(this->clients_key,key,key_len);
+        memcpy(this->clients_key, key, key_len);
     }
 
     //set server socket with that client (user)
@@ -255,8 +255,6 @@ public:
         return this->password;
         
     }
-    //serialize the object
-    void serialize();
     //check for replay attack
     bool replay_check(bool from_server, uint16_t received_counter);
     //this method is called when the user has logged out in order to clear any data inside the client!

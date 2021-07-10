@@ -1,4 +1,4 @@
-#include "Message.h"
+#include "message_sina.h"
 #include <openssl/bio.h>
 
 User* find_user(string user, vector<User>users){
@@ -12,28 +12,24 @@ User* find_user(string user, vector<User>users){
     cerr<< "Error: Receiver not found (find_dhpubk)!" <<endl;
     return NULL;
 }
-void add_user(vector<User>*users){
-    User * test = new User();
-    test->set_username("test");
-    test->set_password("test");
-    users->push_back(*test);
-    delete test;
+void print_pass(User* my_user){
+    cout << my_user->get_server_client_key() <<endl;
 }
 int main(){
     unsigned char* server_client_1 = (unsigned char*)"1234567890123456";
     unsigned char* server_client_2 = (unsigned char*)"0987654321098765";
     //server
-    vector<User>users;
+    vector<User*>users;
 
     User * sina_s = new User();
     sina_s->set_username("sina");
     sina_s->set_server_client_key(server_client_1, 16);
-    // users.push_back(*sina_s);
+    users.push_back(sina_s);
 
     User * lore_s = new User();
     lore_s->set_username("lore");
     lore_s->set_server_client_key(server_client_2 ,16);
-    // users.push_back(*lore_s);
+    users.push_back(lore_s);
     //
     //clients A
     User * sina = new User();
@@ -45,13 +41,21 @@ int main(){
     lore->set_username("lore");
     lore->set_server_client_key(server_client_2, 16);
     lore->set_password("sina");
+
     //client A sends message 5 to server
     char*message{nullptr};
+    unsigned char* t1 = (unsigned char*)"1234567890123456";
+    
     int msg_len = Message::send_message_5(&message, sina, "lore");
     cout << "Message 5 len: "<<msg_len << endl;
     //server receives the message 5 and sends message 6
     //we assumed that the server can realize who is the sender and who is the receiver
-    Message::handle_message_5(message, msg_len, sina_s);
+    string tmp = sina->get_username();
+    auto it = find_if(users.begin(), users.end(), 
+    [&tmp](const User *obj) {return obj->get_username() == tmp;});
+    unsigned char* t2 = (unsigned char*)"1234567890123456";
+
+    Message::handle_message_5(message, msg_len, *it);
     char*message2{nullptr};
     //we assumed that the server can realize who is the sender and who is the receiver
     msg_len = Message::send_message_6(&message2, sina_s, lore_s);

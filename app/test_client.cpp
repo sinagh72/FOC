@@ -1,14 +1,16 @@
+#include <openssl/bio.h>
 #include <openssl/ossl_typ.h>
 #include <stdlib.h>
 #include <arpa/inet.h>
-#include <unistd.h>
 #include <string.h>
 #include <filesystem>
 #include <fstream>
 #include <sys/stat.h>
-#include "Message.h"
+#include <thread>
+#include <mutex>
+#include "message_sina.h"
 
-using namespace std;
+
 
 #define PORT 8888
 #define MSEC 10000 
@@ -16,37 +18,60 @@ using namespace std;
 
 bool establishe_handshake_clients(User * my_user, string receiver_username){
     int val_read = 0;
-    char *message_buf_5 {nullptr};
-    if (Message::send_message_5(&message_buf_5, my_user, receiver_username) == -1){
+    if (Message::send_message_5(my_user, receiver_username) == -1){
         cout << "Error: sending message 5 failed" <<endl;
         return false;
     }
-    // ///TODO:
-    // char buffer_8[MESSAGE_8_LENGTH] = {0};
-    // val_read = read(my_user->get_socket() , buffer_8, MESSAGE_8_LENGTH);
-    // if(val_read == -1){
-    //     ///TODO:error in reading
-    //     return false;
-    // }
-    // ///
-    // if(-1 == Message::handle_message_8(buffer_8, MESSAGE_8_LENGTH, my_user)){
-    //      ///TODO:error in handling message 8
-    //     return false;
-
-    // }
-    // char *message_buf_9 {nullptr};
-    // if(0 == Message::send_message_9(&message_buf_9, my_user)){
-    //      ///TODO:error in sending message 9
-    //     return false;
-
-    // }
+    char buffer[10100] = {0};
+    val_read = read(my_user->get_socket() , buffer, 10100);
+    if(buffer[0] == 8){
+        if(-1 == Message::handle_message_8(buffer, val_read, my_user)){
+            cerr <<"Error in handling message 8" << endl;
+            return false;
+        }
+        if(-1 == Message::send_message_9(my_user)){
+            cout << "Error: sending message 9 failed" <<endl;
+            return false;
+        }
+        cout <<"Secure Connection between You and " << receiver_username <<" is Established!" <<endl;
+    }else if(buffer[0] == 12){
+        if(-1 == Message::handle_message_12(buffer, val_read, my_user)){
+            cerr <<"Error in handling message 12" << endl;
+            return false;
+        }
+    }
     return true;
 }
+
+bool send_secure(){
+    do{
+        cout << "You: ";
+        string input;
+        cin >> input;
+        if(!cin){
+
+        }else{
+
+        }
+    }while(1);
+}
+
+void main_loop();
+void listening_loop();
+int sock = 0;
+
+mutex user_mutex;
+User * my_user;
 
 int main(int argc, char const *argv[])
 {
     // log in
     string username("sina");
+    if (argv[1][0] == 's'){
+        username.assign("sina");
+    }else{
+        username.assign("lore");
+    }
     string password("sina");
     // string username;
     // string password;
@@ -86,9 +111,8 @@ int main(int argc, char const *argv[])
     // }
     // while(!valid);
 
-    int sock = 0, valread;
+    int valread;
     struct sockaddr_in serv_addr;
-    char *buffer = (char*)malloc(10100);
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
     {
         printf("\n Socket creation error \n");
@@ -129,8 +153,36 @@ int main(int argc, char const *argv[])
     //cout <<"Secure Connection is Established" <<endl;
     string input;
     bool ok1 = false;
+    char *buffer = (char*)malloc(10100);
     buffer[0] = argv[1][0];
     send(sock, buffer, 1, 0);
+
+    thread t1 (main_loop);
+    //thread t2 (listening_loop);
+    
+    ///TODO:check if the client receive a request
+    // Client does not want to make a request
+
+    // char const *hello = "sina";
+    // send(sock , hello , strlen(hello) , 0 );
+    // printf("Hello message sent\n");
+    // usleep(MSEC);
+    // valread = read( sock , buffer, 1024);
+    // printf("%s\n",buffer);
+    t1.join();
+    //t2.join();
+    close(sock);
+
+    return 0;
+}
+
+void listening_loop(){
+    while(1){
+
+    }
+}
+void main_loop(){
+    string input;
     do{
         //Main Menu:
         //Please Select One Option:
@@ -146,6 +198,7 @@ int main(int argc, char const *argv[])
             //Message::send_message_3(...);
             //Message::handle_message_4(...)
             bool valid_handshake = false;
+            bool established = false;
             do{
                 //print_list_online_users();//this function is empty, according to the data received we can print the list of online users
                 // Example:
@@ -162,36 +215,28 @@ int main(int argc, char const *argv[])
                 //else{
                 //    valid_handshake = establishe_handshake_clients(my_user, username_for_request);
                 //}
-                establishe_handshake_clients(my_user, "lorenzo");
+                established = establishe_handshake_clients(my_user, "lore");
                 valid_handshake = true;
             }while (!valid_handshake);
-        }else if(input.compare("2") == 0){
-            char*message_buf6 = (char*)malloc(MESSAGE_6_LENGTH);
-            int val_read = read(my_user->get_socket(), message_buf6, MESSAGE_6_LENGTH);
-            if(0 == Message::handle_message_6(message_buf6, val_read, my_user)){
-                cout <<"Error in handling message 6" <<endl;
+            if (established) {
+                send_secure();
             }
-            free(message_buf6);
-            break;
+        }else if(input.compare("2") == 0){
+            int out = Message::handle_message_6(my_user);
+            if(-1 == out){
+                continue;
+            }else if(out > 0){
+                if(-1 == Message::handle_message_10(my_user)){
+                    cout <<"Error in handing message 10" <<endl;
+                }
+                cout <<"Secure Connection between You and " << my_user->get_peer_username() <<" is Established!" <<endl;
+            }
+            continue;
         }else if (input.compare("0") == 0){
-            ///TODO:send message 17 for logout
-            char *message_buf_17;
-            if(0 == Message::send_message_17(&message_buf_17, my_user)){
+            if(0 == Message::send_message_17(my_user)){
                 ///TODO: handle error in sending message 17
             }
             break;  
         }
     }while (1);
-    ///TODO:check if the client receive a request
-    // Client does not want to make a request
-
-    // char const *hello = "sina";
-    // send(sock , hello , strlen(hello) , 0 );
-    // printf("Hello message sent\n");
-    // usleep(MSEC);
-    // valread = read( sock , buffer, 1024);
-    // printf("%s\n",buffer);
-    close(sock);
-
-    return 0;
 }
