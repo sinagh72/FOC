@@ -194,7 +194,7 @@ void Message::handle_message_1(char *buffer, int buffer_len, User *client) {
     char* server_dh_pubkey_serialized = (char*) malloc(DH_PUBK_LENGTH);
     memcpy(server_dh_pubkey_serialized, buffer+MESSAGE_TYPE_LENGTH + COUNTER_LENGTH+Security::GCM_IV_LEN+server_certificate_serialized.length()+1, DH_PUBK_LENGTH);
     cout<<"SERVER DH KEY"<<endl;
-    BIO_dump_fp(stdout, server_dh_pubkey_serialized, DH_PUBK_LENGTH);
+
 
     unsigned char* tag = (unsigned char*)buffer+buffer_len-Security::GCM_TAG_LEN;
     
@@ -378,6 +378,9 @@ void Message::handle_message_2(char *buffer, int buffer_len, User *client) {
         return;
     }
     client->increment_received_counter();
+    cout<<"here";
+    BIO_dump_fp(stdout, (char*)client->get_server_client_key(), 256);
+    cout<<"here";
 
     //set pointer in the incoming buffer
     char* aad = buffer;
@@ -422,7 +425,7 @@ void Message::handle_message_2(char *buffer, int buffer_len, User *client) {
     }
 
     client->set_status(ONLINE);
-    BIO_dump_fp(stdout, (char*)client->get_server_client_key(), 256);
+    
 
 }
 
