@@ -80,22 +80,22 @@ int Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16_
     };
 
 
-    // TODO : use functions
     //server DH pubkey serialization
     long dh_pubkey_server_size;
     unsigned char* dh_pubkey_server_serialized = nullptr;
     EVP_PKEY *dh_pubkey_server = nullptr;
     //generate our own DH pubkey
     Security::generate_dh_pubk(&dh_pubkey_server);
+    EVP_PKEY *peer_pubk {nullptr};
+    Security::chars_to_EVP_PKEY(&peer_pubk,  (unsigned char*)dh_pubkey_peer.c_str());
+    client->set_server_pubk(dh_pubkey_server);
+    client->set_client_server_pubk(peer_pubk);
+
+
     dh_pubkey_server_size = Security::EVP_PKEY_to_chars(dh_pubkey_server,&dh_pubkey_server_serialized);
     //concatenate and sign DH pubkey
-    char* dh_param_to_sign =(char*) malloc(2*DH_PUBK_LENGTH);
-    if(!dh_param_to_sign) {
-        cerr <<"malloc returned NULL! (too big dh param to sign?)" <<endl;
-        return -1;
-    }
-    memcpy(dh_param_to_sign, dh_pubkey_peer.c_str(), DH_PUBK_LENGTH);
-    memcpy(dh_param_to_sign + DH_PUBK_LENGTH, (char*)dh_pubkey_server_serialized, DH_PUBK_LENGTH);
+    char* dh_param_to_sign = nullptr;
+    Security::serialize_concat_dh_pubkey(client->get_client_server_pubk(), client->get_server_pubk(), &dh_param_to_sign);
 
     unsigned char* signature = nullptr;
     int signature_len = Security::signature("./server_privK/ChatApp_key.pem", NULL, (unsigned char*)dh_param_to_sign,
@@ -103,9 +103,9 @@ int Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16_
     free(dh_param_to_sign);
 
 
-    EVP_PKEY *peer_pubk {nullptr};
-    Security::chars_to_EVP_PKEY(&peer_pubk,  (unsigned char*)dh_pubkey_peer.c_str());
+    
 
+    client->set_client_server_pubk(peer_pubk);
 
     unsigned char* shared_key= nullptr;
     int shared_key_len = Security::generate_dh_key(dh_pubkey_server, peer_pubk, &shared_key);
@@ -170,8 +170,6 @@ int Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16_
     free(dh_pubkey_server_serialized);
     free(tag);
     free(iv);
-    EVP_PKEY_free(dh_pubkey_server);
-    EVP_PKEY_free(peer_pubk);
     return msg_buffer_len;
 }
 
@@ -303,7 +301,7 @@ void Message::handle_message_1(char *buffer, int buffer_len, User *client) {
         EVP_PKEY_free(server_dh_pubkey);
         return;
     }
-
+    
     unsigned char* signature_answ = nullptr;
     int signature_answ_len = Security::signature("./users/"+client->get_username()+"/rsa_privkey.pem", 
                                                 (unsigned char*)client->get_password().c_str(), 
@@ -319,10 +317,11 @@ void Message::handle_message_1(char *buffer, int buffer_len, User *client) {
         return;
     }
 
+
     //GCM encryption
     unsigned char* ciphertext_answ = nullptr;
     unsigned char* tag_answ = nullptr;
-    int ciphertext_answ_len = Security::gcm_encrypt(aad_resp, aad_len, signature_answ, signature_answ_len, skey, iv_answ, &ciphertext_answ, &tag_answ);
+    int ciphertext_answ_len = Security::gcm_encrypt(aad_resp, aad_resp_len, signature_answ, signature_answ_len, skey, iv_answ, &ciphertext_answ, &tag_answ);
     if(ciphertext_answ_len==-1) {
         cerr<<"Message2 encryption failed"<<endl;
         free(skey);
@@ -336,7 +335,7 @@ void Message::handle_message_1(char *buffer, int buffer_len, User *client) {
 
     free(iv_answ);
 
-    int msg_len = Security::GCM_TAG_LEN +  aad_len + ciphertext_answ_len;
+    int msg_len = Security::GCM_TAG_LEN +  aad_resp_len + ciphertext_answ_len;
     char* msg_to_send = (char*) malloc(msg_len);
     if(!msg_to_send) {
         cerr<<"Message2 allocation failed"<<endl;
@@ -351,19 +350,20 @@ void Message::handle_message_1(char *buffer, int buffer_len, User *client) {
         return;
     }
 
-    memcpy(msg_to_send, aad_resp, aad_len);
+    memcpy(msg_to_send, aad_resp, aad_resp_len);
     free(aad_resp);
-    memcpy(msg_to_send+ aad_len, ciphertext_answ, ciphertext_answ_len);
+    memcpy(msg_to_send+ aad_resp_len, ciphertext_answ, ciphertext_answ_len);
     free(ciphertext_answ);
-    memcpy(msg_to_send + aad_len + ciphertext_answ_len, tag_answ, Security::GCM_TAG_LEN);
+    memcpy(msg_to_send + aad_resp_len + ciphertext_answ_len, tag_answ, Security::GCM_TAG_LEN);
     free(tag_answ);
 
     //send the message
     send(client->get_socket(), msg_to_send, msg_len, 0);
 
+
+    free(msg_to_send);
     free(concat);
     free(signature_answ);
-    BIO_dump_fp(stdout, (char*)client->get_server_client_key(), 32);
 
 }
 
@@ -374,9 +374,7 @@ void Message::handle_message_2(char *buffer, int buffer_len, User *client) {
         return;
     }
     client->increment_client_counter();
-    cout<<"here"<<endl;
-    BIO_dump_fp(stdout, (char*)client->get_server_client_key(), 32);
-    cout<<"here"<<endl;
+
     //set pointer in the incoming buffer
     char* aad = buffer;
     int aad_len = MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN;

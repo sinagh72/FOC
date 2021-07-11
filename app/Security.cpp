@@ -271,10 +271,13 @@ int Security::gcm_encrypt(unsigned char * aad, int aad_len, unsigned char * plai
 
     /* Clean up */
     EVP_CIPHER_CTX_free(ctx);
+
+
     return ciphertext_len;
 }
 int Security::gcm_decrypt(unsigned char * aad, int aad_len, unsigned char * ciphertext, int ciphertext_len, 
     unsigned char * key, unsigned char *iv, unsigned char ** decryptedtext, unsigned char * tag){
+    
 
     EVP_CIPHER_CTX *ctx;
     int ret;
@@ -322,6 +325,8 @@ int Security::gcm_decrypt(unsigned char * aad, int aad_len, unsigned char * ciph
 
     /* Clean up */
     //EVP_CIPHER_CTX_cleanup(ctx);
+        
+    
     if(ret > 0) {
         /* Success */
         decryptedtext_len += len;
@@ -641,17 +646,17 @@ int Security::serialize_concat_dh_pubkey(EVP_PKEY* a, EVP_PKEY *b, char** concat
     if(a_len==-1 || b_len==-1) {
         return -1;
     }
-   
 
-    *concatenated = (char*) malloc(a_len+b_len);
+    *concatenated = (char*) malloc(2*DH_PUBK_LENGTH);
     if(!(*concatenated)) {
+        cerr<<"serialize and concat malloc failed";
         free(a_char);
         free(b_char);
         return -1;
     }
-    *concatenated[0] = '\0';
-    strcat(*concatenated, (char *)a_char);
-    strcat(*concatenated, (char *)b_char);
+    
+    memcpy(*concatenated, a_char, DH_PUBK_LENGTH);
+    memcpy(*concatenated+ DH_PUBK_LENGTH, b_char, DH_PUBK_LENGTH);
 
-    return a_len+b_len;
+    return 2*DH_PUBK_LENGTH;
 }
