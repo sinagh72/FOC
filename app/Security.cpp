@@ -641,9 +641,7 @@ int Security::serialize_concat_dh_pubkey(EVP_PKEY* a, EVP_PKEY *b, char** concat
     if(a_len==-1 || b_len==-1) {
         return -1;
     }
-    //debug
-    cout<<"A_LEN: "<<a_len<<"   B_LEN: "<<b_len<<endl;
-    cout<<"A_LEN: "<<strlen((char *)a_char)<<"   B_LEN: "<<strlen((char *)b_char)<<endl;
+   
 
     *concatenated = (char*) malloc(a_len+b_len);
     if(!(*concatenated)) {
