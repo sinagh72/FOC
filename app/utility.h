@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cstddef>
 #include <string>
 #include <iostream>
 #include "user.h"
@@ -8,6 +9,7 @@ using namespace std;
 
 
 const string WHITESPACE = " \n\r\t\f\v";
+const string DELIMITER = "||";
 
 static string ltrim(const string &s)
 {
@@ -42,8 +44,24 @@ static bool check_user_input(const string& input, int option_size){
     free(ok_chars);
     return true;
 }
-static void print_list_online_users(){
-    cout << "Online Users:\n" << "Select The User You Want to Chat:\n"<<"0. Go Back" <<endl;
+static size_t print_list_online_users(string users, string my_username){
+    size_t c = 0;
+    if(users.compare(my_username) == 0){
+        cout << "There is No Available User" << endl;
+        return 0;
+    }
+    cout << "Online Users:\n";
+    cout << "Select The User You Want to Chat:\n";
+    size_t pos = 0;
+    string token;
+    while ((pos = users.find(DELIMITER)) != string::npos) {
+        token = users.substr(0, pos);
+        cout << c + 1 << ". " << token << endl;
+        users.erase(0, pos + DELIMITER.length());
+        c++;
+    }
+    cout << "0. Go Back" <<endl;
+    return c;
 }
 
 

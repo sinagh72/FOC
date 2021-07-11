@@ -28,16 +28,15 @@ int main(int argc , char* argv[]) {
     //set of socket descriptors
     // list of connections and sockets
     fd_set readfds;
+    // User * sina = new User("sina", "sina", "127.0.0.1", port, -1);
+    // unsigned char key_gcm[]="1234567890123456";
+    // sina->set_server_client_key(key_gcm ,16);
+    // online_users.push_back(sina);
 
-    User * sina = new User("sina", "sina", "127.0.0.1", port, -1);
-    unsigned char key_gcm[]="1234567890123456";
-    sina->set_server_client_key(key_gcm ,16);
-    online_users.push_back(sina);
-
-    User * lore = new User("lore", "sina", "127.0.0.1", port, -1);
-    unsigned char* server_client_2 = (unsigned char*)"0987654321098765";
-    lore->set_server_client_key(server_client_2 ,16);
-    online_users.push_back(lore);
+    // User * lore = new User("lore", "sina", "127.0.0.1", port, -1);
+    // unsigned char* server_client_2 = (unsigned char*)"0987654321098765";
+    // lore->set_server_client_key(server_client_2 ,16);
+    // online_users.push_back(lore);
   
          
     //create a master socket
@@ -132,22 +131,20 @@ int main(int argc , char* argv[]) {
             valread = read(new_socket, buffer, 10100);
             cout << "User connected: " << inet_ntoa(address.sin_addr) << " " <<ntohs(address.sin_port) << endl;
             //check for message type 0
-            if(buffer[0]=='s'){
-                string tmp = "sina";
-                auto it = find_if(online_users.begin(), online_users.end(), 
-                [&tmp](const User *obj) {return obj->get_username() == tmp;});
-                (*it)->set_socket(new_socket);
-            }else if (buffer[0] == 'l') {
-                string tmp = "lore";
-                auto it = find_if(online_users.begin(), online_users.end(), 
-                [&tmp](const User *obj) {return obj->get_username() == tmp;});
-                (*it)->set_socket(new_socket);
-            }
             if(buffer[0]==0){
-                
-                //Message::handle_message_0(buffer, new_socket, inet_ntoa(address.sin_addr), ntohs(address.sin_port), online_users);
-                //free(buffer);
+                Message::handle_message_0(buffer, new_socket, inet_ntoa(address.sin_addr), ntohs(address.sin_port), &online_users);
             }
+            // if(buffer[0]=='s'){
+            //     string tmp = "sina";
+            //     auto it = find_if(online_users.begin(), online_users.end(), 
+            //     [&tmp](const User *obj) {return obj->get_username() == tmp;});
+            //     (*it)->set_socket(new_socket);
+            // }else if (buffer[0] == 'l') {
+            //     string tmp = "lore";
+            //     auto it = find_if(online_users.begin(), online_users.end(), 
+            //     [&tmp](const User *obj) {return obj->get_username() == tmp;});
+            //     (*it)->set_socket(new_socket);
+            // }
             free(buffer);
            
         }  
@@ -177,10 +174,12 @@ int main(int argc , char* argv[]) {
                     //of the data read
                     switch (buffer[0]) {
                         case 2:
-                            // Message::handle_message_2(buffer, valread, &user);
+                            Message::handle_message_2(buffer, valread, sender);
                             break;
-                        case 4:
-                            // Message::handle_message_4(buffer, valread, &user);
+                        case 3:
+                            if(Message::handle_message_3(buffer, valread, sender, online_users) == -1){
+                                break;
+                            }
                             break;
                         case 5:
                             if(Message::handle_message_5(buffer, valread, sender, online_users) == -1){

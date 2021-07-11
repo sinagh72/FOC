@@ -30,21 +30,19 @@ public:
      * @param port :port of the client
      * @param online_users : vector of Users that are online
      */
-    static int handle_message_0(char* buffer,int client_socket, char* ip, uint16_t port, vector<User> online_users);
-
+    static int handle_message_0(char *buffer, int client_socket, char *ip, uint16_t port, vector <User*>*online_users);
 
     static void handle_message_1(char* buffer,  int buffer_len, User *client);
 
     static void handle_message_2(char* buffer, int buffer_len, User *client);
 
-
-        // message 3
-    static unsigned int send_message_3(char ** msg_buf, User * my_user);
-    static int handle_message_3(char * msg_buf, size_t msg_len, User * my_user);
+    // message 3
+    static int send_message_3(User * my_user);
+    static int handle_message_3(char * message, size_t message_len, User * my_user, vector<User*>online_users);
 
     // message 4
-    static unsigned int send_message_4(char ** msg_buf, vector<User> * act_usr, User * dest_user);
-    static int handle_message_4(char * msg_buf, size_t msg_len, User * dest_user);
+    static int send_message_4(User* sender, vector<User*>online_users);
+    static int handle_message_4(User * my_user);
     
      /**
      * create a message type 5. This function will be called inside the client application
@@ -99,7 +97,7 @@ public:
      * @return integer to specify if parsing the message is successful or not. If it is successful it will return the
      * size of the 1, otherwise -1
     */
-    static int handle_message_7(char * message, size_t message_len, User* sender, vector<User*>users);
+    static int handle_message_7(char * message, size_t message_len, User* sender, vector<User*>online_users);
     //=================================================================================================================== 
     /**
      * create a message type 8. This function will be called inside the server application
@@ -140,7 +138,7 @@ public:
      * @return integer to specify if parsing the message is successful or not. If it is successful it will return the
      * size of the 1, otherwise -1
     */
-    static int handle_message_9(char * message, size_t message_len, User* sender, vector<User*>users);
+    static int handle_message_9(char * message, size_t message_len, User* sender, vector<User*>online_users);
     //===================================================================================================================
     /**
      * create a message type 10. This function will be called inside the server application
@@ -180,7 +178,7 @@ public:
      * @return integer to specify if parsing the message is successful or not. If it is successful it will return the
      * size of the 1, otherwise -1
     */
-    static int handle_message_11(char * message, size_t message_len, User* sender, vector<User*>users);
+    static int handle_message_11(char * message, size_t message_len, User* sender, vector<User*>online_users);
     //===================================================================================================================
     /**
      * create a message type 12. This function will be called inside the server application

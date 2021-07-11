@@ -1,6 +1,663 @@
 #include "message_sina.h"
-#include "Security.h"
-#include <cstring>
+
+//sent by the client A
+int Message::send_message_0(char **buffer, User* my_user) {
+
+    //generating new dh pubk -> g^a
+    EVP_PKEY * g_a{nullptr};
+    if(Security::generate_dh_pubk(&g_a) == -1){return 0;}
+    my_user->set_client_server_pubk(g_a);
+    //serialize the g^a
+    unsigned char*a_char{nullptr};
+    int a_char_size = Security::EVP_PKEY_to_chars(g_a, &a_char);
+    if(a_char_size == -1){ 
+        my_user->set_client_server_pubk(nullptr);
+        EVP_PKEY_free(g_a);
+        return -1;
+    }
+    my_user->set_client_server_pubk_char(a_char);
+
+    unsigned int message_len = MESSAGE_TYPE_LENGTH + USERNAME_LENGTH + a_char_size;
+    *buffer=(char*) malloc(message_len);
+    memset(*buffer, 0, 1);
+    memcpy(*buffer + MESSAGE_TYPE_LENGTH, my_user->get_username().c_str(), USERNAME_LENGTH);
+    memcpy(*buffer + MESSAGE_TYPE_LENGTH + USERNAME_LENGTH, a_char, a_char_size);
+    //
+    ///TODO: check for the timeout
+    ///https://stackoverflow.com/questions/9847441/setting-socket-timeout
+    if (message_len != send(my_user->get_socket() , *buffer , message_len , 0)){
+        my_user->set_client_server_pubk(nullptr);
+        free(a_char);
+        EVP_PKEY_free(g_a);
+        return -1;
+    }
+
+    ///
+    free(a_char);
+    return message_len;
+}
+
+int Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16_t port, vector <User*>*online_users) {
+
+    string ip_str(ip);
+    //extract the username
+    string username(buffer+MESSAGE_TYPE_LENGTH);
+
+    //extract the DH serialized pubkey
+    string dh_pubkey_peer(buffer + MESSAGE_TYPE_LENGTH + USERNAME_LENGTH);
+
+    string file_addr = "./users/"+username+"/rsa_pubkey.pem";
+    //find the user RSA pubkey to be sure that he is registered
+    FILE* pubkey_file = fopen(file_addr.c_str(), "r");
+    if(!pubkey_file) {
+        printf("User %s not registered", username.c_str());
+        return -1;
+    }
+    EVP_PKEY* evpPkey;
+    evpPkey= PEM_read_PUBKEY(pubkey_file, NULL, NULL, NULL);
+    if(!evpPkey) {
+        printf("Error: pubkey of user %s not loaded correctly", username.c_str());
+        fclose(pubkey_file);
+        return -1;
+    }
+    fclose(pubkey_file);
+    EVP_PKEY_free(evpPkey);
+    User *client = new User(username,"sina",ip, port, client_socket);
+    client->set_status(CONNECTING);
+    online_users->insert(online_users->begin(), client);
+    //load server certificate from file and serialize it
+    X509* cert;
+    if(!Security::load_server_certificate(&cert)) {
+        delete client;
+        return -1;
+    }
+
+    unsigned char* certificate_serialized= nullptr;
+    int cert_size = 0;
+    if((cert_size = Security::X509_serialization(cert, &certificate_serialized)) ==-1) {
+        X509_free(cert);
+        return -1;
+    };
+
+
+    // TODO : use functions
+    //server DH pubkey serialization
+    long dh_pubkey_server_size;
+    unsigned char* dh_pubkey_server_serialized = nullptr;
+    EVP_PKEY *dh_pubkey_server = nullptr;
+    //generate our own DH pubkey
+    Security::generate_dh_pubk(&dh_pubkey_server);
+    dh_pubkey_server_size = Security::EVP_PKEY_to_chars(dh_pubkey_server,&dh_pubkey_server_serialized);
+    //concatenate and sign DH pubkey
+    char* dh_param_to_sign =(char*) malloc(2*DH_PUBK_LENGTH);
+    if(!dh_param_to_sign) {
+        cerr <<"malloc returned NULL! (too big dh param to sign?)" <<endl;
+        return -1;
+    }
+    memcpy(dh_param_to_sign, dh_pubkey_peer.c_str(), DH_PUBK_LENGTH);
+    memcpy(dh_param_to_sign + DH_PUBK_LENGTH, (char*)dh_pubkey_server_serialized, DH_PUBK_LENGTH);
+
+    unsigned char* signature = nullptr;
+    int signature_len = Security::signature("./server_privK/ChatApp_key.pem", NULL, (unsigned char*)dh_param_to_sign,
+                                            2*DH_PUBK_LENGTH, &signature);
+    free(dh_param_to_sign);
+
+
+    EVP_PKEY *peer_pubk {nullptr};
+    Security::chars_to_EVP_PKEY(&peer_pubk,  (unsigned char*)dh_pubkey_peer.c_str());
+
+
+    unsigned char* shared_key= nullptr;
+    int shared_key_len = Security::generate_dh_key(dh_pubkey_server, peer_pubk, &shared_key);
+    if(shared_key_len==-1) {
+        cerr<<"Error generating shared key"<<endl;
+        return -1;
+    }
+
+    client->set_server_client_key(shared_key, shared_key_len);
+    
+
+    //generate IV
+    unsigned char* iv= nullptr;
+    if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)) {
+        cerr<<"Error generating IV for message type 1";
+        return -1;
+    }
+
+
+    int aad_len = MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + cert_size + dh_pubkey_server_size+Security::GCM_IV_LEN;
+    unsigned char* aad = (unsigned char*)malloc(aad_len);
+    if(!aad) {
+        cerr<<"Error during space allocation for AAD";
+        free(iv);
+        return -1;
+    }
+
+    memset(aad, 1, 1);
+    //uint16_t* counter_pointer = aad[0];
+    uint16_t * counter_pointer = (uint16_t *) (aad+1);
+    *counter_pointer = client->get_server_counter();
+    client->increment_server_counter();
+
+    memcpy(aad+COUNTER_LENGTH+ MESSAGE_TYPE_LENGTH, iv, Security::GCM_IV_LEN);
+    memcpy(aad+COUNTER_LENGTH+ MESSAGE_TYPE_LENGTH + Security::GCM_IV_LEN, certificate_serialized, cert_size);
+    memcpy(aad+COUNTER_LENGTH+ MESSAGE_TYPE_LENGTH + Security::GCM_IV_LEN+cert_size, dh_pubkey_server_serialized, dh_pubkey_server_size);
+
+    unsigned char* ciphertext= nullptr;
+    unsigned char* tag = nullptr;
+    int ciphertext_len = Security::gcm_encrypt(aad, aad_len, signature, signature_len, shared_key,
+                          iv, &ciphertext, &tag);
+
+    int msg_buffer_len =  aad_len+ciphertext_len+Security::GCM_TAG_LEN;
+    char* msg_buffer = nullptr;
+    msg_buffer = (char*)malloc(msg_buffer_len);
+    if(!msg_buffer) {
+        cerr<<"Error allocating buffer for sending message type 1";
+        free(iv);
+        free(aad);
+        return -1;
+    }
+    memcpy(msg_buffer, aad, aad_len);
+    memcpy(msg_buffer+aad_len, ciphertext, ciphertext_len);
+    memcpy(msg_buffer+aad_len+ciphertext_len, tag, Security::GCM_TAG_LEN);
+
+    //send the message to the client
+    send(client->get_socket(), msg_buffer, msg_buffer_len, 0);
+    free(msg_buffer);
+    free(aad);
+    free(ciphertext);
+    free(certificate_serialized);
+    free(dh_pubkey_server_serialized);
+    free(tag);
+    free(iv);
+    EVP_PKEY_free(dh_pubkey_server);
+    EVP_PKEY_free(peer_pubk);
+    return msg_buffer_len;
+}
+
+void Message::handle_message_1(char *buffer, int buffer_len, User *client) {
+    //parsing the incoming message
+    uint16_t counter_server = (uint16_t) *(buffer+MESSAGE_TYPE_LENGTH);
+    if(counter_server != client->get_server_counter()) {
+        cerr<<"Server counter verification failed"<<endl;
+        return;
+    }
+    client->increment_server_counter();
+
+    unsigned char* iv = (unsigned char*) malloc(Security::GCM_IV_LEN);
+    memcpy(iv, buffer+MESSAGE_TYPE_LENGTH + COUNTER_LENGTH, Security::GCM_IV_LEN);
+
+    string server_certificate_serialized(buffer+MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN);
+    cout<<"CERTIFICATE:"<<endl;
+    
+    
+    char* server_dh_pubkey_serialized = (char*) malloc(DH_PUBK_LENGTH);
+    memcpy(server_dh_pubkey_serialized, buffer+MESSAGE_TYPE_LENGTH + COUNTER_LENGTH+Security::GCM_IV_LEN+server_certificate_serialized.length()+1, DH_PUBK_LENGTH);
+    cout<<"SERVER DH KEY"<<endl;
+    BIO_dump_fp(stdout, server_dh_pubkey_serialized, DH_PUBK_LENGTH);
+
+    unsigned char* tag = (unsigned char*)buffer+buffer_len-Security::GCM_TAG_LEN;
+    
+
+    int ciphertext_len = buffer_len-MESSAGE_TYPE_LENGTH-COUNTER_LENGTH-Security::GCM_IV_LEN-Security::GCM_TAG_LEN-
+                         server_certificate_serialized.length()-1-DH_PUBK_LENGTH;
+    unsigned char* ciphertext = (unsigned char*)buffer+buffer_len-Security::GCM_TAG_LEN-ciphertext_len;
+
+    //deserialize DH server pubkey
+    EVP_PKEY *server_dh_pubkey= nullptr;
+    if(Security::chars_to_EVP_PKEY(&server_dh_pubkey, (unsigned char*)server_dh_pubkey_serialized) <0) {
+        cerr<<"Error deserializing DH server pubkey"<<endl;
+        free(iv);
+        EVP_PKEY_free(server_dh_pubkey);
+        return;
+    }
+    client->set_server_pubk(server_dh_pubkey);
+
+    
+    // compute symmetric key with DH pubkey
+    unsigned char* skey = nullptr;
+    int skey_len = Security::generate_dh_key(client->get_client_server_pubk(), server_dh_pubkey, &skey);
+    if(skey_len==-1) {
+        cerr<<"Error deserializing DH server pubkey"<<endl;
+        free(iv);
+        free(skey);
+        EVP_PKEY_free(server_dh_pubkey);
+        return;
+    }
+
+    client->set_server_client_key(skey, skey_len);
+
+    //verify tag and decrypt signature
+    unsigned char* signature = nullptr;
+    int aad_len= MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN + server_certificate_serialized.length() + 1 + DH_PUBK_LENGTH;
+
+    int signature_len = Security::gcm_decrypt((unsigned char*)buffer, aad_len, ciphertext,ciphertext_len, skey, iv, &signature, tag);
+
+   
+    // server certificate validation
+    X509* cert = nullptr;
+    Security::X509_deserialization((unsigned char*)server_certificate_serialized.c_str(), &cert);
+    if(!Security::certificate_verification(cert)) {
+        cerr<<"Error in server certificate validation"<<endl;
+        free(iv);
+        free(skey);
+        EVP_PKEY_free(server_dh_pubkey);
+        free(signature);
+        return;
+    }
+    
+
+    //verify signature
+    char* serialized_pair = nullptr;
+    
+    int serialized_pair_len = Security::serialize_concat_dh_pubkey(client->get_client_server_pubk(), client->get_server_pubk(), &serialized_pair);
+    if(serialized_pair_len==-1) {
+        cerr<<"Error in server signature verification"<<endl;
+        free(iv);
+        free(skey);
+        EVP_PKEY_free(server_dh_pubkey);
+        X509_free(cert);
+        free(signature);
+        free(serialized_pair);
+        return;
+    }
+
+    if(!Security::verify_signature(X509_get0_pubkey(cert), signature, signature_len, (unsigned char*)serialized_pair, serialized_pair_len)) {
+        cerr<<"Error in server signature verification"<<endl;
+        free(iv);
+        free(skey);
+        EVP_PKEY_free(server_dh_pubkey);
+        X509_free(cert);
+        free(signature);
+        free(serialized_pair);
+        return;
+    }
+    free(iv);
+    free(serialized_pair);
+    free(signature);
+    X509_free(cert);
+
+    //signature is good, lets make the answer message
+    int aad_resp_len = MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN;
+    unsigned char* aad_resp = (unsigned char*) malloc(aad_resp_len);
+    if(!aad_resp) {
+        cerr<<"Message2 aad malloc failed"<<endl;
+        free(skey);
+        EVP_PKEY_free(server_dh_pubkey);
+        return;
+    }
+
+    memset(aad_resp, 2, 1);
+
+    uint16_t* counter_resp = (uint16_t*) (aad_resp + MESSAGE_TYPE_LENGTH);
+    *counter_resp = client->get_client_counter();
+    client->increment_client_counter();
+
+    unsigned char* iv_answ= nullptr;
+    Security::generate_iv(&iv_answ, Security::GCM_IV_LEN);
+    memcpy(aad_resp+MESSAGE_TYPE_LENGTH+COUNTER_LENGTH, iv_answ, Security::GCM_IV_LEN);
+
+    //generate the concatenation and sign it
+    char* concat = nullptr;
+    int concat_len = Security::serialize_concat_dh_pubkey(client->get_server_pubk(), client->get_client_server_pubk(), &concat);
+    if(concat_len==-1) {
+        cerr<<"Message2 DH Key concat failed"<<endl;
+        free(skey);
+        free(iv_answ);
+        free(aad_resp);
+        EVP_PKEY_free(server_dh_pubkey);
+        return;
+    }
+
+    unsigned char* signature_answ = nullptr;
+    int signature_answ_len = Security::signature("./users/"+client->get_username()+"/rsa_privkey.pem", 
+                                                (unsigned char*)client->get_password().c_str(), 
+                                                (unsigned char*)concat, concat_len, &signature_answ);
+    if(signature_answ_len==-1) {
+        cerr<<"Message2 concat failed"<<endl;
+        free(skey);
+        free(iv_answ);
+        free(aad_resp);
+        free(concat);
+        free(signature_answ);
+        EVP_PKEY_free(server_dh_pubkey);
+        return;
+    }
+
+    //GCM encryption
+    unsigned char* ciphertext_answ = nullptr;
+    unsigned char* tag_answ = nullptr;
+    int ciphertext_answ_len = Security::gcm_encrypt(aad_resp, aad_len, signature_answ, signature_answ_len, skey, iv_answ, &ciphertext_answ, &tag_answ);
+    if(ciphertext_answ_len==-1) {
+        cerr<<"Message2 encryption failed"<<endl;
+        free(skey);
+        free(iv_answ);
+        free(aad_resp);
+        free(concat);
+        free(signature_answ);
+        EVP_PKEY_free(server_dh_pubkey);
+        return;
+    }
+
+    free(iv_answ);
+
+    int msg_len = Security::GCM_TAG_LEN +  aad_len + ciphertext_answ_len;
+    char* msg_to_send = (char*) malloc(msg_len);
+    if(!msg_to_send) {
+        cerr<<"Message2 allocation failed"<<endl;
+        free(skey);
+        free(iv_answ);
+        free(aad_resp);
+        free(concat);
+        free(signature_answ);
+        free(ciphertext_answ);
+        free(tag_answ);
+        EVP_PKEY_free(server_dh_pubkey);
+        return;
+    }
+
+    memcpy(msg_to_send, aad_resp, aad_len);
+    free(aad_resp);
+    memcpy(msg_to_send+ aad_len, ciphertext_answ, ciphertext_answ_len);
+    free(ciphertext_answ);
+    memcpy(msg_to_send + aad_len + ciphertext_answ_len, tag_answ, Security::GCM_TAG_LEN);
+    free(tag_answ);
+
+    //send the message
+    send(client->get_socket(), msg_to_send, msg_len, 0);
+
+    free(concat);
+    free(signature_answ);
+    BIO_dump_fp(stdout, (char*)client->get_server_client_key(), 256);
+
+}
+
+void Message::handle_message_2(char *buffer, int buffer_len, User *client) {
+    //verify message counter
+    uint16_t counter = (uint16_t)*(buffer + MESSAGE_TYPE_LENGTH);
+    if(counter != client->get_client_counter()) {
+        return;
+    }
+    client->increment_client_counter();
+    //set pointer in the incoming buffer
+    char* aad = buffer;
+    int aad_len = MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN;
+    char* ciphertext = buffer + aad_len;
+    int ciphertext_len = buffer_len - Security::GCM_TAG_LEN - aad_len;
+    char* tag = buffer + buffer_len - Security::GCM_TAG_LEN;
+    char* iv = buffer + MESSAGE_TYPE_LENGTH + COUNTER_LENGTH;
+
+    //verify the tag
+    unsigned char* signature = nullptr;
+    int signature_len = Security::gcm_decrypt((unsigned char*)aad, aad_len, (unsigned char*)ciphertext, 
+    ciphertext_len, client->get_server_client_key(), (unsigned char*)iv, &signature, (unsigned char*)tag);
+    if(signature_len==-1) {
+        return;
+    }
+
+    char* concatenated = nullptr;
+    int concatenated_len = Security::serialize_concat_dh_pubkey(client->get_server_pubk(), client->get_client_server_pubk(), &concatenated);
+    if (concatenated_len==-1) {
+        return;
+    }
+
+    //verify the signature and set status of the user ONLINE
+    string file_addr = "./users/"+client->get_username()+"/rsa_pubkey.pem";
+    FILE* pubkey_file = fopen(file_addr.c_str(), "r");
+    if(!pubkey_file) {
+        printf("User %s not registered", client->get_username().c_str());
+        return;
+    }
+    EVP_PKEY* evpPkey;
+    evpPkey= PEM_read_PUBKEY(pubkey_file, NULL, NULL, NULL);
+    if(!evpPkey) {
+        printf("Error: pubkey of user %s not loaded correctly", client->get_username().c_str());
+        fclose(pubkey_file);
+        return;
+    }
+    fclose(pubkey_file);
+
+    if(!Security::verify_signature(evpPkey, signature, signature_len, (unsigned char*)concatenated, concatenated_len)) {
+        return;
+    }
+
+    client->set_status(ONLINE);
+    BIO_dump_fp(stdout, (char*)client->get_server_client_key(), 256);
+
+}
+
+//sent by the client A
+int Message::send_message_3(User * my_user) {
+    cout << my_user->get_client_counter() << endl;
+    // generate iv
+    unsigned char* iv{nullptr};
+    if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)){;
+        return -1;
+    }
+
+    // aad creation
+    int aad_len = MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN;
+    char * aad = (char*)malloc(aad_len);
+    if(!aad) {
+        cerr << "Error: malloc for message returned NULL\n"; 
+        return -1;
+    }    
+    aad[0] = 3;
+    uint16_t * counter_pointer = (uint16_t *) (aad + 1);
+    *counter_pointer = my_user->get_client_counter();
+    memcpy(aad + MESSAGE_TYPE_LENGTH + COUNTER_LENGTH , iv, Security::GCM_IV_LEN);
+    // encrypt identifier (username) with gcm 
+    int id_pt_len = USERNAME_LENGTH;
+    unsigned char * id_pt = (unsigned char*)calloc(id_pt_len, 1);
+    memcpy(id_pt, (my_user->get_username()).c_str(), my_user->get_username().length());
+    unsigned char* id_ct{nullptr};
+    unsigned char* tag{nullptr};
+
+    int id_ct_len = Security::gcm_encrypt((unsigned char *)aad, aad_len, id_pt, id_pt_len, 
+    my_user->get_server_client_key(), iv, &id_ct, &tag);
+    // int id_ct_len = Security::gcm_encrypt((unsigned char *)aad, aad_len, id_pt, id_pt_len, 
+    // (unsigned char*)"1234567890123456", iv, &id_ct, &tag);
+
+    if(id_ct_len == -1) {
+        free(id_pt);    
+        free(id_ct);
+        free(tag);
+        free(iv);
+        free(aad);
+        return -1;
+    }
+    
+    int msg_buf_len = aad_len + id_ct_len + Security::GCM_TAG_LEN;
+    char * msg_buf = (char*)malloc(msg_buf_len);
+    memcpy(msg_buf, aad, aad_len);
+    memcpy(msg_buf + aad_len, id_ct, id_ct_len);
+    memcpy(msg_buf + aad_len + id_ct_len, tag, Security::GCM_TAG_LEN);
+
+    if (msg_buf_len != send(my_user->get_socket(), msg_buf, msg_buf_len , 0)){
+        cerr <<"Error: sending message 3 over the socket failed" << endl;
+        free(id_pt);    
+        free(id_ct);
+        free(tag);
+        free(iv);
+        free(aad);
+        free(msg_buf);
+        return -1;
+    }
+ 
+    my_user->increment_client_counter();
+    free(aad);
+    free(iv);
+    free(id_pt);
+    free(id_ct);
+    free(tag);
+    free(msg_buf);
+
+    return msg_buf_len;
+}
+
+//recevied by the server 
+int Message::handle_message_3(char * message, size_t message_len, User * sender, vector<User*>online_users){
+    int k;
+    string msg = "";
+    for (k = 0; k < message_len; k++) {
+        msg = msg + message[k];
+    }
+
+    int aad_len = MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN;
+
+    string tag = msg.substr(msg.length() - Security::GCM_TAG_LEN, Security::GCM_TAG_LEN);
+    string id_ct = msg.substr(aad_len, msg.length() - Security::GCM_TAG_LEN - aad_len);
+    string aad = msg.substr(0, aad_len);
+    string gcm_iv = msg.substr(aad_len - Security::GCM_IV_LEN, Security::GCM_IV_LEN);
+
+    unsigned char * id_pt{nullptr};
+    ///TODO:
+    int id_pt_len = Security::gcm_decrypt((unsigned char*)aad.c_str(), aad_len,
+     (unsigned char*)id_ct.c_str(), id_ct.length(), 
+     sender->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &id_pt, (unsigned char*)tag.c_str());
+    // int id_pt_len = Security::gcm_decrypt((unsigned char*)aad.c_str(), aad_len,
+    // (unsigned char*)id_ct.c_str(), id_ct.length(), 
+    // (unsigned char*)"1234567890123456",(unsigned char*) gcm_iv.c_str(), &id_pt, (unsigned char*)tag.c_str());
+     
+    if(id_pt_len == -1) {
+        cout << "Erro in handling message 3" << endl;
+        return -1;
+    }
+
+    string id_pt_str ((char*)id_pt);
+    free(id_pt);
+    uint16_t server_counter = (uint16_t) *(message + MESSAGE_TYPE_LENGTH);
+    if(!sender->replay_check(false, server_counter)){
+        return -1;
+    }
+
+    if(Message::send_message_4(sender, online_users) == -1){
+        cerr <<"Error in sending message 4" << endl;
+        return -1;
+    }
+    cout << "reply message 4 to " << sender->get_username() << endl;
+    return 1;
+}
+
+//sent by the server to client A
+int Message::send_message_4(User* receiver, vector<User*>online_users) {
+
+    // generate iv
+    unsigned char* iv{nullptr};
+    if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)){;
+        return 0;
+    }
+
+    // msg creation
+    int aad_len = MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN;
+    char * aad = (char*)malloc(aad_len);
+    if(!aad) {
+        cerr << "Error: malloc for message returned NULL\n"; 
+        return 0;
+    }    
+    aad[0] = 3;
+    uint16_t * counter_pointer = (uint16_t *) (aad + 1);
+    *counter_pointer = receiver->get_server_counter()+ 1;
+    memcpy(aad + MESSAGE_TYPE_LENGTH + COUNTER_LENGTH , iv, Security::GCM_IV_LEN);
+
+
+    // encrypt list of active users with gcm 
+    int act_usr_pt_len = online_users.size() * USERNAME_LENGTH +  (online_users.size() - 1) * DELIMITER.length();
+    unsigned char * act_usr_pt = (unsigned char*)calloc(act_usr_pt_len, 1);
+    int count_len_usrnm = receiver->get_username().length();
+    int len_usrnm;
+    for (auto& usr : online_users) {
+        if (usr->get_username().compare(receiver->get_username())== 0){//add the receiver identifier to the first part
+            memcpy(act_usr_pt, usr->get_username().c_str(), receiver->get_username().length());
+            continue;
+        }
+        len_usrnm = usr->get_username().length();
+        memcpy(act_usr_pt + count_len_usrnm, (usr->get_username()).c_str(), len_usrnm);
+        count_len_usrnm += len_usrnm;
+        //put delimiter between usernames
+        memcpy(act_usr_pt + count_len_usrnm, DELIMITER.c_str(), DELIMITER.length());
+        count_len_usrnm += DELIMITER.length();
+    }
+    unsigned char* act_usr_ct{nullptr};
+    unsigned char* tag{nullptr};
+    int act_usr_ct_len = 0;
+    ///TODO:
+    if(-1 == (act_usr_ct_len = Security::gcm_encrypt((unsigned char *)aad, aad_len , act_usr_pt, act_usr_pt_len, 
+                receiver->get_server_client_key(), iv, &act_usr_ct, &tag))){
+
+    // if(-1 == (act_usr_ct_len = Security::gcm_encrypt((unsigned char *)aad, aad_len , act_usr_pt, act_usr_pt_len, 
+    //             (unsigned char*)"1234567890123456", iv, &act_usr_ct, &tag))){
+        free(act_usr_pt);    
+        free(iv);
+        free(aad);
+        return 0;
+    } 
+    int msg_buf_len = aad_len + act_usr_ct_len + Security::GCM_TAG_LEN;
+    char * msg_buf = (char*)malloc(msg_buf_len);
+    memcpy(msg_buf, aad, aad_len);
+    memcpy(msg_buf + aad_len, act_usr_ct, act_usr_ct_len);
+    memcpy(msg_buf + aad_len + act_usr_ct_len, tag, Security::GCM_TAG_LEN);
+
+    if (msg_buf_len != send(receiver->get_socket(), msg_buf, msg_buf_len , 0)){
+        cerr <<"Error: sending message 4 over the socket failed" << endl;
+        free(aad);
+        free(iv);
+        free(act_usr_pt);
+        free(act_usr_ct);
+        free(tag);
+        free(msg_buf);
+        return -1;
+        
+    }
+
+    receiver->increment_server_counter();
+    free(aad);
+    free(iv);
+    free(act_usr_pt);
+    free(act_usr_ct);
+    free(tag);
+    free(msg_buf);
+    return msg_buf_len;
+}
+
+//recevied by the client A 
+int Message::handle_message_4(User * my_user){
+
+    char*message = (char*)malloc(10100);
+    int val_read = read(my_user->get_socket(), message, 10100);
+
+    int k;
+    string msg = "";
+    for (k = 0; k < val_read; k++) {
+        msg = msg + message[k];
+    }
+
+    int aad_len = MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN;
+
+    string tag = msg.substr(msg.length() - Security::GCM_TAG_LEN, Security::GCM_TAG_LEN);
+    string ct = msg.substr(aad_len, msg.length() - Security::GCM_TAG_LEN - aad_len);
+    string aad = msg.substr(0, aad_len);
+    string gcm_iv = msg.substr(aad_len - Security::GCM_IV_LEN, Security::GCM_IV_LEN);
+
+    unsigned char * pt{nullptr};
+    ///TODO:
+    int pt_len = Security::gcm_decrypt((unsigned char*)aad.c_str(), aad_len, (unsigned char*)ct.c_str(), ct.length(), 
+    my_user->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &pt, (unsigned char*)tag.c_str());
+    // int pt_len = Security::gcm_decrypt((unsigned char*)aad.c_str(), aad_len, (unsigned char*)ct.c_str(), ct.length(), 
+    // (unsigned char*)"1234567890123456", (unsigned char*) gcm_iv.c_str(), &pt, (unsigned char*)tag.c_str());
+    
+    if(pt_len == -1) {
+        return -1;
+    }
+
+    string pt_str ((char*)pt);
+    free(pt);
+    uint16_t server_counter = (uint16_t) *(message + MESSAGE_TYPE_LENGTH);
+    if(!my_user->replay_check(true, server_counter)){
+        return -1;
+    }
+    return print_list_online_users(pt_str, my_user->get_username());
+}
 
 //sent by the client A
 int Message::send_message_5(User* my_user, string receiver_username){
@@ -15,7 +672,7 @@ int Message::send_message_5(User* my_user, string receiver_username){
         EVP_PKEY_free(newA);
         return -1;
     }
-    //creating aad: message type, client_to_received_counter, iv, generated dh public key
+    //creating aad: message type, client_to_server_counter, iv, generated dh public key
     int aad_len = MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN + DH_PUBK_LENGTH;
     char * aad = (char*)malloc(aad_len);
     if(!aad){
@@ -27,7 +684,7 @@ int Message::send_message_5(User* my_user, string receiver_username){
     
     aad[0] = 5;
     uint16_t * counter_pointer = (uint16_t *) (aad+1);
-    *counter_pointer = my_user->get_sent_counter() + 1;
+    *counter_pointer = my_user->get_client_counter();
     //add iv to aad
     memcpy(aad + MESSAGE_TYPE_LENGTH + COUNTER_LENGTH , iv, Security::GCM_IV_LEN);
     unsigned char*newA_char{nullptr};
@@ -68,8 +725,6 @@ int Message::send_message_5(User* my_user, string receiver_username){
         my_user->set_clients_pubk_char(nullptr);
         EVP_PKEY_free(newA);
         free(gcm_plaintext);    
-        free(gcm_ciphertext);
-        free(tag);
         free(iv);
         free(aad);
         return -1;
@@ -92,7 +747,7 @@ int Message::send_message_5(User* my_user, string receiver_username){
         return -1;
     }
 
-    my_user->increment_sent_counter();
+    my_user->increment_client_counter();
 
     free(aad);
     free(iv);
@@ -132,8 +787,8 @@ int Message::handle_message_5(char * message, size_t message_len, User* sender, 
     }
     string decryptedtext_str ((char*)decryptedtext);
     free(decryptedtext);
-    uint16_t received_counter = (uint16_t) *(message+1);
-    if(!sender->replay_check(false, received_counter)){
+    uint16_t server_counter = (uint16_t) *(message + MESSAGE_TYPE_LENGTH);
+    if(!sender->replay_check(false, server_counter)){
         return -1;
     }
     string dh_key = aad.substr(MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN, DH_PUBK_LENGTH); 
@@ -161,7 +816,7 @@ int Message::send_message_6(User* sender, User* receiver){
     //initialization vector
     unsigned char* iv{nullptr};
     if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)){return -1;}
-    //creating aad: message type, client_to_received_counter, iv, generated dh public key
+    //creating aad: message type, client_to_server_counter, iv, generated dh public key
     int aad_len = MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN + DH_PUBK_LENGTH;
     char * aad = (char*)malloc(aad_len);
     if(!aad){
@@ -172,7 +827,7 @@ int Message::send_message_6(User* sender, User* receiver){
     aad[0] = 6;
     //insert counter into aad
     uint16_t * counter_pointer = (uint16_t *) (aad+1);
-    *counter_pointer = receiver->get_received_counter() + 1;
+    *counter_pointer = receiver->get_server_counter();
     //insert the iv into aad
     memcpy(aad +  MESSAGE_TYPE_LENGTH +  COUNTER_LENGTH , iv, Security::GCM_IV_LEN);
     //insert the generated dh public key into the aad
@@ -203,8 +858,6 @@ int Message::send_message_6(User* sender, User* receiver){
                                                         iv, &gcm_ciphertext, &tag))){    
 
         free(gcm_plaintext);    
-        free(gcm_ciphertext);
-        free(tag);
         free(iv);
         free(aad);
         return -1;
@@ -225,7 +878,7 @@ int Message::send_message_6(User* sender, User* receiver){
         free(message_buf);
         return -1;
     }
-    receiver->increment_received_counter();
+    receiver->increment_server_counter();
     free(aad);
     free(iv);
     free(gcm_plaintext);
@@ -285,8 +938,8 @@ int Message::handle_message_6(User*my_user){
     }
     string decryptedtext_str ((char*)decryptedtext);
     free(decryptedtext);
-    uint16_t received_counter = (uint16_t) *(message+1);
-    if(!my_user->replay_check(true, received_counter)){
+    uint16_t server_counter = (uint16_t) *(message + MESSAGE_TYPE_LENGTH);
+    if(!my_user->replay_check(true, server_counter)){
         return -1;
     }
     string sender_username = decryptedtext_str.substr(0,
@@ -423,7 +1076,7 @@ int Message::send_message_7(User* my_user){
         return -1;
     }
 
-    //creating aad: message type, client_to_received_counter, iv, generated dh public key,encrypted signature
+    //creating aad: message type, client_to_server_counter, iv, generated dh public key,encrypted signature
     int aad_len = MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN + DH_PUBK_LENGTH + ciphertext_len;
     char * aad = (char*)malloc(aad_len);
     if(!aad){
@@ -444,7 +1097,7 @@ int Message::send_message_7(User* my_user){
     aad[0] = 7;
     //put counter into the aad
     uint16_t * counter_pointer = (uint16_t *) (aad+1);
-    *counter_pointer = my_user->get_sent_counter() + 1;
+    *counter_pointer = my_user->get_client_counter();
     //put the iv into the aad
     memcpy(aad + MESSAGE_TYPE_LENGTH +  COUNTER_LENGTH , iv, Security::GCM_IV_LEN);
     //put the generated dh public key into the aad
@@ -524,7 +1177,7 @@ int Message::send_message_7(User* my_user){
     EVP_PKEY_free(newB);
     EVP_PKEY_free(peer_pubk);
     free(text_to_sign);
-    my_user->increment_sent_counter();
+    my_user->increment_client_counter();
     free(signature);
     free(iv);
     free(ciphertext);
@@ -564,8 +1217,8 @@ int Message::handle_message_7(char * message, size_t message_len, User* sender, 
     
     string gcm_decryptedtext_str ((char*)gcm_decryptedtext);
     free(gcm_decryptedtext);
-    uint16_t received_counter = (uint16_t) *(message+1);
-    if(!sender->replay_check(false, received_counter)){
+    uint16_t server_counter = (uint16_t) *(message + MESSAGE_TYPE_LENGTH);
+    if(!sender->replay_check(false, server_counter)){
         return -1;
     }
     sender->set_peer_username(gcm_decryptedtext_str.substr(sender->get_username().length(), 
@@ -609,7 +1262,7 @@ int Message::send_message_8(User* sender, User* receiver, unsigned char * client
         EVP_PKEY_free(pubk);
         return -1;
     }
-    //creating aad: message type, client_to_received_counter, iv, generated dh public key, rsa publick key, encrypted signature
+    //creating aad: message type, client_to_server_counter, iv, generated dh public key, rsa publick key, encrypted signature
     int aad_len = MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN + DH_PUBK_LENGTH + 
                     (rsa_buf_size - 1) + clients_ciphertext_len;
     char * aad = (char*)malloc(aad_len);
@@ -623,7 +1276,7 @@ int Message::send_message_8(User* sender, User* receiver, unsigned char * client
     aad[0] = 8;
     //put the counter into aad
     uint16_t * counter_pointer = (uint16_t *) (aad+1);
-    *counter_pointer = receiver->get_received_counter() + 1;
+    *counter_pointer = receiver->get_server_counter();
     //put the iv into the aad
     memcpy(aad + MESSAGE_TYPE_LENGTH +  COUNTER_LENGTH , iv, Security::GCM_IV_LEN);
     //put the generated dh public key into the aad
@@ -659,8 +1312,6 @@ int Message::send_message_8(User* sender, User* receiver, unsigned char * client
                                                         iv, &gcm_ciphertext, &tag))){                                                        
         EVP_PKEY_free(pubk);
         free(gcm_plaintext);    
-        free(gcm_ciphertext);
-        free(tag);
         free(iv);
         free(aad);
         free(pk_buf);
@@ -686,7 +1337,7 @@ int Message::send_message_8(User* sender, User* receiver, unsigned char * client
         return -1;
     }
     ////
-    receiver->increment_received_counter();
+    receiver->increment_server_counter();
     free(aad);
     free(iv);
     free(gcm_plaintext);
@@ -726,8 +1377,8 @@ int Message::handle_message_8(char* message, size_t message_len, User * my_user)
     }
     string gcm_decryptedtext_str ((char*)gcm_decryptedtext);
     free(gcm_decryptedtext);
-    uint16_t received_counter = (uint16_t) *(message+1);
-    if(!my_user->replay_check(true, received_counter)){
+    uint16_t server_counter = (uint16_t) *(message + MESSAGE_TYPE_LENGTH);
+    if(!my_user->replay_check(true, server_counter)){
         return -1;
     }
     string dh_key = aad.substr(MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN, DH_PUBK_LENGTH);
@@ -829,13 +1480,13 @@ int Message::send_message_9(User* my_user){
     //initialization vector
     unsigned char* iv{nullptr};
     if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)){
-        // free(client_to_received_counter);
+        // free(client_to_server_counter);
         free(text_to_sign);
         free(signature);
         free(cipher_signature);
         return -1;
     }
-    //creating aad: message type, client_to_received_counter, iv, encrypted signature
+    //creating aad: message type, client_to_server_counter, iv, encrypted signature
     int aad_len = MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN + cipher_signature_len;
     char * aad = (char*)malloc(aad_len);
     if(!aad){ 
@@ -849,7 +1500,7 @@ int Message::send_message_9(User* my_user){
     aad[0] = 9;
     //put counter into aad
     uint16_t * counter_pointer = (uint16_t *) (aad+1);
-    *counter_pointer = my_user->get_sent_counter() + 1;
+    *counter_pointer = my_user->get_client_counter();
     //put iv into the aad
     memcpy(aad + MESSAGE_TYPE_LENGTH +  COUNTER_LENGTH , iv, Security::GCM_IV_LEN);
     //put encrypted cipher text into the aad
@@ -883,8 +1534,6 @@ int Message::send_message_9(User* my_user){
         free(signature);
         free(cipher_signature); 
         free(gcm_plaintext);    
-        free(gcm_ciphertext);
-        free(tag);
         free(iv);
         free(aad);
         return -1;
@@ -911,7 +1560,7 @@ int Message::send_message_9(User* my_user){
         }
 
     ////
-    my_user->increment_sent_counter();
+    my_user->increment_client_counter();
     //remove the public keys
     my_user->set_peer_pubk(nullptr);
     my_user->set_peer_pubk_char(nullptr);
@@ -958,8 +1607,8 @@ int Message::handle_message_9(char * message, size_t message_len, User* sender, 
     }
     string gcm_decryptedtext_str ((char*)gcm_decryptedtext);
     free(gcm_decryptedtext);
-    uint16_t received_counter = (uint16_t) *(message+1);
-    if(!sender->replay_check(false, received_counter)){
+    uint16_t server_counter = (uint16_t) *(message + MESSAGE_TYPE_LENGTH);
+    if(!sender->replay_check(false, server_counter)){
         return -1;
     }
     sender->set_peer_username(gcm_decryptedtext_str.substr(sender->get_username().length(), 
@@ -1004,7 +1653,7 @@ int Message::send_message_10(User* sender, User* receiver, unsigned char * clien
         return -1;
     }
 
-    //creating aad: message type, client_to_received_counter, iv, rsa publick key, encrypted signature
+    //creating aad: message type, client_to_server_counter, iv, rsa publick key, encrypted signature
     int aad_len = MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN + (rsa_buf_size - 1) + clients_ciphertext_len;
     char * aad = (char*)malloc(aad_len);
     if(!aad){
@@ -1017,7 +1666,7 @@ int Message::send_message_10(User* sender, User* receiver, unsigned char * clien
     aad[0] = 10;
     //put the counter into aad
     uint16_t * counter_pointer = (uint16_t *) (aad+1);
-    *counter_pointer = receiver->get_received_counter() + 1;
+    *counter_pointer = receiver->get_server_counter();
     //put the iv into the aad
     memcpy(aad + MESSAGE_TYPE_LENGTH +  COUNTER_LENGTH , iv, Security::GCM_IV_LEN);
     //put the rsa public key into the aad 
@@ -1079,7 +1728,7 @@ int Message::send_message_10(User* sender, User* receiver, unsigned char * clien
         return -1;
     }
     ////
-    receiver->increment_received_counter();
+    receiver->increment_server_counter();
     free(aad);
     free(iv);
     free(gcm_plaintext);
@@ -1127,8 +1776,8 @@ int Message::handle_message_10(User* my_user){
     }
     string gcm_decryptedtext_str ((char*)gcm_decryptedtext);
     free(gcm_decryptedtext);
-    uint16_t received_counter = (uint16_t) *(message+1);
-    if(!my_user->replay_check(true, received_counter)){
+    uint16_t server_counter = (uint16_t) *(message + MESSAGE_TYPE_LENGTH);
+    if(!my_user->replay_check(true, server_counter)){
         return -1;
     }
     //decrypt the clients cipher text
@@ -1188,7 +1837,7 @@ int Message::handle_message_10(User* my_user){
 //sent by client B to the server 
 int Message::send_message_11(User* my_user){
     //wrap around check
-    if(my_user->get_sent_counter() > UINT16_MAX - 2){
+    if(my_user->get_client_counter() > UINT16_MAX - 2){
         cout <<"This session is not secure anymore! Try to loggin again" <<endl;
         return send_message_17(my_user);
     }
@@ -1197,7 +1846,7 @@ int Message::send_message_11(User* my_user){
     if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)){
         return -1;
     }
-    //creating aad: message type, client_to_received_counter, iv
+    //creating aad: message type, client_to_server_counter, iv
     int aad_len = MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN;
     char * aad = (char*)malloc(aad_len);
     if(!aad){
@@ -1207,7 +1856,7 @@ int Message::send_message_11(User* my_user){
     
     aad[0] = 11;
     uint16_t * counter_pointer = (uint16_t *) (aad+1);
-    *counter_pointer = my_user->get_sent_counter() + 1;
+    *counter_pointer = my_user->get_client_counter();
     //add iv to aad
     memcpy(aad + MESSAGE_TYPE_LENGTH +  COUNTER_LENGTH , iv, Security::GCM_IV_LEN);
     //generate the gcm plaintext: sender username||receiver username
@@ -1232,8 +1881,6 @@ int Message::send_message_11(User* my_user){
                                                         (unsigned char*)"1234567890123456", iv, &gcm_ciphertext, &tag))){
 
         free(gcm_plaintext);    
-        free(gcm_ciphertext);
-        free(tag);
         free(iv);
         free(aad);
         return -1;
@@ -1257,7 +1904,7 @@ int Message::send_message_11(User* my_user){
         return -1;
     }
     ////
-    my_user->increment_sent_counter();
+    my_user->increment_client_counter();
     free(aad);
     free(message_buf);
     free(iv);
@@ -1295,8 +1942,8 @@ int Message::handle_message_11(char * message, size_t message_len, User* sender,
     }
     string decryptedtext_str ((char*)decryptedtext);
     free(decryptedtext);
-    uint16_t received_counter = (uint16_t) *(message+1);
-    if(!sender->replay_check(false, received_counter)){
+    uint16_t server_counter = (uint16_t) *(message + MESSAGE_TYPE_LENGTH);
+    if(!sender->replay_check(false, server_counter)){
         return -1;
     }
     string receiver_username = decryptedtext_str.substr(sender->get_username().length(),
@@ -1320,7 +1967,7 @@ unsigned int Message::send_message_12(User* sender, User* receiver){
     //initialization vector
     unsigned char* iv{nullptr};
     if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)){return 0;}
-    //creating aad: message type, client_to_received_counter, iv
+    //creating aad: message type, client_to_server_counter, iv
     int aad_len = MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN;
     char * aad = (char*)malloc(aad_len);
     if(!aad){
@@ -1331,7 +1978,7 @@ unsigned int Message::send_message_12(User* sender, User* receiver){
     aad[0] = 12;
     //insert counter into aad
     uint16_t * counter_pointer = (uint16_t *) (aad+1);
-    *counter_pointer = receiver->get_received_counter() + 1;
+    *counter_pointer = receiver->get_server_counter();
     //insert the iv into aad
     memcpy(aad + MESSAGE_TYPE_LENGTH +  COUNTER_LENGTH , iv, Security::GCM_IV_LEN);
     //generate the gcm plaintext: sender username||receiver username
@@ -1360,8 +2007,6 @@ unsigned int Message::send_message_12(User* sender, User* receiver){
                                                         iv, &gcm_ciphertext, &tag))){
         
         free(gcm_plaintext);    
-        free(gcm_ciphertext);
-        free(tag);
         free(iv);
         free(aad);
         return gcm_ciphertext_len;
@@ -1383,7 +2028,7 @@ unsigned int Message::send_message_12(User* sender, User* receiver){
         return -1;
     }
     ////
-    receiver->increment_received_counter();
+    receiver->increment_server_counter();
     free(aad);
     free(iv);
     free(gcm_plaintext);
@@ -1421,8 +2066,8 @@ int Message::handle_message_12(char* message, size_t message_len, User*my_user){
     }
     string decryptedtext_str ((char*)decryptedtext);
     free(decryptedtext);
-    uint16_t received_counter = (uint16_t) *(message+1);
-    if(!my_user->replay_check(true, received_counter)){
+    uint16_t server_counter = (uint16_t) *(message + MESSAGE_TYPE_LENGTH);
+    if(!my_user->replay_check(true, server_counter)){
         return -1;
     }
     string sender_username = decryptedtext_str.substr(0,
@@ -1438,7 +2083,7 @@ int Message::handle_message_12(char* message, size_t message_len, User*my_user){
 //sent by client A to the server 
 int Message::send_message_13(unsigned char* message, size_t message_len, User* my_user){
     //wrap around check
-    if(my_user->get_sent_counter() > UINT16_MAX - 2){
+    if(my_user->get_client_counter() > UINT16_MAX - 2){
         cout <<"This session is not secure anymore! Try to loggin again" <<endl;
         char * msg {nullptr};
         return send_message_17(my_user);
@@ -1455,7 +2100,7 @@ int Message::send_message_13(unsigned char* message, size_t message_len, User* m
         free(ciphertext);
         return 0;
     }
-    //creating aad: message type, client_to_received_counter, iv, generated dh public key,encrypted signature
+    //creating aad: message type, client_to_server_counter, iv, generated dh public key,encrypted signature
     int aad_len = MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN + ciphertext_len;
     char * aad = (char*)malloc(aad_len);
     if(!aad){
@@ -1467,7 +2112,7 @@ int Message::send_message_13(unsigned char* message, size_t message_len, User* m
     aad[0] = 13;
     //put counter into the aad
     uint16_t * counter_pointer = (uint16_t *) (aad+1);
-    *counter_pointer = my_user->get_sent_counter() + 1;
+    *counter_pointer = my_user->get_client_counter();
     //put the iv into the aad
     memcpy(aad + MESSAGE_TYPE_LENGTH +  COUNTER_LENGTH , iv, Security::GCM_IV_LEN);
     //put the encrypted message into the aad
@@ -1510,7 +2155,7 @@ int Message::send_message_13(unsigned char* message, size_t message_len, User* m
     ///TODO:Send the data to the network!
 
     ////
-    my_user->increment_sent_counter();
+    my_user->increment_client_counter();
     free(iv);
     free(ciphertext);
     free(aad);
@@ -1548,8 +2193,8 @@ int Message::handle_message_13(unsigned char ** clients_ciphertext, char * messa
     }
     string gcm_decryptedtext_str ((char*)gcm_decryptedtext);
     free(gcm_decryptedtext);
-    uint16_t received_counter = (uint16_t) *(message+1);
-    if(!sender->replay_check(false, received_counter)){
+    uint16_t server_counter = (uint16_t) *(message + MESSAGE_TYPE_LENGTH);
+    if(!sender->replay_check(false, server_counter)){
         return -1;
     }
     sender->set_peer_username(gcm_decryptedtext_str.substr(sender->get_username().length(), 
@@ -1562,7 +2207,7 @@ unsigned int Message::send_message_14(User* sender, User* receiver, unsigned cha
     unsigned char* iv{nullptr};
     if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)){return 0;}
     //load and send the rsa_public key of the sender
-    //creating aad: message type, client_to_received_counter, iv, encrypted clients message
+    //creating aad: message type, client_to_server_counter, iv, encrypted clients message
     int aad_len = MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN + clients_ciphertext_len;
     char * aad = (char*)malloc(aad_len);
     if(!aad){
@@ -1573,7 +2218,7 @@ unsigned int Message::send_message_14(User* sender, User* receiver, unsigned cha
     aad[0] = 14;
     //put the counter into aad
     uint16_t * counter_pointer = (uint16_t *) (aad+1);
-    *counter_pointer = receiver->get_received_counter() + 1;
+    *counter_pointer = receiver->get_server_counter();
     //put the iv into the aad
     memcpy(aad + MESSAGE_TYPE_LENGTH +  COUNTER_LENGTH , iv, Security::GCM_IV_LEN);
     //put the encrypted encrypted clients message into the aad
@@ -1601,8 +2246,6 @@ unsigned int Message::send_message_14(User* sender, User* receiver, unsigned cha
                                                         (unsigned char*)"1234567890123456", 
                                                         iv, &gcm_ciphertext, &tag))){                                                    
         free(gcm_plaintext);    
-        free(gcm_ciphertext);
-        free(tag);
         free(iv);
         free(aad);
         return gcm_ciphertext_len;
@@ -1617,7 +2260,7 @@ unsigned int Message::send_message_14(User* sender, User* receiver, unsigned cha
     ///TODO:Send the data to the network!
 
     ////
-    receiver->increment_received_counter();
+    receiver->increment_server_counter();
     free(aad);
     free(iv);
     free(gcm_plaintext);
@@ -1653,8 +2296,8 @@ int Message::handle_message_14(char* message, size_t message_len, User * my_user
     }
     string gcm_decryptedtext_str ((char*)gcm_decryptedtext);
     free(gcm_decryptedtext);
-    uint16_t received_counter = (uint16_t) *(message+1);
-    if(!my_user->replay_check(true, received_counter)){
+    uint16_t server_counter = (uint16_t) *(message + MESSAGE_TYPE_LENGTH);
+    if(!my_user->replay_check(true, server_counter)){
         return -1;
     }
     //decrypt the clients cipher text
@@ -1678,7 +2321,7 @@ unsigned int Message::send_message_17(User* my_user){
     if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)){
         return 0;
     }
-    //creating aad: message type, client_to_received_counter, iv
+    //creating aad: message type, client_to_server_counter, iv
     int aad_len = MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN;
     char * aad = (char*)malloc(aad_len);
     if(!aad){
@@ -1688,7 +2331,7 @@ unsigned int Message::send_message_17(User* my_user){
     
     aad[0] = 17;
     uint16_t * counter_pointer = (uint16_t *) (aad+1);
-    *counter_pointer = my_user->get_sent_counter() + 1;
+    *counter_pointer = my_user->get_client_counter();
     //add iv to aad
     memcpy(aad + MESSAGE_TYPE_LENGTH +  COUNTER_LENGTH , iv, Security::GCM_IV_LEN);
     //generate the gcm plaintext: sender username||receiver username
@@ -1712,8 +2355,6 @@ unsigned int Message::send_message_17(User* my_user){
     //                                                     my_user->get_server_client_key(), iv, &gcm_ciphertext, &tag))){
 
         free(gcm_plaintext);    
-        free(gcm_ciphertext);
-        free(tag);
         free(iv);
         free(aad);
         return 0;
@@ -1737,7 +2378,7 @@ unsigned int Message::send_message_17(User* my_user){
         return -1;
     }
     ////
-    my_user->increment_sent_counter();
+    my_user->increment_client_counter();
     free(aad);
     free(iv);
     free(gcm_plaintext);
@@ -1773,8 +2414,8 @@ int Message::handle_message_17(char * message, size_t message_len, User* sender)
     }
     string decryptedtext_str ((char*)decryptedtext);
     free(decryptedtext);
-    uint16_t received_counter = (uint16_t) *(message+1);
-    if(!sender->replay_check(false, received_counter)){
+    uint16_t server_counter = (uint16_t) *(message + MESSAGE_TYPE_LENGTH);
+    if(!sender->replay_check(false, server_counter)){
         return -1;
     }
     if(!sender->get_peer_username().empty()){

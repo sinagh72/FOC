@@ -136,53 +136,30 @@ int main(int argc, char const *argv[])
     }
     //creating the user
     User * my_user = new User(username, password, IP, PORT, sock);
-    unsigned char key_gcm[]="1234567890123456";
-    my_user->set_server_client_key(key_gcm ,16);
     //send message 0
-    // char *buffer_0 {nullptr};
-    // int buffer_len = Message::send_message_0(&buffer_0, my_user);
-    // if(buffer_len == -1){
-    //     cout << "Error in sending message type 0" <<endl;
-    //     return -1;
-    // }
+    char *buffer_0 {nullptr};
+    int buffer_len = Message::send_message_0(&buffer_0, my_user);
+    if(buffer_len == -1){
+        cout << "Error in sending message type 0" <<endl;
+        return -1;
+    }
+    ///TODO:check errors
+    char *buffer = (char*)malloc(10100);
     //handle message type 1
-    //valread = read( sock , buffer, 10100);
-    //Message::handle_message_1(buffer, valread, my_user);
-    //free(buffer);
+    valread = read( sock , buffer, 10100);
+    // BIO_dump_fp(stdout, buffer, valread);
+
+    Message::handle_message_1(buffer, valread, my_user);
+    free(buffer);
+
     //now the key between server and the client is established
-    //cout <<"Secure Connection is Established" <<endl;
+    cout <<"Secure Connection is Established" <<endl;
+
     string input;
     bool ok1 = false;
-    char *buffer = (char*)malloc(10100);
-    buffer[0] = argv[1][0];
-    send(sock, buffer, 1, 0);
+    // buffer[0] = argv[1][0];
+    // send(sock, buffer, 1, 0);
 
-    thread t1 (main_loop);
-    //thread t2 (listening_loop);
-    
-    ///TODO:check if the client receive a request
-    // Client does not want to make a request
-
-    // char const *hello = "sina";
-    // send(sock , hello , strlen(hello) , 0 );
-    // printf("Hello message sent\n");
-    // usleep(MSEC);
-    // valread = read( sock , buffer, 1024);
-    // printf("%s\n",buffer);
-    t1.join();
-    //t2.join();
-    close(sock);
-
-    return 0;
-}
-
-void listening_loop(){
-    while(1){
-
-    }
-}
-void main_loop(){
-    string input;
     do{
         //Main Menu:
         //Please Select One Option:
@@ -194,13 +171,16 @@ void main_loop(){
         if (!check_user_input(input, 3))
             continue;
         if(input.compare("1") == 0){
-            ///TODO:send message 3 and handle message 4
-            //Message::send_message_3(...);
-            //Message::handle_message_4(...)
+            if(Message::send_message_3(my_user) == -1){
+                ///TODO:maybe server is off!
+                continue;
+            }
+            if(Message::handle_message_4(my_user) < 1){
+                continue;
+            }
             bool valid_handshake = false;
             bool established = false;
             do{
-                //print_list_online_users();//this function is empty, according to the data received we can print the list of online users
                 // Example:
                 // 1. Alycia
                 // 2. Sina
@@ -239,4 +219,29 @@ void main_loop(){
             break;  
         }
     }while (1);
+    //thread t2 (listening_loop);
+    
+    ///TODO:check if the client receive a request
+    // Client does not want to make a request
+
+    // char const *hello = "sina";
+    // send(sock , hello , strlen(hello) , 0 );
+    // printf("Hello message sent\n");
+    // usleep(MSEC);
+    // valread = read( sock , buffer, 1024);
+    // printf("%s\n",buffer);
+    // t1.join();
+    //t2.join();
+    close(sock);
+
+    return 0;
+}
+
+void listening_loop(){
+    while(1){
+
+    }
+}
+void main_loop(){
+   
 }

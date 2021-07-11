@@ -26,8 +26,8 @@ private:
     unsigned char *server_pubk_char{nullptr};//h pub key of the server or g^b in characters
     EVP_PKEY* peer_pubk{nullptr};// dh pub key of other peer or g^b'
     unsigned char *peer_pubk_char{nullptr};// dh pub key of other peer or g^b' in characters
-    uint16_t received_counter{0};//server to client counter: #messages that the user has received from the server
-    uint16_t sent_counter{0};//client to server counter: #messages that the user has sent to the server
+    uint16_t server_counter{0};//server to client counter: #messages that the user has received from the server
+    uint16_t client_counter{0};//client to server counter: #messages that the user has sent to the server
     string peer_username;//the username of the user that we are communicating with
 
 
@@ -87,22 +87,22 @@ public:
     }
 
     //increment the server counter
-    uint16_t increment_received_counter(){
-        this->received_counter++;
-        return this->received_counter;
+    uint16_t increment_server_counter(){
+        this->server_counter++;
+        return this->server_counter;
     }
     //increment the client counter
-    uint16_t increment_sent_counter(){
-        this->sent_counter++;
-        return sent_counter;
+    uint16_t increment_client_counter(){
+        this->client_counter++;
+        return client_counter;
     }
     //set the client counter to zero
-    void clear_sent_counter(){
-         this->sent_counter = 0;
+    void clear_client_counter(){
+         this->client_counter = 0;
     }
     //set the server counter to zero
-    void clear_received_counter(){
-        this->received_counter = 0;
+    void clear_server_counter(){
+        this->server_counter = 0;
     }
     //set public key for the client_client communication 
     void set_clients_pubk(EVP_PKEY*dh_pubk){
@@ -205,12 +205,12 @@ public:
         return this->clients_key;
     }
     //return the server counter
-    uint16_t get_received_counter(){
-        return this->received_counter;
+    uint16_t get_server_counter(){
+        return this->server_counter;
     }
     //return the client counter
-    uint16_t get_sent_counter(){
-        return this->sent_counter;
+    uint16_t get_client_counter(){
+        return this->client_counter;
     }
     // get the client socket
     int get_socket(){
@@ -256,7 +256,7 @@ public:
         
     }
     //check for replay attack
-    bool replay_check(bool from_server, uint16_t received_counter);
+    bool replay_check(bool from_server, uint16_t server_counter);
     //this method is called when the user has logged out in order to clear any data inside the client!
     void clear();
     //destructor

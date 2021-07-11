@@ -61,7 +61,7 @@ unsigned int Message::send_message_3(char ** msg_buf, User * my_user) {
         return -1;
     }
 
-    my_user->increment_sent_counter();
+    my_user->increment_client_counter();
     free(aad);
     free(iv);
     free(id_pt);
@@ -94,8 +94,8 @@ int Message::handle_message_3(char * msg_buf, size_t msg_len, User * my_user){
 
     string id_pt_str ((char*)id_pt);
     free(id_pt);
-    uint16_t received_counter = (uint16_t) *(msg_buf + 1);
-    if(!my_user->replay_check(false, received_counter)){
+    uint16_t server_counter = (uint16_t) *(msg_buf + 1);
+    if(!my_user->replay_check(false, server_counter)){
         return -1;
     }
 
@@ -180,7 +180,7 @@ unsigned int Message::send_message_4(char** msg_buf, vector<User> * act_usr, Use
         return -1;
     }
 
-    dest_user->increment_received_counter();
+    dest_user->increment_server_counter();
     free(aad);
     free(iv);
     free(act_usr_pt);
@@ -215,8 +215,8 @@ int Message::handle_message_4(char * msg_buf, size_t msg_len, User * dest_user){
 
     string pt_str ((char*)pt);
     free(pt);
-    uint16_t received_counter = (uint16_t) *(msg_buf + 1);
-    if(!dest_user->replay_check(false, received_counter)){
+    uint16_t server_counter = (uint16_t) *(msg_buf + 1);
+    if(!dest_user->replay_check(false, server_counter)){
         return -1;
     }
 
