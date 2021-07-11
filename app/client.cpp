@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <thread>
 #include <mutex>
+#include <vector>
 #include "Message.h"
 
 
@@ -156,6 +157,7 @@ int main(int argc, char const *argv[])
     cout <<"Secure Connection is Established" <<endl;
 
     string input;
+    string input_username;
     bool ok1 = false;
     // buffer[0] = argv[1][0];
     // send(sock, buffer, 1, 0);
@@ -175,32 +177,37 @@ int main(int argc, char const *argv[])
                 ///TODO:maybe server is off!
                 continue;
             }
-            if(Message::handle_message_4(my_user) < 1){
+            vector<string> usernames;
+            int onlines = Message::handle_message_4(my_user, &usernames);
+            if(onlines == -1){
+                ///TODO:error
+                continue;
+            }else if (onlines == 0){
+                cout << "There is No Available User" << endl;
                 continue;
             }
             bool valid_handshake = false;
             bool established = false;
             do{
-                // Example:
-                // 1. Alycia
-                // 2. Sina
-                // 3. Lorenzo
-                // 0. Go Back
-                //cin >> input;
-                ///TODO: according to the input number find the corresponding username
-                //string username_for_request;
-
-                //if (!check_user_input(input, 2))// instead of 2, should be the number of online users + 1
-                   // continue;
-                //else{
-                //    valid_handshake = establishe_handshake_clients(my_user, username_for_request);
-                //}
-                established = establishe_handshake_clients(my_user, "lore");
-                valid_handshake = true;
+                cout << "Online Users:\n";
+                cout << "Select The User You Want to Chat:\n";
+                size_t c = 1;
+                for(string usr: usernames){
+                    cout << c <<". " << usr << endl;
+                    c++;
+                }
+                cout << "0. Go Back" <<endl;
+                cin >> input_username;
+                if (!check_user_input(input_username, usernames.size()+1))
+                   valid_handshake = false;
+                else if(input_username.compare("0") == 0)
+                    valid_handshake = true;
+                else
+                   valid_handshake = establishe_handshake_clients(my_user, usernames.at(stoi(input_username) - 1));
             }while (!valid_handshake);
-            if (established) {
+            if (established) 
                 send_secure();
-            }
+            
         }else if(input.compare("2") == 0){
             int out = Message::handle_message_6(my_user);
             if(-1 == out){
@@ -211,7 +218,6 @@ int main(int argc, char const *argv[])
                 }
                 cout <<"Secure Connection between You and " << my_user->get_peer_username() <<" is Established!" <<endl;
             }
-            continue;
         }else if (input.compare("0") == 0){
             if(0 == Message::send_message_17(my_user)){
                 ///TODO: handle error in sending message 17

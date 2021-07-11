@@ -38,7 +38,7 @@ public:
 
     // message 4
     static int send_message_4(User* sender, vector<User*>online_users);
-    static int handle_message_4(User * my_user);
+    static int handle_message_4(User * my_user, vector<string>*usernames);
     
      /**
      * create a message type 5. This function will be called inside the client application

@@ -1,4 +1,5 @@
 #include "Message.h"
+#include <vector>
 
 //sent by the client A
 int Message::send_message_0(char **buffer, User* my_user) {
@@ -423,7 +424,6 @@ void Message::handle_message_2(char *buffer, int buffer_len, User *client) {
 
 //sent by the client A
 int Message::send_message_3(User * my_user) {
-    cout << my_user->get_client_counter() << endl;
     // generate iv
     unsigned char* iv{nullptr};
     if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)){;
@@ -440,6 +440,7 @@ int Message::send_message_3(User * my_user) {
     aad[0] = 3;
     uint16_t * counter_pointer = (uint16_t *) (aad + 1);
     *counter_pointer = my_user->get_client_counter();
+    my_user->increment_client_counter();
     memcpy(aad + MESSAGE_TYPE_LENGTH + COUNTER_LENGTH , iv, Security::GCM_IV_LEN);
     // encrypt identifier (username) with gcm 
     int id_pt_len = USERNAME_LENGTH;
@@ -479,7 +480,6 @@ int Message::send_message_3(User * my_user) {
         return -1;
     }
  
-    my_user->increment_client_counter();
     free(aad);
     free(iv);
     free(id_pt);
@@ -552,20 +552,16 @@ int Message::send_message_4(User* receiver, vector<User*>online_users) {
     }    
     aad[0] = 3;
     uint16_t * counter_pointer = (uint16_t *) (aad + 1);
-    *counter_pointer = receiver->get_server_counter()+ 1;
+    *counter_pointer = receiver->get_server_counter();
     memcpy(aad + MESSAGE_TYPE_LENGTH + COUNTER_LENGTH , iv, Security::GCM_IV_LEN);
-
+    receiver->increment_server_counter();
 
     // encrypt list of active users with gcm 
     int act_usr_pt_len = online_users.size() * USERNAME_LENGTH +  (online_users.size() - 1) * DELIMITER.length();
     unsigned char * act_usr_pt = (unsigned char*)calloc(act_usr_pt_len, 1);
-    int count_len_usrnm = receiver->get_username().length();
+    int count_len_usrnm = 0;
     int len_usrnm;
     for (auto& usr : online_users) {
-        if (usr->get_username().compare(receiver->get_username())== 0){//add the receiver identifier to the first part
-            memcpy(act_usr_pt, usr->get_username().c_str(), receiver->get_username().length());
-            continue;
-        }
         len_usrnm = usr->get_username().length();
         memcpy(act_usr_pt + count_len_usrnm, (usr->get_username()).c_str(), len_usrnm);
         count_len_usrnm += len_usrnm;
@@ -605,7 +601,6 @@ int Message::send_message_4(User* receiver, vector<User*>online_users) {
         
     }
 
-    receiver->increment_server_counter();
     free(aad);
     free(iv);
     free(act_usr_pt);
@@ -616,7 +611,7 @@ int Message::send_message_4(User* receiver, vector<User*>online_users) {
 }
 
 //recevied by the client A 
-int Message::handle_message_4(User * my_user){
+int Message::handle_message_4(User * my_user, vector<string>*usernames){
 
     char*message = (char*)malloc(10100);
     int val_read = read(my_user->get_socket(), message, 10100);
@@ -651,7 +646,15 @@ int Message::handle_message_4(User * my_user){
     if(!my_user->replay_check(true, server_counter)){
         return -1;
     }
-    return print_list_online_users(pt_str, my_user->get_username());
+    size_t pos = 0;
+    string token;
+    while ((pos = pt_str.find(DELIMITER)) != string::npos) {
+        token = pt_str.substr(0, pos);
+        if(token.compare(my_user->get_username()) != 0)
+            usernames->push_back(token);
+        pt_str.erase(0, pos + DELIMITER.length());
+    }
+    return usernames->size();
 }
 
 //sent by the client A
@@ -1827,7 +1830,6 @@ int Message::handle_message_10(User* my_user){
     return 1;
                                         
 }
-
 
 //sent by client B to the server 
 int Message::send_message_11(User* my_user){
