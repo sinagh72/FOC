@@ -188,13 +188,9 @@ void Message::handle_message_1(char *buffer, int buffer_len, User *client) {
     memcpy(iv, buffer+MESSAGE_TYPE_LENGTH + COUNTER_LENGTH, Security::GCM_IV_LEN);
 
     string server_certificate_serialized(buffer+MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN);
-    cout<<"CERTIFICATE:"<<endl;
-    
     
     char* server_dh_pubkey_serialized = (char*) malloc(DH_PUBK_LENGTH);
     memcpy(server_dh_pubkey_serialized, buffer+MESSAGE_TYPE_LENGTH + COUNTER_LENGTH+Security::GCM_IV_LEN+server_certificate_serialized.length()+1, DH_PUBK_LENGTH);
-    cout<<"SERVER DH KEY"<<endl;
-    BIO_dump_fp(stdout, server_dh_pubkey_serialized, DH_PUBK_LENGTH);
 
     unsigned char* tag = (unsigned char*)buffer+buffer_len-Security::GCM_TAG_LEN;
     
@@ -224,7 +220,6 @@ void Message::handle_message_1(char *buffer, int buffer_len, User *client) {
         EVP_PKEY_free(server_dh_pubkey);
         return;
     }
-
     client->set_server_client_key(skey, skey_len);
 
     //verify tag and decrypt signature
@@ -368,7 +363,7 @@ void Message::handle_message_1(char *buffer, int buffer_len, User *client) {
 
     free(concat);
     free(signature_answ);
-    BIO_dump_fp(stdout, (char*)client->get_server_client_key(), 256);
+    BIO_dump_fp(stdout, (char*)client->get_server_client_key(), 32);
 
 }
 
@@ -379,6 +374,9 @@ void Message::handle_message_2(char *buffer, int buffer_len, User *client) {
         return;
     }
     client->increment_client_counter();
+    cout<<"here"<<endl;
+    BIO_dump_fp(stdout, (char*)client->get_server_client_key(), 32);
+    cout<<"here"<<endl;
     //set pointer in the incoming buffer
     char* aad = buffer;
     int aad_len = MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN;
@@ -422,7 +420,6 @@ void Message::handle_message_2(char *buffer, int buffer_len, User *client) {
     }
 
     client->set_status(ONLINE);
-    BIO_dump_fp(stdout, (char*)client->get_server_client_key(), 256);
 
 }
 

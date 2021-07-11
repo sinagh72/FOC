@@ -1,15 +1,11 @@
 #ifndef APP_MESSAGE_H
 #define APP_MESSAGE_H
 
-#include "Security.h"
-#include <stdint.h>
-#include <sys/types.h>
+#include "user.h"
 #include <sys/socket.h>
-#include <unistd.h>
 #include "utility.h"
-#include <cstddef>
+#include <unistd.h> 
 
-using namespace std;
 
 class Message {
 

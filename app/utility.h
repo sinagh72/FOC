@@ -1,11 +1,5 @@
-#include <algorithm>
-#include <cstddef>
-#include <string>
-#include <iostream>
 #include "user.h"
 #include <vector>
-
-using namespace std;
 
 
 const string WHITESPACE = " \n\r\t\f\v";

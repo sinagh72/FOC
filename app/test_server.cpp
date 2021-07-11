@@ -1,6 +1,5 @@
 #include <cstdint>
 #include <errno.h> 
-#include <unistd.h>   //close 
 #include <arpa/inet.h>    //close 
 #include <netinet/in.h> 
 #include <sys/time.h> //FD_SET, FD_ISSET, FD_ZERO macros
