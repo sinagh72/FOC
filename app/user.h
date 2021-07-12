@@ -6,7 +6,7 @@
 using namespace std;
 
 
-enum STATUS {CONNECTING, ONLINE, CHATTING, OFFLINE};
+enum STATUS {CONNECTING, ONLINE, CHATTING, RTT};
 
 class User{
 private:

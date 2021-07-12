@@ -166,7 +166,17 @@ int main(int argc , char* argv[]) {
                          
                     //Close the socket and mark as 0 in list for reuse 
                     close( sd ); 
-                    FD_CLR(sd , &readfds); 
+                    FD_CLR(sd , &readfds);
+                    //
+                    if(!sender->get_peer_username().empty()){
+                        User *receiver = find_user(sender->get_peer_username(), &online_users);
+                        if(receiver == nullptr){
+                            break;
+                        }
+                        if(Message::send_message_16(sender, receiver) == -1){
+                            cerr << "Error in sending message 16" << endl;
+                        }
+                    }
                     sender->clear();
                     break;  
                 }  
@@ -184,23 +194,33 @@ int main(int argc , char* argv[]) {
                             break;
                         case 5:
                             if(Message::handle_message_5(buffer, valread, sender, online_users) == -1){
+                                sender->set_status(ONLINE);
                                 break;
                             }
                             break;
                         case 7:
                             if(Message::handle_message_7(buffer, valread, sender, online_users) == -1){
+                                sender->set_status(ONLINE);
                                 break;
                             }
                             break;
                         case 9:
                             if(Message::handle_message_9(buffer, valread, sender, online_users) == -1){
+                                sender->set_status(ONLINE);
                                 break;
                             }
                             break;
                         case 11:
                             if(Message::handle_message_11(buffer, valread, sender, online_users) == -1){
+                                sender->set_status(ONLINE);
                                 break;
                             }
+                        case 17:
+                            if(Message::handle_message_17(buffer, valread, sender, online_users) == -1){
+                                sender->set_status(ONLINE);
+                                break;
+                            }
+                            
                         }
                 }
                     // buffer[valread] = '\0';

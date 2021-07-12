@@ -19,6 +19,7 @@
 
 bool establishe_handshake_clients(User * my_user, string receiver_username){
     int val_read = 0;
+    my_user->set_status(RTT);
     if (Message::send_message_5(my_user, receiver_username) == -1){
         cout << "Error: sending message 5 failed" <<endl;
         return false;
@@ -192,6 +193,7 @@ int main(int argc, char const *argv[])
             bool valid_handshake = false;
             bool established = false;
             do{
+                my_user->set_status(ONLINE);
                 cout << "Online Users:\n";
                 cout << "Select The User You Want to Chat:\n";
                 size_t c = 1;

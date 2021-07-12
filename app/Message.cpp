@@ -562,12 +562,14 @@ int Message::send_message_4(User* receiver, vector<User*>online_users) {
     int count_len_usrnm = 0;
     int len_usrnm;
     for (auto& usr : online_users) {
-        len_usrnm = usr->get_username().length();
-        memcpy(act_usr_pt + count_len_usrnm, (usr->get_username()).c_str(), len_usrnm);
-        count_len_usrnm += len_usrnm;
-        //put delimiter between usernames
-        memcpy(act_usr_pt + count_len_usrnm, DELIMITER.c_str(), DELIMITER.length());
-        count_len_usrnm += DELIMITER.length();
+        if(usr->get_status() == ONLINE){
+            len_usrnm = usr->get_username().length();
+            memcpy(act_usr_pt + count_len_usrnm, (usr->get_username()).c_str(), len_usrnm);
+            count_len_usrnm += len_usrnm;
+            //put delimiter between usernames
+            memcpy(act_usr_pt + count_len_usrnm, DELIMITER.c_str(), DELIMITER.length());
+            count_len_usrnm += DELIMITER.length();
+        }
     }
     unsigned char* act_usr_ct{nullptr};
     unsigned char* tag{nullptr};
@@ -745,6 +747,7 @@ int Message::send_message_5(User* my_user, string receiver_username){
 }
 //recevied by the server 
 int Message::handle_message_5(char * message, size_t message_len, User* sender, vector<User*>online_users){
+    sender->set_status(RTT);
     int i;
     string msg = "";
     for (i = 0; i < message_len; i++) {
@@ -792,7 +795,6 @@ int Message::handle_message_5(char * message, size_t message_len, User* sender, 
 }
 //sent by the server to client B
 int Message::send_message_6(User* sender, User* receiver){
-    //
     //initialization vector
     unsigned char* iv{nullptr};
     if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)){return -1;}
@@ -861,6 +863,7 @@ int Message::send_message_6(User* sender, User* receiver){
     free(gcm_ciphertext);
     free(tag);
     free(message_buf);
+    receiver->set_status(RTT);
     return message_buf_len;
 }
 //received by the client B
@@ -919,6 +922,7 @@ int Message::handle_message_6(User*my_user){
 
     if(input.compare("0") == 0){
         if (send_message_11(my_user) == -1){
+            cerr << "Error in sending message 11" << endl;
             return -1;
         }
         return 0;
@@ -932,6 +936,7 @@ int Message::handle_message_6(User*my_user){
         cout <<"Error in sending message 7" <<endl;
         return -1;
     }
+    my_user->set_status(RTT);
     return 1;
 
 }
@@ -1149,6 +1154,12 @@ int Message::send_message_7(User* my_user){
 }
 //recevied by the server 
 int Message::handle_message_7(char * message, size_t message_len, User* sender, vector<User*>users){
+    User * receiver = find_user(sender->get_peer_username(), &users);
+    if(receiver == nullptr){
+        receiver->set_status(ONLINE);
+        return -1;
+    }
+
     int i;
     string msg = "";
     for (i = 0; i < message_len; i++) {
@@ -1166,7 +1177,8 @@ int Message::handle_message_7(char * message, size_t message_len, User* sender, 
     if(-1==(Security::gcm_decrypt((unsigned char*)aad.c_str(), aad.length(), 
                                 (unsigned char*)gcm_ciphertext.c_str(), gcm_ciphertext.length(),
                                 sender->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &gcm_decryptedtext, 
-                                (unsigned char*)tag.c_str()))){                       
+                                (unsigned char*)tag.c_str()))){   
+        receiver->set_status(ONLINE);
         return -1;
     }
     
@@ -1174,6 +1186,7 @@ int Message::handle_message_7(char * message, size_t message_len, User* sender, 
     free(gcm_decryptedtext);
     uint16_t server_counter = (uint16_t) *(message + MESSAGE_TYPE_LENGTH);
     if(!sender->replay_check(false, server_counter)){
+        receiver->set_status(ONLINE);
         return -1;
     }
     sender->set_peer_username(gcm_decryptedtext_str.substr(sender->get_username().length(), 
@@ -1182,12 +1195,10 @@ int Message::handle_message_7(char * message, size_t message_len, User* sender, 
     string dh_key = aad.substr(MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN, DH_PUBK_LENGTH);
     sender->set_clients_pubk_char((unsigned char *)dh_key.c_str());
     cout << "handling message 7 from " << sender->get_username()<<endl;
-    User * receiver = find_user(sender->get_peer_username(), &users);
-    if(receiver == nullptr){
-        return -1;
-    }
+   
     if(Message::send_message_8(sender, receiver,(unsigned char*) clients_ciphertext_str.c_str(),
                                     clients_ciphertext_str.length()) == -1){
+        receiver->set_status(ONLINE);
         cerr <<"Error in sending message 8" << endl;
         return -1;
     }
@@ -1517,11 +1528,16 @@ int Message::send_message_9(User* my_user){
     free(gcm_ciphertext);
     free(tag);
     free(message_buf);
-
+    my_user->set_status(CHATTING);
     return message_buf_len;
 }
 //received by the server
 int Message::handle_message_9(char * message, size_t message_len, User* sender, vector<User*>users){
+    User *receiver = find_user(sender->get_peer_username(), &users);
+    if(receiver == nullptr){
+        receiver->set_status(ONLINE);
+        return -1;
+    }
     int i;
     string msg = "";
     for (i = 0; i < message_len; i++) {
@@ -1539,26 +1555,25 @@ int Message::handle_message_9(char * message, size_t message_len, User* sender, 
                                 (unsigned char*)gcm_ciphertext.c_str(), gcm_ciphertext.length(),
                                 sender->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &gcm_decryptedtext, 
                                 (unsigned char*)tag.c_str()))){
-  
+        receiver->set_status(ONLINE);
         return -1;
     }
     string gcm_decryptedtext_str ((char*)gcm_decryptedtext);
     free(gcm_decryptedtext);
     uint16_t server_counter = (uint16_t) *(message + MESSAGE_TYPE_LENGTH);
     if(!sender->replay_check(false, server_counter)){
+        receiver->set_status(ONLINE);
         return -1;
     }
     sender->set_peer_username(gcm_decryptedtext_str.substr(sender->get_username().length(), 
                                                             gcm_decryptedtext_str.length() - sender->get_username().length()));
 
     cout << "handling message 9 from " << sender->get_username()<<endl;
-    User *receiver = find_user(sender->get_peer_username(), &users);
-    if(receiver == nullptr){
-        return -1;
-    }
+    
     if(Message::send_message_10(sender, receiver,(unsigned char*) clients_ciphertext_str.c_str(),
                                     clients_ciphertext_str.length()) == -1){
         cerr <<"Error in sending message 10" << endl;
+        receiver->set_status(ONLINE);
         return -1;
     }
     cout << "forwarding message 10 from " << sender->get_username() <<" to " << receiver->get_username()<<endl;
@@ -1568,7 +1583,6 @@ int Message::handle_message_9(char * message, size_t message_len, User* sender, 
 }
 //sent by the server to client B
 int Message::send_message_10(User* sender, User* receiver, unsigned char * clients_ciphertext, int clients_ciphertext_len){
-     //
     //initialization vector
     unsigned char* iv{nullptr};
     if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)){return -1;}
@@ -1672,6 +1686,8 @@ int Message::send_message_10(User* sender, User* receiver, unsigned char * clien
     EVP_PKEY_free(pubk);
     sender->set_clients_pubk_char(nullptr);//remove it
     receiver->set_peer_username(sender->get_username());
+    receiver->set_status(CHATTING);
+    sender->set_status(CHATTING);
     return message_buf_len;
 }
 //received by a client B
@@ -1757,6 +1773,8 @@ int Message::handle_message_10(User* my_user){
     my_user->set_peer_pubk_char(nullptr);
     my_user->set_clients_pubk(nullptr);
     my_user->set_clients_pubk_char(nullptr);
+    //
+    my_user->set_status(CHATTING);
     return 1;
                                         
 }
@@ -1835,11 +1853,16 @@ int Message::send_message_11(User* my_user){
     free(gcm_ciphertext);
     free(tag);
     my_user->set_peer_username("");
-
     return message_buf_len;
 }
 //recevied by the server 
 int Message::handle_message_11(char * message, size_t message_len, User* sender, vector<User*>users){
+    User *receiver = find_user(sender->get_peer_username(), &users);
+    if(receiver == nullptr){
+        receiver->set_status(ONLINE);
+        return -1;
+    }
+
     int i;
     string msg = "";
     for (i = 0; i < message_len; i++) {
@@ -1856,27 +1879,29 @@ int Message::handle_message_11(char * message, size_t message_len, User* sender,
                                 (unsigned char*)ciphertext.c_str(), ciphertext.length(),
                                 sender->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &decryptedtext, 
                                 (unsigned char*)tag.c_str()))){
+        receiver->set_status(ONLINE);
         return -1;
     }
     string decryptedtext_str ((char*)decryptedtext);
     free(decryptedtext);
     uint16_t server_counter = (uint16_t) *(message + MESSAGE_TYPE_LENGTH);
     if(!sender->replay_check(false, server_counter)){
+        receiver->set_status(ONLINE);
         return -1;
     }
     string receiver_username = decryptedtext_str.substr(sender->get_username().length(),
                                 decryptedtext_str.length() - sender->get_username().length());
     sender->set_peer_username(receiver_username);
     cout << "handling message 11 from " << sender->get_username()<<endl;
-    User *receiver = find_user(sender->get_peer_username(), &users);
-    if(receiver == nullptr){
-        return -1;
-    }
+   
     if(Message::send_message_12(sender, receiver) == -1){
         cerr <<"Error in sending message 12" << endl;
+        receiver->set_status(ONLINE);
         return -1;
     }
     cout << "forwarding message 11 from " << sender->get_username() <<" to " << receiver->get_username()<<endl;
+    sender->set_status(ONLINE);
+    receiver->set_status(ONLINE);
     return 1;
 }
 
@@ -1954,7 +1979,7 @@ unsigned int Message::send_message_12(User* sender, User* receiver){
 }
 //received by the client B
 int Message::handle_message_12(char* message, size_t message_len, User*my_user){
-   int i;
+    int i;
     string msg = "";
     for (i = 0; i < message_len; i++) {
         msg = msg + message[i];
@@ -1985,8 +2010,8 @@ int Message::handle_message_12(char* message, size_t message_len, User*my_user){
     my_user->set_clients_pubk_char(nullptr);
     my_user->set_clients_pubk(nullptr);
     cout<< sender_username <<" Decliend Your Request to Chat!" <<endl;
+    my_user->set_status(ONLINE);
     return 1;
-
 }
 
 //sent by client A to the server 
@@ -2206,18 +2231,250 @@ int Message::handle_message_14(char* message, size_t message_len, User * my_user
 }
 
 //sent by client A to the server 
-unsigned int Message::send_message_17(User* my_user){
+int Message::send_message_15(User* my_user){
+    //wrap around check
+    if(my_user->get_client_counter() > UINT16_MAX - 2){
+        cout <<"This session is not secure anymore! Try to loggin again" <<endl;
+        return send_message_17(my_user);
+    }
     //initialization vector
     unsigned char* iv{nullptr};
     if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)){
-        return 0;
+        return -1;
     }
     //creating aad: message type, client_to_server_counter, iv
     int aad_len = MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN;
     char * aad = (char*)malloc(aad_len);
     if(!aad){
         free(iv);
-        cerr<< "Error: malloc for AAD returned NULL (too big AAD?)\n"; return 0;
+        cerr<< "Error: malloc for AAD returned NULL (too big AAD?)\n"; 
+        return -1;
+    }
+    
+    aad[0] = 15;
+    uint16_t * counter_pointer = (uint16_t *) (aad+1);
+    *counter_pointer = my_user->get_client_counter();
+    //add iv to aad
+    memcpy(aad + MESSAGE_TYPE_LENGTH +  COUNTER_LENGTH , iv, Security::GCM_IV_LEN);
+    //generate the gcm plaintext: sender username||receiver username
+    int gcm_plaintext_len = 2*USERNAME_LENGTH;
+    unsigned char* gcm_plaintext = (unsigned char*)calloc(gcm_plaintext_len, 1);
+     if(!gcm_plaintext){
+        free(iv);
+        free(aad);
+        cerr<< "Error: malloc for gcm plaintext returned NULL (too big usernames?)\n"; 
+        return -1;
+    }
+    memcpy(gcm_plaintext, (my_user->get_username()+my_user->get_peer_username()).c_str(), 
+                            my_user->get_username().length()+my_user->get_peer_username().length());
+    //GCM encryption
+    unsigned char* gcm_ciphertext{nullptr};
+    unsigned char* tag{nullptr};
+    int gcm_ciphertext_len = 0;
+    
+    if(-1 == (gcm_ciphertext_len = Security::gcm_encrypt((unsigned char *)aad, aad_len , gcm_plaintext, gcm_plaintext_len, 
+                                                        my_user->get_server_client_key(), iv, &gcm_ciphertext, &tag))){
+        free(gcm_plaintext);    
+        free(iv);
+        free(aad);
+        return -1;
+    }
+    //
+    int message_buf_len = aad_len + gcm_ciphertext_len + Security::GCM_TAG_LEN;
+    char * message_buf = (char*)malloc(message_buf_len);
+    memcpy(message_buf, aad, aad_len);
+    memcpy(message_buf + aad_len, gcm_ciphertext, gcm_ciphertext_len);
+    memcpy(message_buf + aad_len + gcm_ciphertext_len, tag, Security::GCM_TAG_LEN);
+
+    ///Send the data to the network!
+    if(send(my_user->get_socket(), message_buf, message_buf_len, 0) != message_buf_len){
+        cerr <<"Error: sending message 15 over the socket failed" << endl;
+        free(aad);
+        free(message_buf);
+        free(iv);
+        free(gcm_plaintext);
+        free(gcm_ciphertext);
+        free(tag);
+        return -1;
+    }
+    ////
+    my_user->increment_client_counter();
+    free(aad);
+    free(message_buf);
+    free(iv);
+    free(gcm_plaintext);
+    free(gcm_ciphertext);
+    free(tag);
+    my_user->set_peer_username("");
+    my_user->set_status(ONLINE);
+    return message_buf_len;
+}
+//recevied by the server 
+int Message::handle_message_15(char * message, size_t message_len, User* sender, vector<User*>users){
+    int i;
+    string msg = "";
+    for (i = 0; i < message_len; i++) {
+        msg = msg + message[i];
+    }
+    string tag = msg.substr(msg.length() - Security::GCM_TAG_LEN, Security::GCM_TAG_LEN);
+    string ciphertext = msg.substr(msg.length() - Security::GCM_TAG_LEN - 2 * USERNAME_LENGTH, 2 * USERNAME_LENGTH);
+    string aad = msg.substr(0, msg.length() - ciphertext.length() - tag.length());
+    string gcm_iv = msg.substr(COUNTER_LENGTH + MESSAGE_TYPE_LENGTH, Security::GCM_IV_LEN);
+    unsigned char *decryptedtext{nullptr};
+    int decryptedtext_len = 0;
+    
+    if(-1==(decryptedtext_len = Security::gcm_decrypt((unsigned char*)aad.c_str(), aad.length(), 
+                                (unsigned char*)ciphertext.c_str(), ciphertext.length(),
+                                sender->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &decryptedtext, 
+                                (unsigned char*)tag.c_str()))){
+        return -1;
+    }
+    string decryptedtext_str ((char*)decryptedtext);
+    free(decryptedtext);
+    uint16_t server_counter = (uint16_t) *(message + MESSAGE_TYPE_LENGTH);
+    if(!sender->replay_check(false, server_counter)){
+        return -1;
+    }
+    string receiver_username = decryptedtext_str.substr(sender->get_username().length(),
+                                decryptedtext_str.length() - sender->get_username().length());
+    sender->set_peer_username(receiver_username);
+    cout << "handling message 15 from " << sender->get_username()<<endl;
+    User *receiver = find_user(sender->get_peer_username(), &users);
+    if(receiver == nullptr){
+        return -1;
+    }
+    if(Message::send_message_16(sender, receiver) == -1){
+        cerr <<"Error in sending message 16" << endl;
+        return -1;
+    }
+    cout << "forwarding message 16 from " << sender->get_username() <<" to " << receiver->get_username()<<endl;
+    sender->set_status(ONLINE);
+    receiver->set_status(ONLINE);
+    return 1;
+}
+
+//sent by server to the client
+int Message::send_message_16(User* sender, User* receiver){
+    //initialization vector
+    unsigned char* iv{nullptr};
+    if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)){return -1;}
+    //creating aad: message type, client_to_server_counter, iv
+    int aad_len = MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN;
+    char * aad = (char*)malloc(aad_len);
+    if(!aad){
+        free(iv);
+        cerr<< "Error: malloc for AAD returned NULL (too big AAD?)\n"; return -1;
+    }
+    //insert message type into aad
+    aad[0] = 16;
+    //insert counter into aad
+    uint16_t * counter_pointer = (uint16_t *) (aad+1);
+    *counter_pointer = receiver->get_server_counter();
+    //insert the iv into aad
+    memcpy(aad + MESSAGE_TYPE_LENGTH +  COUNTER_LENGTH , iv, Security::GCM_IV_LEN);
+    //generate the gcm plaintext: sender username||receiver username
+    int gcm_plaintext_len = 2*USERNAME_LENGTH;
+    unsigned char* gcm_plaintext = (unsigned char*)calloc(gcm_plaintext_len, 1);
+    if(!gcm_plaintext){
+        free(iv);
+        free(aad);
+        cerr<< "Error: malloc for gcm plaintext returned NULL (too big usernames?)\n"; return -1;
+    }
+    memcpy(gcm_plaintext, (sender->get_username()+receiver->get_username()).c_str(), 
+                            sender->get_username().length()+receiver->get_username().length());
+
+    
+    //GCM encryption
+    unsigned char* gcm_ciphertext{nullptr};
+    unsigned char* tag{nullptr};
+    int gcm_ciphertext_len = 0;
+    
+    if(-1 == (gcm_ciphertext_len = Security::gcm_encrypt((unsigned char *)aad, aad_len , gcm_plaintext, gcm_plaintext_len, 
+                                                        receiver->get_server_client_key(), 
+                                                        iv, &gcm_ciphertext, &tag))){
+        
+        free(gcm_plaintext);    
+        free(iv);
+        free(aad);
+        return gcm_ciphertext_len;
+    }
+    int message_buf_len = aad_len + gcm_ciphertext_len + Security::GCM_TAG_LEN;
+    char * message_buf = (char*)malloc(message_buf_len);
+    memcpy(message_buf, aad, aad_len);
+    memcpy(message_buf + aad_len, gcm_ciphertext, gcm_ciphertext_len);
+    memcpy(message_buf + aad_len + gcm_ciphertext_len, tag, Security::GCM_TAG_LEN);
+    ///Send the data to the network!
+    if(send(receiver->get_socket(), message_buf, message_buf_len, 0) != message_buf_len){   
+        cerr <<"Error: sending message 16 over the socket failed" << endl;
+        free(aad);
+        free(iv);
+        free(gcm_plaintext);
+        free(gcm_ciphertext);
+        free(tag);
+        free(message_buf);
+        return -1;
+    }
+    ////
+    receiver->increment_server_counter();
+    free(aad);
+    free(iv);
+    free(gcm_plaintext);
+    free(gcm_ciphertext);
+    free(message_buf);
+    free(tag);
+    sender->set_peer_username("");
+    receiver->set_peer_username("");
+    return message_buf_len;
+}
+//recevied by the client
+int Message::handle_message_16(char* message, size_t message_len, User*my_user){
+    int i;
+    string msg = "";
+    for (i = 0; i < message_len; i++) {
+        msg = msg + message[i];
+    }
+    string tag = msg.substr(msg.length() - Security::GCM_TAG_LEN, Security::GCM_TAG_LEN);
+    string ciphertext = msg.substr(msg.length() - Security::GCM_TAG_LEN - 2 * USERNAME_LENGTH, 2 * USERNAME_LENGTH);
+    string aad = msg.substr(0, msg.length() - ciphertext.length() - tag.length());
+    string gcm_iv = msg.substr(COUNTER_LENGTH + MESSAGE_TYPE_LENGTH, Security::GCM_IV_LEN);
+    unsigned char *decryptedtext{nullptr};
+    int decryptedtext_len = 0;
+    if(-1==(decryptedtext_len = Security::gcm_decrypt((unsigned char*)aad.c_str(), aad.length(), 
+                                (unsigned char*)ciphertext.c_str(), ciphertext.length(),
+                                my_user->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &decryptedtext, 
+                                (unsigned char*)tag.c_str()))){
+
+
+        return -1;
+    }
+    string decryptedtext_str ((char*)decryptedtext);
+    free(decryptedtext);
+    uint16_t server_counter = (uint16_t) *(message + MESSAGE_TYPE_LENGTH);
+    if(!my_user->replay_check(true, server_counter)){
+        return -1;
+    }
+    string sender_username = decryptedtext_str.substr(0,
+                                decryptedtext_str.length() - my_user->get_username().length());
+    my_user->set_peer_username("");
+    my_user->set_clients_pubk_char(nullptr);
+    my_user->set_clients_pubk(nullptr);
+    my_user->set_status(ONLINE);
+    return 1;
+}
+
+//sent by client A to the server 
+unsigned int Message::send_message_17(User* my_user){
+    //initialization vector
+    unsigned char* iv{nullptr};
+    if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)){
+        return -1;
+    }
+    //creating aad: message type, client_to_server_counter, iv
+    int aad_len = MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN;
+    char * aad = (char*)malloc(aad_len);
+    if(!aad){
+        free(iv);
+        cerr<< "Error: malloc for AAD returned NULL (too big AAD?)\n"; return -1;
     }
     
     aad[0] = 17;
@@ -2231,7 +2488,7 @@ unsigned int Message::send_message_17(User* my_user){
      if(!gcm_plaintext){
         free(iv);
         free(aad);
-        cerr<< "Error: malloc for gcm plaintext returned NULL (too big usernames?)\n"; return 0;
+        cerr<< "Error: malloc for gcm plaintext returned NULL (too big usernames?)\n"; return -1;
     }
     memcpy(gcm_plaintext, (my_user->get_username()).c_str(), my_user->get_peer_username().length());
     //GCM encryption
@@ -2244,7 +2501,7 @@ unsigned int Message::send_message_17(User* my_user){
         free(gcm_plaintext);    
         free(iv);
         free(aad);
-        return 0;
+        return -1;
     }
     //
     int message_buf_len = aad_len + gcm_ciphertext_len + Security::GCM_TAG_LEN;
@@ -2276,7 +2533,7 @@ unsigned int Message::send_message_17(User* my_user){
     return message_buf_len;
 }
 //recevied by the server 
-int Message::handle_message_17(char * message, size_t message_len, User* sender){
+int Message::handle_message_17(char * message, size_t message_len, User* sender, vector<User*>users){
     int i;
     string msg = "";
     for (i = 0; i < message_len; i++) {
@@ -2302,9 +2559,13 @@ int Message::handle_message_17(char * message, size_t message_len, User* sender)
         return -1;
     }
     if(!sender->get_peer_username().empty()){
-        ///TODO:inform the peer that this client has logged out by message 16
+        User *receiver = find_user(sender->get_peer_username(), &users);
+        if(receiver == nullptr){
+            return -1;
+        }
+        send_message_16(sender, receiver);
     }
     sender->clear();
     cout << sender->get_username() << " has logged out!"<<endl;
-    return -17;
+    return 1;
 }

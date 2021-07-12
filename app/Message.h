@@ -241,6 +241,41 @@ public:
     static int handle_message_14(char * message, size_t message_len, User* my_user);
     //===================================================================================================================
     /**
+     * create a message type 15. This function will be called inside the client application
+     * @param my_user the sender of the message!
+     * @return unsgined integer to specify if the sending is successful or not. If it is successful it will return the
+     * size of the message_buf, otherwise 0
+    */
+    static int send_message_15(User* my_user);
+    //===================================================================================================================
+    /**
+     * create a message type 15. This function will be called inside the client application
+     * @param message_buf buffer which contains the whole dataframe. It will be initialized and sent to the socket.
+     * @param my_user the sender of the message!
+     * @return unsgined integer to specify if the sending is successful or not. If it is successful it will return the
+     * size of the message_buf, otherwise 0
+    */
+    static int handle_message_15(char * message, size_t message_len, User* sender, vector<User*>users);
+    //===================================================================================================================
+    /**
+     * create a message type 15. This function will be called inside the client application
+     * @param my_user the sender of the message!
+     * @return unsgined integer to specify if the sending is successful or not. If it is successful it will return the
+     * size of the message_buf, otherwise 0
+    */
+    static int send_message_16(User* sender, User* receiver);
+    //===================================================================================================================
+    /**
+     * handle message type 16. This function will be called inside the server application
+     * @param message the buffer which is received from the socket.
+     * @param message_len the size of the received message
+     * @param sender the sender of the message! This user resides inside the server application (inside a vector of users)
+     * @return integer to specify if parsing the message is successful or not. If it is successful it will return the
+     * size of the 1, otherwise -1
+    */
+    static int handle_message_16(char * message, size_t message_len, User* sender);
+    //===================================================================================================================
+    /**
      * create a message type 17. This function will be called inside the client application
      * @param message_buf buffer which contains the whole dataframe. It will be initialized and sent to the socket.
      * @param my_user the sender of the message!
@@ -257,7 +292,7 @@ public:
      * @return integer to specify if parsing the message is successful or not. If it is successful it will return the
      * size of the 1, otherwise -1
     */
-    static int handle_message_17(char * message, size_t message_len, User* sender);
+    static int handle_message_17(char * message, size_t message_len, User* sender, vector<User*>users);
 };
 
 
