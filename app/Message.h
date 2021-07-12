@@ -28,9 +28,9 @@ public:
      */
     static int handle_message_0(char *buffer, int client_socket, char *ip, uint16_t port, vector <User*>*online_users);
 
-    static void handle_message_1(char* buffer,  int buffer_len, User *client);
+    static int handle_message_1(char* buffer,  int buffer_len, User *client);
 
-    static void handle_message_2(char* buffer, int buffer_len, User *client);
+    static int handle_message_2(char* buffer, int buffer_len, User *client);
 
     // message 3
     static int send_message_3(User * my_user);

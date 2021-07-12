@@ -20,4 +20,7 @@ const unsigned int MESSAGE_7_LENGTH = 1685;
 const unsigned int MESSAGE_8_LENGTH = 2309;
 const unsigned int MESSAGE_9_LENGTH = 495;
 const unsigned int MESSAGE_10_LENGTH = 1119;
+const unsigned int MAX_CHARS = 10000;
+//message type + counter + 2 usernames + tag + 10k chars
+const unsigned int MAX_MESSAGE_LENGTH = MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + 2*USERNAME_LENGTH + 12 + MAX_CHARS;
 

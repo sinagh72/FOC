@@ -65,6 +65,7 @@ int Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16_
     User *client = new User(username,"sina",ip, port, client_socket);
     client->set_status(CONNECTING);
     online_users->insert(online_users->begin(), client);
+    cout << client->get_username() << "is connected with ip: " << ip << ", port: " << port << endl;
     //load server certificate from file and serialize it
     X509* cert;
     if(!Security::load_server_certificate(&cert)) {
@@ -173,12 +174,12 @@ int Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16_
     return msg_buffer_len;
 }
 
-void Message::handle_message_1(char *buffer, int buffer_len, User *client) {
+int Message::handle_message_1(char *buffer, int buffer_len, User *client) {
     //parsing the incoming message
     uint16_t counter_server = (uint16_t) *(buffer+MESSAGE_TYPE_LENGTH);
     if(counter_server != client->get_server_counter()) {
         cerr<<"Server counter verification failed"<<endl;
-        return;
+        return -1;
     }
     client->increment_server_counter();
 
@@ -203,7 +204,7 @@ void Message::handle_message_1(char *buffer, int buffer_len, User *client) {
         cerr<<"Error deserializing DH server pubkey"<<endl;
         free(iv);
         EVP_PKEY_free(server_dh_pubkey);
-        return;
+        return -1;
     }
     client->set_server_pubk(server_dh_pubkey);
 
@@ -216,7 +217,7 @@ void Message::handle_message_1(char *buffer, int buffer_len, User *client) {
         free(iv);
         free(skey);
         EVP_PKEY_free(server_dh_pubkey);
-        return;
+        return -1;
     }
     client->set_server_client_key(skey, skey_len);
 
@@ -236,7 +237,7 @@ void Message::handle_message_1(char *buffer, int buffer_len, User *client) {
         free(skey);
         EVP_PKEY_free(server_dh_pubkey);
         free(signature);
-        return;
+        return -1;
     }
     
 
@@ -252,7 +253,7 @@ void Message::handle_message_1(char *buffer, int buffer_len, User *client) {
         X509_free(cert);
         free(signature);
         free(serialized_pair);
-        return;
+        return -1;
     }
 
     if(!Security::verify_signature(X509_get0_pubkey(cert), signature, signature_len, (unsigned char*)serialized_pair, serialized_pair_len)) {
@@ -263,7 +264,7 @@ void Message::handle_message_1(char *buffer, int buffer_len, User *client) {
         X509_free(cert);
         free(signature);
         free(serialized_pair);
-        return;
+        return -1;
     }
     free(iv);
     free(serialized_pair);
@@ -277,7 +278,7 @@ void Message::handle_message_1(char *buffer, int buffer_len, User *client) {
         cerr<<"Message2 aad malloc failed"<<endl;
         free(skey);
         EVP_PKEY_free(server_dh_pubkey);
-        return;
+        return -1;
     }
 
     memset(aad_resp, 2, 1);
@@ -299,7 +300,7 @@ void Message::handle_message_1(char *buffer, int buffer_len, User *client) {
         free(iv_answ);
         free(aad_resp);
         EVP_PKEY_free(server_dh_pubkey);
-        return;
+        return -1;
     }
     
     unsigned char* signature_answ = nullptr;
@@ -314,7 +315,7 @@ void Message::handle_message_1(char *buffer, int buffer_len, User *client) {
         free(concat);
         free(signature_answ);
         EVP_PKEY_free(server_dh_pubkey);
-        return;
+        return -1;
     }
 
 
@@ -330,7 +331,7 @@ void Message::handle_message_1(char *buffer, int buffer_len, User *client) {
         free(concat);
         free(signature_answ);
         EVP_PKEY_free(server_dh_pubkey);
-        return;
+        return -1;
     }
 
     free(iv_answ);
@@ -347,7 +348,7 @@ void Message::handle_message_1(char *buffer, int buffer_len, User *client) {
         free(ciphertext_answ);
         free(tag_answ);
         EVP_PKEY_free(server_dh_pubkey);
-        return;
+        return -1;
     }
 
     memcpy(msg_to_send, aad_resp, aad_resp_len);
@@ -358,20 +359,27 @@ void Message::handle_message_1(char *buffer, int buffer_len, User *client) {
     free(tag_answ);
 
     //send the message
-    send(client->get_socket(), msg_to_send, msg_len, 0);
+    if(send(client->get_socket(), msg_to_send, msg_len, 0) != msg_len){
+        cerr <<"Error: sending message 2 over the socket failed" << endl;
+        free(msg_to_send);
+        free(concat);
+        free(signature_answ);
+        return -1;
+    }
 
 
     free(msg_to_send);
     free(concat);
     free(signature_answ);
+    return 1;
 
 }
 
-void Message::handle_message_2(char *buffer, int buffer_len, User *client) {
+int Message::handle_message_2(char *buffer, int buffer_len, User *client) {
     //verify message counter
     uint16_t counter = (uint16_t)*(buffer + MESSAGE_TYPE_LENGTH);
     if(counter != client->get_client_counter()) {
-        return;
+        return -1;
     }
     client->increment_client_counter();
 
@@ -388,13 +396,13 @@ void Message::handle_message_2(char *buffer, int buffer_len, User *client) {
     int signature_len = Security::gcm_decrypt((unsigned char*)aad, aad_len, (unsigned char*)ciphertext, 
     ciphertext_len, client->get_server_client_key(), (unsigned char*)iv, &signature, (unsigned char*)tag);
     if(signature_len==-1) {
-        return;
+        return -1;
     }
 
     char* concatenated = nullptr;
     int concatenated_len = Security::serialize_concat_dh_pubkey(client->get_server_pubk(), client->get_client_server_pubk(), &concatenated);
     if (concatenated_len==-1) {
-        return;
+        return -1;
     }
 
     //verify the signature and set status of the user ONLINE
@@ -402,22 +410,23 @@ void Message::handle_message_2(char *buffer, int buffer_len, User *client) {
     FILE* pubkey_file = fopen(file_addr.c_str(), "r");
     if(!pubkey_file) {
         printf("User %s not registered", client->get_username().c_str());
-        return;
+        return -1;
     }
     EVP_PKEY* evpPkey;
     evpPkey= PEM_read_PUBKEY(pubkey_file, NULL, NULL, NULL);
     if(!evpPkey) {
         printf("Error: pubkey of user %s not loaded correctly", client->get_username().c_str());
         fclose(pubkey_file);
-        return;
+        return -1;
     }
     fclose(pubkey_file);
 
     if(!Security::verify_signature(evpPkey, signature, signature_len, (unsigned char*)concatenated, concatenated_len)) {
-        return;
+        return -1;
     }
 
     client->set_status(ONLINE);
+    return 1;
 
 }
 
@@ -600,8 +609,8 @@ int Message::send_message_4(User* receiver, vector<User*>online_users) {
 //recevied by the client A 
 int Message::handle_message_4(User * my_user, vector<string>*usernames){
 
-    char*message = (char*)malloc(10100);
-    int val_read = read(my_user->get_socket(), message, 10100);
+    char*message = (char*)malloc(MAX_MESSAGE_LENGTH);
+    int val_read = read(my_user->get_socket(), message, MAX_MESSAGE_LENGTH);
 
     int k;
     string msg = "";

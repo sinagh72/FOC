@@ -23,8 +23,8 @@ bool establishe_handshake_clients(User * my_user, string receiver_username){
         cout << "Error: sending message 5 failed" <<endl;
         return false;
     }
-    char buffer[10100] = {0};
-    val_read = read(my_user->get_socket() , buffer, 10100);
+    char buffer[MAX_MESSAGE_LENGTH] = {0};
+    val_read = read(my_user->get_socket() , buffer, MAX_MESSAGE_LENGTH);
     if(buffer[0] == 8){
         if(-1 == Message::handle_message_8(buffer, val_read, my_user)){
             cerr <<"Error in handling message 8" << endl;
@@ -145,12 +145,15 @@ int main(int argc, char const *argv[])
         return -1;
     }
     ///TODO:check errors
-    char *buffer = (char*)malloc(10100);
+    char *buffer = (char*)malloc(MAX_MESSAGE_LENGTH);
     //handle message type 1
-    valread = read( sock , buffer, 10100);
+    valread = read( sock , buffer, MAX_MESSAGE_LENGTH);
     // BIO_dump_fp(stdout, buffer, valread);
 
-    Message::handle_message_1(buffer, valread, my_user);
+    if(Message::handle_message_1(buffer, valread, my_user) == -1){
+        cout << "Error in handling message type 1" <<endl;
+        return -1;
+    }
     free(buffer);
 
     //now the key between server and the client is established

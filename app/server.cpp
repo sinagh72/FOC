@@ -126,12 +126,14 @@ int main(int argc , char* argv[]) {
                 printf("accept error");   
                 exit(EXIT_FAILURE);  
             }
-            char* buffer=(char*) malloc(10100);
-            valread = read(new_socket, buffer, 10100);
-            cout << "User connected: " << inet_ntoa(address.sin_addr) << " " <<ntohs(address.sin_port) << endl;
+            char* buffer=(char*) malloc(MAX_MESSAGE_LENGTH);
+            valread = read(new_socket, buffer, MAX_MESSAGE_LENGTH);
             //check for message type 0
             if(buffer[0]==0){
-                Message::handle_message_0(buffer, new_socket, inet_ntoa(address.sin_addr), ntohs(address.sin_port), &online_users);
+                if(-1 == Message::handle_message_0(buffer, new_socket, inet_ntoa(address.sin_addr),
+                                                     ntohs(address.sin_port), &online_users)){
+                    cerr << "Error in establishing key with the new Client" <<endl;                                          
+                }
             }
             // if(buffer[0]=='s'){
             //     string tmp = "sina";
@@ -153,8 +155,8 @@ int main(int argc , char* argv[]) {
             if (FD_ISSET( sd , &readfds)){  
                 //Check if it was for closing , and also read the 
                 //incoming message 
-                char *buffer = (char*)malloc(10100);
-                valread = read( sd , buffer, 10100);
+                char *buffer = (char*)malloc(MAX_MESSAGE_LENGTH);
+                valread = read( sd , buffer, MAX_MESSAGE_LENGTH);
                 if (valread == 0){  
                     //Somebody disconnected , get his details and print 
                     getpeername(sd , (struct sockaddr*)&address , \
