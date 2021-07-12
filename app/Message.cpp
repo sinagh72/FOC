@@ -1,5 +1,4 @@
 #include "Message.h"
-#include <vector>
 
 //sent by the client A
 int Message::send_message_0(char **buffer, User* my_user) {
@@ -451,9 +450,6 @@ int Message::send_message_3(User * my_user) {
 
     int id_ct_len = Security::gcm_encrypt((unsigned char *)aad, aad_len, id_pt, id_pt_len, 
     my_user->get_server_client_key(), iv, &id_ct, &tag);
-    // int id_ct_len = Security::gcm_encrypt((unsigned char *)aad, aad_len, id_pt, id_pt_len, 
-    // (unsigned char*)"1234567890123456", iv, &id_ct, &tag);
-
     if(id_ct_len == -1) {
         free(id_pt);    
         free(id_ct);
@@ -506,14 +502,9 @@ int Message::handle_message_3(char * message, size_t message_len, User * sender,
     string gcm_iv = msg.substr(aad_len - Security::GCM_IV_LEN, Security::GCM_IV_LEN);
 
     unsigned char * id_pt{nullptr};
-    ///TODO:
     int id_pt_len = Security::gcm_decrypt((unsigned char*)aad.c_str(), aad_len,
      (unsigned char*)id_ct.c_str(), id_ct.length(), 
      sender->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &id_pt, (unsigned char*)tag.c_str());
-    // int id_pt_len = Security::gcm_decrypt((unsigned char*)aad.c_str(), aad_len,
-    // (unsigned char*)id_ct.c_str(), id_ct.length(), 
-    // (unsigned char*)"1234567890123456",(unsigned char*) gcm_iv.c_str(), &id_pt, (unsigned char*)tag.c_str());
-     
     if(id_pt_len == -1) {
         cout << "Erro in handling message 3" << endl;
         return -1;
@@ -572,12 +563,8 @@ int Message::send_message_4(User* receiver, vector<User*>online_users) {
     unsigned char* act_usr_ct{nullptr};
     unsigned char* tag{nullptr};
     int act_usr_ct_len = 0;
-    ///TODO:
     if(-1 == (act_usr_ct_len = Security::gcm_encrypt((unsigned char *)aad, aad_len , act_usr_pt, act_usr_pt_len, 
                 receiver->get_server_client_key(), iv, &act_usr_ct, &tag))){
-
-    // if(-1 == (act_usr_ct_len = Security::gcm_encrypt((unsigned char *)aad, aad_len , act_usr_pt, act_usr_pt_len, 
-    //             (unsigned char*)"1234567890123456", iv, &act_usr_ct, &tag))){
         free(act_usr_pt);    
         free(iv);
         free(aad);
@@ -630,12 +617,8 @@ int Message::handle_message_4(User * my_user, vector<string>*usernames){
     string gcm_iv = msg.substr(aad_len - Security::GCM_IV_LEN, Security::GCM_IV_LEN);
 
     unsigned char * pt{nullptr};
-    ///TODO:
     int pt_len = Security::gcm_decrypt((unsigned char*)aad.c_str(), aad_len, (unsigned char*)ct.c_str(), ct.length(), 
     my_user->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &pt, (unsigned char*)tag.c_str());
-    // int pt_len = Security::gcm_decrypt((unsigned char*)aad.c_str(), aad_len, (unsigned char*)ct.c_str(), ct.length(), 
-    // (unsigned char*)"1234567890123456", (unsigned char*) gcm_iv.c_str(), &pt, (unsigned char*)tag.c_str());
-    
     if(pt_len == -1) {
         return -1;
     }
@@ -712,12 +695,8 @@ int Message::send_message_5(User* my_user, string receiver_username){
     unsigned char* gcm_ciphertext{nullptr};
     unsigned char* tag{nullptr};
     int gcm_ciphertext_len = 0;
-    ///TODO:change to sender
-    unsigned char* server_client_1 = (unsigned char*)"1234567890123456";
-    // if(-1 == (gcm_ciphertext_len = Security::gcm_encrypt((unsigned char *)aad, aad_len , gcm_plaintext, gcm_plaintext_len, 
-    //                                                     my_user->get_server_client_key(), iv, &gcm_ciphertext, &tag))){
     if(-1 == (gcm_ciphertext_len = Security::gcm_encrypt((unsigned char *)aad, aad_len , gcm_plaintext, gcm_plaintext_len, 
-                                                        server_client_1, iv, &gcm_ciphertext, &tag))){
+                                                        my_user->get_server_client_key(), iv, &gcm_ciphertext, &tag))){
 
         my_user->set_clients_pubk(nullptr);
         my_user->set_clients_pubk_char(nullptr);
@@ -769,15 +748,9 @@ int Message::handle_message_5(char * message, size_t message_len, User* sender, 
     unsigned char *decryptedtext{nullptr};
     int decryptedtext_len = 0;
 
-    unsigned char* server_client_1 = (unsigned char*)"1234567890123456";
-    ///TODO:change to sender
-    // if(-1==(decryptedtext_len = Security::gcm_decrypt((unsigned char*)aad.c_str(), aad.length(), 
-    //                             (unsigned char*)ciphertext.c_str(), ciphertext.length(),
-    //                             sender->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &decryptedtext, 
-    //                             (unsigned char*)tag.c_str()))){
-    if(-1==(decryptedtext_len = Security::gcm_decrypt((unsigned char*)aad.c_str(), aad.length(),    
+    if(-1==(decryptedtext_len = Security::gcm_decrypt((unsigned char*)aad.c_str(), aad.length(), 
                                 (unsigned char*)ciphertext.c_str(), ciphertext.length(),
-                                server_client_1,(unsigned char*) gcm_iv.c_str(), &decryptedtext, 
+                                sender->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &decryptedtext, 
                                 (unsigned char*)tag.c_str()))){
 
 
@@ -846,14 +819,10 @@ int Message::send_message_6(User* sender, User* receiver){
     unsigned char* gcm_ciphertext{nullptr};
     unsigned char* tag{nullptr};
     int gcm_ciphertext_len = 0;
-    unsigned char* server_client_1 = (unsigned char*)"1234567890123456";
     ///TODO:
-    // if(-1 == (gcm_ciphertext_len = Security::gcm_encrypt((unsigned char *)aad, aad_len , gcm_plaintext, gcm_plaintext_len, 
-    //                                                     receiver->get_server_client_key(), 
-    //                                                     iv, &gcm_ciphertext, &tag))){
     if(-1 == (gcm_ciphertext_len = Security::gcm_encrypt((unsigned char *)aad, aad_len , gcm_plaintext, gcm_plaintext_len, 
-                                                        server_client_1, 
-                                                        iv, &gcm_ciphertext, &tag))){    
+                                                        receiver->get_server_client_key(), 
+                                                        iv, &gcm_ciphertext, &tag))){ 
 
         free(gcm_plaintext);    
         free(iv);
@@ -913,24 +882,10 @@ int Message::handle_message_6(User*my_user){
 
     unsigned char *decryptedtext{nullptr};
     int decryptedtext_len = 0;
-    
-
-    // if(-1==(decryptedtext_len = Security::gcm_decrypt(aad_c, message_len - Security::GCM_TAG_LEN - 2 * USERNAME_LENGTH, 
-    //                             ciphertext_c, 2 * USERNAME_LENGTH,
-    //                             (unsigned char*)"0987654321098765", gcm_iv_c, &decryptedtext, 
-    //                             tag_c))){
-    //     return -1;
-    // }
-
-    ///TODO:remove static
-    // if(-1==(decryptedtext_len = Security::gcm_decrypt((unsigned char*)aad.c_str(), aad.length(), 
-    //                             (unsigned char*)ciphertext.c_str(), ciphertext.length(),
-    //                             my_user->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &decryptedtext, 
-    //                             (unsigned char*)tag.c_str()))){
 
     if(-1==(decryptedtext_len = Security::gcm_decrypt((unsigned char*)aad.c_str(), aad.length(), 
                                 (unsigned char*)ciphertext.c_str(), ciphertext.length(),
-                                (unsigned char*)"1234567890123456",(unsigned char*) gcm_iv.c_str(), &decryptedtext, 
+                                my_user->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &decryptedtext, 
                                 (unsigned char*)tag.c_str()))){
         return -1;
     }
@@ -1126,11 +1081,10 @@ int Message::send_message_7(User* my_user){
     unsigned char* gcm_ciphertext{nullptr};
     unsigned char* tag{nullptr};
     int gcm_ciphertext_len = 0;
-    ///TODO:
-    // if(-1 == (gcm_ciphertext_len = Security::gcm_encrypt((unsigned char *)aad, aad_len , gcm_plaintext, gcm_plaintext_len, 
-    //                                                     my_user->get_server_client_key(), iv, &gcm_ciphertext, &tag))){
+
     if(-1 == (gcm_ciphertext_len = Security::gcm_encrypt((unsigned char *)aad, aad_len , gcm_plaintext, gcm_plaintext_len, 
-                                                        (unsigned char*)"1234567890123456", iv, &gcm_ciphertext, &tag))){
+                                                        my_user->get_server_client_key(), iv, &gcm_ciphertext, &tag))){
+
 
         EVP_PKEY_free(newB);
         free(text_to_sign);
@@ -1151,7 +1105,6 @@ int Message::send_message_7(User* my_user){
     memcpy(message_buf, aad, aad_len);
     memcpy(message_buf + aad_len, gcm_ciphertext, gcm_ciphertext_len);
     memcpy(message_buf + aad_len + gcm_ciphertext_len, tag, Security::GCM_TAG_LEN);
-    cout << my_user->get_username()<<" sends message 7"<<endl;
     //Send the data to the network!
     if(send(my_user->get_socket(), message_buf, message_buf_len, 0) != message_buf_len){
         cerr <<"Error: sending message 7 over the socket failed" << endl;
@@ -1201,15 +1154,10 @@ int Message::handle_message_7(char * message, size_t message_len, User* sender, 
 
     unsigned char *gcm_decryptedtext{nullptr};
     
-    ///TODO:
-    // if(-1==(Security::gcm_decrypt((unsigned char*)aad.c_str(), aad.length(), 
-    //                             (unsigned char*)gcm_ciphertext.c_str(), gcm_ciphertext.length(),
-    //                             sender->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &gcm_decryptedtext, 
-    //                             (unsigned char*)tag.c_str()))){
     if(-1==(Security::gcm_decrypt((unsigned char*)aad.c_str(), aad.length(), 
                                 (unsigned char*)gcm_ciphertext.c_str(), gcm_ciphertext.length(),
-                                (unsigned char*)"1234567890123456",(unsigned char*) gcm_iv.c_str(), &gcm_decryptedtext, 
-                                (unsigned char*)tag.c_str()))){                           
+                                sender->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &gcm_decryptedtext, 
+                                (unsigned char*)tag.c_str()))){                       
         return -1;
     }
     
@@ -1301,13 +1249,9 @@ int Message::send_message_8(User* sender, User* receiver, unsigned char * client
     unsigned char* gcm_ciphertext{nullptr};
     unsigned char* tag{nullptr};
     int gcm_ciphertext_len = 0;
-    ///TODO:
-    // if(-1 == (gcm_ciphertext_len = Security::gcm_encrypt((unsigned char *)aad, aad_len , gcm_plaintext, gcm_plaintext_len, 
-    //                                                     receiver->get_server_client_key(), 
-    //                                                     iv, &gcm_ciphertext, &tag))){
     if(-1 == (gcm_ciphertext_len = Security::gcm_encrypt((unsigned char *)aad, aad_len , gcm_plaintext, gcm_plaintext_len, 
-                                                        (unsigned char*)"1234567890123456", 
-                                                        iv, &gcm_ciphertext, &tag))){                                                        
+                                                        receiver->get_server_client_key(), 
+                                                        iv, &gcm_ciphertext, &tag))){
         EVP_PKEY_free(pubk);
         free(gcm_plaintext);    
         free(iv);
@@ -1361,16 +1305,11 @@ int Message::handle_message_8(char* message, size_t message_len, User * my_user)
     string clients_ciphertext_str = aad.substr(MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN + DH_PUBK_LENGTH + RSA_PUBK_LENGTH, 
                                             aad.length() - RSA_PUBK_LENGTH - MESSAGE_TYPE_LENGTH - COUNTER_LENGTH - Security::GCM_IV_LEN - DH_PUBK_LENGTH);
     unsigned char *gcm_decryptedtext{nullptr};
-    ///TODO:
+
     if(-1==(Security::gcm_decrypt((unsigned char*)aad.c_str(), aad.length(), 
                                 (unsigned char*)gcm_ciphertext.c_str(), gcm_ciphertext.length(),
-                                (unsigned char*)"1234567890123456",(unsigned char*) gcm_iv.c_str(), &gcm_decryptedtext, 
+                                my_user->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &gcm_decryptedtext, 
                                 (unsigned char*)tag.c_str()))){
-
-    // if(-1==(Security::gcm_decrypt((unsigned char*)aad.c_str(), aad.length(), 
-    //                             (unsigned char*)gcm_ciphertext.c_str(), gcm_ciphertext.length(),
-    //                             my_user->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &gcm_decryptedtext, 
-    //                             (unsigned char*)tag.c_str()))){
         return -1;
     }
     string gcm_decryptedtext_str ((char*)gcm_decryptedtext);
@@ -1523,10 +1462,7 @@ int Message::send_message_9(User* my_user){
     int gcm_ciphertext_len = 0;
        
     if(-1 == (gcm_ciphertext_len = Security::gcm_encrypt((unsigned char *)aad, aad_len , gcm_plaintext, gcm_plaintext_len, 
-                                                         (unsigned char*)"1234567890123456", iv, &gcm_ciphertext, &tag))){
-    ///TODO:
-    // if(-1 == (gcm_ciphertext_len = Security::gcm_encrypt((unsigned char *)aad, aad_len , gcm_plaintext, gcm_plaintext_len, 
-    //                                                     my_user->get_server_client_key(), iv, &gcm_ciphertext, &tag))){
+                                                        my_user->get_server_client_key(), iv, &gcm_ciphertext, &tag))){
 
         free(text_to_sign);
         free(signature);
@@ -1590,17 +1526,11 @@ int Message::handle_message_9(char * message, size_t message_len, User* sender, 
                                             aad.length() - MESSAGE_TYPE_LENGTH - COUNTER_LENGTH - Security::GCM_IV_LEN);
 
     unsigned char *gcm_decryptedtext{nullptr};
-    ///TODO:
-    // if(-1==(Security::gcm_decrypt((unsigned char*)aad.c_str(), aad.length(), 
-    //                             (unsigned char*)gcm_ciphertext.c_str(), gcm_ciphertext.length(),
-    //                             sender->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &gcm_decryptedtext, 
-    //                             (unsigned char*)tag.c_str()))){
-    
-                                    
     if(-1==(Security::gcm_decrypt((unsigned char*)aad.c_str(), aad.length(), 
                                 (unsigned char*)gcm_ciphertext.c_str(), gcm_ciphertext.length(),
-                                (unsigned char*)"1234567890123456",(unsigned char*) gcm_iv.c_str(), &gcm_decryptedtext, 
+                                sender->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &gcm_decryptedtext, 
                                 (unsigned char*)tag.c_str()))){
+  
         return -1;
     }
     string gcm_decryptedtext_str ((char*)gcm_decryptedtext);
@@ -1690,12 +1620,8 @@ int Message::send_message_10(User* sender, User* receiver, unsigned char * clien
     int gcm_ciphertext_len = 0;
 
     if(-1 == (gcm_ciphertext_len = Security::gcm_encrypt((unsigned char *)aad, aad_len , gcm_plaintext, gcm_plaintext_len, 
-                                                        (unsigned char*)"1234567890123456", 
+                                                        receiver->get_server_client_key(), 
                                                         iv, &gcm_ciphertext, &tag))){
-    ///TODO:                                                   
-    // if(-1 == (gcm_ciphertext_len = Security::gcm_encrypt((unsigned char *)aad, aad_len , gcm_plaintext, gcm_plaintext_len, 
-    //                                                     receiver->get_server_client_key(), 
-    //                                                     iv, &gcm_ciphertext, &tag))){
 
         EVP_PKEY_free(pubk);
         free(gcm_plaintext);    
@@ -1761,14 +1687,9 @@ int Message::handle_message_10(User* my_user){
                                             aad.length() - RSA_PUBK_LENGTH - MESSAGE_TYPE_LENGTH - COUNTER_LENGTH - Security::GCM_IV_LEN);
     unsigned char *gcm_decryptedtext{nullptr};
 
-    // if(-1==(Security::gcm_decrypt((unsigned char*)aad.c_str(), aad.length(), 
-    //                             (unsigned char*)gcm_ciphertext.c_str(), gcm_ciphertext.length(),
-    //                             my_user->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &gcm_decryptedtext, 
-    //                             (unsigned char*)tag.c_str()))){
-
     if(-1==(Security::gcm_decrypt((unsigned char*)aad.c_str(), aad.length(), 
                                 (unsigned char*)gcm_ciphertext.c_str(), gcm_ciphertext.length(),
-                                (unsigned char*)"1234567890123456",(unsigned char*) gcm_iv.c_str(), &gcm_decryptedtext, 
+                                my_user->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &gcm_decryptedtext, 
                                 (unsigned char*)tag.c_str()))){
         return -1;
     }
@@ -1871,12 +1792,8 @@ int Message::send_message_11(User* my_user){
     unsigned char* tag{nullptr};
     int gcm_ciphertext_len = 0;
     
-    // if(-1 == (gcm_ciphertext_len = Security::gcm_encrypt((unsigned char *)aad, aad_len , gcm_plaintext, gcm_plaintext_len, 
-    //                                                     my_user->get_server_client_key(), iv, &gcm_ciphertext, &tag))){
-
     if(-1 == (gcm_ciphertext_len = Security::gcm_encrypt((unsigned char *)aad, aad_len , gcm_plaintext, gcm_plaintext_len, 
-                                                        (unsigned char*)"1234567890123456", iv, &gcm_ciphertext, &tag))){
-
+                                                        my_user->get_server_client_key(), iv, &gcm_ciphertext, &tag))){
         free(gcm_plaintext);    
         free(iv);
         free(aad);
@@ -1928,13 +1845,8 @@ int Message::handle_message_11(char * message, size_t message_len, User* sender,
     
     if(-1==(decryptedtext_len = Security::gcm_decrypt((unsigned char*)aad.c_str(), aad.length(), 
                                 (unsigned char*)ciphertext.c_str(), ciphertext.length(),
-                                (unsigned char*)"1234567890123456",(unsigned char*) gcm_iv.c_str(), &decryptedtext, 
+                                sender->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &decryptedtext, 
                                 (unsigned char*)tag.c_str()))){
-    ///TODO:
-    // if(-1==(decryptedtext_len = Security::gcm_decrypt((unsigned char*)aad.c_str(), aad.length(), 
-    //                             (unsigned char*)ciphertext.c_str(), ciphertext.length(),
-    //                             sender->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &decryptedtext, 
-    //                             (unsigned char*)tag.c_str()))){
         return -1;
     }
     string decryptedtext_str ((char*)decryptedtext);
@@ -1995,12 +1907,8 @@ unsigned int Message::send_message_12(User* sender, User* receiver){
     unsigned char* tag{nullptr};
     int gcm_ciphertext_len = 0;
     
-    ///TODO:
-    // if(-1 == (gcm_ciphertext_len = Security::gcm_encrypt((unsigned char *)aad, aad_len , gcm_plaintext, gcm_plaintext_len, 
-    //                                                     receiver->get_server_client_key(), 
-    //                                                     iv, &gcm_ciphertext, &tag))){
     if(-1 == (gcm_ciphertext_len = Security::gcm_encrypt((unsigned char *)aad, aad_len , gcm_plaintext, gcm_plaintext_len, 
-                                                        (unsigned char*)"1234567890123456", 
+                                                        receiver->get_server_client_key(), 
                                                         iv, &gcm_ciphertext, &tag))){
         
         free(gcm_plaintext);    
@@ -2048,16 +1956,11 @@ int Message::handle_message_12(char* message, size_t message_len, User*my_user){
     string gcm_iv = msg.substr(COUNTER_LENGTH + MESSAGE_TYPE_LENGTH, Security::GCM_IV_LEN);
     unsigned char *decryptedtext{nullptr};
     int decryptedtext_len = 0;
-    ///TODO:
-    // if(-1==(decryptedtext_len = Security::gcm_decrypt((unsigned char*)aad.c_str(), aad.length(), 
-    //                             (unsigned char*)ciphertext.c_str(), ciphertext.length(),
-    //                             my_user->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &decryptedtext, 
-    //                             (unsigned char*)tag.c_str()))){
-
     if(-1==(decryptedtext_len = Security::gcm_decrypt((unsigned char*)aad.c_str(), aad.length(), 
                                 (unsigned char*)ciphertext.c_str(), ciphertext.length(),
-                                (unsigned char*)"1234567890123456",(unsigned char*) gcm_iv.c_str(), &decryptedtext, 
+                                my_user->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &decryptedtext, 
                                 (unsigned char*)tag.c_str()))){
+
 
         return -1;
     }
@@ -2131,11 +2034,7 @@ int Message::send_message_13(unsigned char* message, size_t message_len, User* m
     int gcm_ciphertext_len = 0;
     
     if(-1 == (gcm_ciphertext_len = Security::gcm_encrypt((unsigned char *)aad, aad_len , gcm_plaintext, gcm_plaintext_len, 
-                                                       (unsigned char*)"1234567890123456", iv, &gcm_ciphertext, &tag))){
-
-    ///TODO:
-    // if(-1 == (gcm_ciphertext_len = Security::gcm_encrypt((unsigned char *)aad, aad_len , gcm_plaintext, gcm_plaintext_len, 
-    //                                                     my_user->get_server_client_key(), iv, &gcm_ciphertext, &tag))){
+                                                        my_user->get_server_client_key(), iv, &gcm_ciphertext, &tag))){
 
         free(iv);
         free(ciphertext);
@@ -2177,15 +2076,11 @@ int Message::handle_message_13(unsigned char ** clients_ciphertext, char * messa
     memcpy(*clients_ciphertext, clients_ciphertext_str.c_str(), clients_ciphertext_str.length());
 
     unsigned char *gcm_decryptedtext{nullptr};
-    ///TODO:
+
     if(-1==(Security::gcm_decrypt((unsigned char*)aad.c_str(), aad.length(), 
                                 (unsigned char*)gcm_ciphertext.c_str(), gcm_ciphertext.length(),
-                                (unsigned char*)"1234567890123456",(unsigned char*) gcm_iv.c_str(), &gcm_decryptedtext, 
+                                sender->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &gcm_decryptedtext, 
                                 (unsigned char*)tag.c_str()))){
-    // if(-1==(Security::gcm_decrypt((unsigned char*)aad.c_str(), aad.length(), 
-    //                             (unsigned char*)gcm_ciphertext.c_str(), gcm_ciphertext.length(),
-    //                             sender->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &gcm_decryptedtext, 
-    //                             (unsigned char*)tag.c_str()))){
         return -1;
     }
     string gcm_decryptedtext_str ((char*)gcm_decryptedtext);
@@ -2234,14 +2129,9 @@ unsigned int Message::send_message_14(User* sender, User* receiver, unsigned cha
     unsigned char* gcm_ciphertext{nullptr};
     unsigned char* tag{nullptr};
     int gcm_ciphertext_len = 0;
-    ///TODO:
-    // if(-1 == (gcm_ciphertext_len = Security::gcm_encrypt((unsigned char *)aad, aad_len , gcm_plaintext, gcm_plaintext_len, 
-    //                                                     receiver->get_server_client_key(), 
-    //                                                     iv, &gcm_ciphertext, &tag))){
-
     if(-1 == (gcm_ciphertext_len = Security::gcm_encrypt((unsigned char *)aad, aad_len , gcm_plaintext, gcm_plaintext_len, 
-                                                        (unsigned char*)"1234567890123456", 
-                                                        iv, &gcm_ciphertext, &tag))){                                                    
+                                                        receiver->get_server_client_key(), 
+                                                        iv, &gcm_ciphertext, &tag))){
         free(gcm_plaintext);    
         free(iv);
         free(aad);
@@ -2280,15 +2170,10 @@ int Message::handle_message_14(char* message, size_t message_len, User * my_user
     string clients_ciphertext_str = aad.substr(MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN, 
                                             aad.length() -  MESSAGE_TYPE_LENGTH - COUNTER_LENGTH - Security::GCM_IV_LEN);
     unsigned char *gcm_decryptedtext{nullptr};
-    ///TODO:
     if(-1==(Security::gcm_decrypt((unsigned char*)aad.c_str(), aad.length(), 
                                 (unsigned char*)gcm_ciphertext.c_str(), gcm_ciphertext.length(),
-                                (unsigned char*)"1234567890123456",(unsigned char*) gcm_iv.c_str(), &gcm_decryptedtext, 
+                                my_user->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &gcm_decryptedtext, 
                                 (unsigned char*)tag.c_str()))){
-    // if(-1==(Security::gcm_decrypt((unsigned char*)aad.c_str(), aad.length(), 
-    //                             (unsigned char*)gcm_ciphertext.c_str(), gcm_ciphertext.length(),
-    //                             my_user->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &gcm_decryptedtext, 
-    //                             (unsigned char*)tag.c_str()))){
         return -1;
     }
     string gcm_decryptedtext_str ((char*)gcm_decryptedtext);
@@ -2344,13 +2229,9 @@ unsigned int Message::send_message_17(User* my_user){
     unsigned char* gcm_ciphertext{nullptr};
     unsigned char* tag{nullptr};
     int gcm_ciphertext_len = 0;
-    ///TODO:
+
     if(-1 == (gcm_ciphertext_len = Security::gcm_encrypt((unsigned char *)aad, aad_len , gcm_plaintext, gcm_plaintext_len, 
-                                                      (unsigned char*)"1234567890123456", iv, &gcm_ciphertext, &tag))){
-
-    // if(-1 == (gcm_ciphertext_len = Security::gcm_encrypt((unsigned char *)aad, aad_len , gcm_plaintext, gcm_plaintext_len, 
-    //                                                     my_user->get_server_client_key(), iv, &gcm_ciphertext, &tag))){
-
+                                                        my_user->get_server_client_key(), iv, &gcm_ciphertext, &tag))){
         free(gcm_plaintext);    
         free(iv);
         free(aad);
@@ -2398,15 +2279,11 @@ int Message::handle_message_17(char * message, size_t message_len, User* sender)
     string gcm_iv = msg.substr(MESSAGE_TYPE_LENGTH + COUNTER_LENGTH, Security::GCM_IV_LEN);
     unsigned char *decryptedtext{nullptr};
     int decryptedtext_len = 0;
-    ///TODO:
+
     if(-1==(decryptedtext_len = Security::gcm_decrypt((unsigned char*)aad.c_str(), aad.length(), 
                                 (unsigned char*)ciphertext.c_str(), ciphertext.length(),
-                                (unsigned char*)"1234567890123456",(unsigned char*) gcm_iv.c_str(), &decryptedtext, 
+                                sender->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &decryptedtext, 
                                 (unsigned char*)tag.c_str()))){
-    // if(-1==(decryptedtext_len = Security::gcm_decrypt((unsigned char*)aad.c_str(), aad.length(), 
-    //                             (unsigned char*)ciphertext.c_str(), ciphertext.length(),
-    //                             sender->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &decryptedtext, 
-    //                             (unsigned char*)tag.c_str()))){
         return -1;
     }
     string decryptedtext_str ((char*)decryptedtext);

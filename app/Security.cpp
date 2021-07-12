@@ -7,6 +7,7 @@ const EVP_MD * const Security::SHA_256 = EVP_sha256();
 const EVP_CIPHER* const Security::GCM_CIPHER =  EVP_aes_256_gcm();
 const int Security::GCM_IV_LEN = EVP_CIPHER_iv_length(Security::GCM_CIPHER);
 const int Security::GCM_TAG_LEN = 16;
+const int BLOCK_LEN = 4096;
 
 int Security::encryption_AES(unsigned char *plaintext, int plaintext_len, 
     unsigned char *key, unsigned char *iv, unsigned char **ciphertext){
@@ -25,14 +26,19 @@ int Security::encryption_AES(unsigned char *plaintext, int plaintext_len,
 
     int update_len = 0;// bytes encrypted at each chunk
     int total_len = 0;// total encrypted bytes
- 
+    int block = 0;
     //Encrypt Update
-    if (1 != EVP_EncryptUpdate(ctx, *ciphertext, &update_len, plaintext, plaintext_len)){ 
-        free(*ciphertext);
-        cerr << "Error: EVP_EncryptUpdate Failed\n"; EVP_CIPHER_CTX_free(ctx); return -1; 
-    }
-
-    total_len += update_len;
+    do{
+        int plaintext_enc = plaintext_len > BLOCK_LEN ? BLOCK_LEN : plaintext_len % BLOCK_LEN;
+        if (1 != EVP_EncryptUpdate(ctx, *ciphertext, &update_len, plaintext + block*BLOCK_LEN, plaintext_enc)){ 
+            free(*ciphertext);
+            cerr << "Error: EVP_EncryptUpdate Failed\n"; EVP_CIPHER_CTX_free(ctx); 
+            return -1; 
+        }
+        total_len += update_len;
+        plaintext_len -= 4096;
+        block++;
+    }while(plaintext_len > 4096);
 
     //Encrypt Final. Finalize the encryption and adds the padding
     if (1 != EVP_EncryptFinal(ctx, *ciphertext+total_len, &update_len)){ 
@@ -64,13 +70,17 @@ int Security::decryption_AES(unsigned char *ciphertext, int ciphertext_len, unsi
 
     int update_len = 0;// bytes encrypted at each chunk
     int total_len = 0;// total encrypted bytes
-
-    //Encrypt Update
-    if (1 != EVP_DecryptUpdate(ctx, *decryptedtext, &update_len, ciphertext, ciphertext_len)){ 
-        cerr << "Error: EVP_DecryptUpdate Failed\n"; free(*decryptedtext); EVP_CIPHER_CTX_free(ctx); return -1; 
-    }
-
-    total_len += update_len;
+    int block = 0;
+    do{
+        int ciphertext_dec = ciphertext_len > BLOCK_LEN ? BLOCK_LEN : ciphertext_len % BLOCK_LEN;
+        //Encrypt Update
+        if (1 != EVP_DecryptUpdate(ctx, *decryptedtext, &update_len, ciphertext, ciphertext_dec)){ 
+            cerr << "Error: EVP_DecryptUpdate Failed\n"; free(*decryptedtext); EVP_CIPHER_CTX_free(ctx); return -1; 
+        }
+        total_len += update_len;
+        ciphertext_len -= BLOCK_LEN;
+        block++;
+    }while(ciphertext_len > BLOCK_LEN);
 
     //Encrypt Final. Finalize the encryption and adds the padding
     if (1 != EVP_DecryptFinal(ctx, *decryptedtext+total_len, &update_len)){ 
