@@ -67,50 +67,50 @@ User * my_user;
 int main(int argc, char const *argv[])
 {
     // log in
-    string username("sina");
-    if (argv[1][0] == 's'){
-        username.assign("sina");
-    }else{
-        username.assign("lore");
-    }
-    string password("sina");
-    // string username;
-    // string password;
-    // bool valid = false;
-    // cout << "====================**Welcome to ChatApp**====================\n";
-    // do{
-    //     cout << "Please Enter Your Username:\n";
-    //     cin >> username;
-    //     if(!cin){
-    //         cerr << "Invalid Input\n";
-    //         valid = false;
-    //     }
-    //     else {
-    //         string privk_file = "users/" + username + "/rsa_privkey.pem";
-    //         struct stat buffer;   
-    //         if (!(stat(privk_file.c_str(), &buffer) == 0)){
-    //             cout << "No private key is generate for " << username << "\n";
-    //             valid = false;
-    //         }
-    //         else{
-    //             cout << "Please Enter Your Password:\n";
-    //             cin >> password;
-    //             if(!cin){
-    //                 cerr << "Invalid Input"<<endl;
-    //                 valid = false;
-    //             }else{
-    //                 //check if the password is similar to the PEM file    
-    //                 FILE* prvk_file = fopen(privk_file.c_str(), "r");
-    //                 if(!prvk_file){ cerr << "Invalid Password"<<endl; valid = false; }
-    //                 EVP_PKEY* prvk = PEM_read_PrivateKey(prvk_file, NULL, NULL, (unsigned char*)password.c_str());
-    //                 fclose(prvk_file);
-    //                 if(!prvk){ cerr << "Invalid Password"<<endl; valid = false; }
-    //                 valid = true;
-    //             }
-    //         }
-    //     }
+    // string username("sina");
+    // if (argv[1][0] == 's'){
+    //     username.assign("sina");
+    // }else{
+    //     username.assign("lore");
     // }
-    // while(!valid);
+    // string password("sina");
+    string username;
+    string password;
+    bool valid = false;
+    cout << "====================**Welcome to ChatApp**====================\n";
+    do{
+        cout << "Please Enter Your Username:\n";
+        cin >> username;
+        if(!cin){
+            cerr << "Invalid Input\n";
+            valid = false;
+        }
+        else {
+            string privk_file = "users/" + username + "/rsa_privkey.pem";
+            struct stat buffer;   
+            if (!(stat(privk_file.c_str(), &buffer) == 0)){
+                cout << "No private key is generate for " << username << "\n";
+                valid = false;
+            }
+            else{
+                cout << "Please Enter Your Password:\n";
+                cin >> password;
+                if(!cin){
+                    cerr << "Invalid Input"<<endl;
+                    valid = false;
+                }else{
+                    //check if the password is similar to the PEM file    
+                    FILE* prvk_file = fopen(privk_file.c_str(), "r");
+                    if(!prvk_file){ cerr << "Invalid Password"<<endl; valid = false; }
+                    EVP_PKEY* prvk = PEM_read_PrivateKey(prvk_file, NULL, NULL, (unsigned char*)password.c_str());
+                    fclose(prvk_file);
+                    if(!prvk){ cerr << "Invalid Password"<<endl; valid = false; }
+                    valid = true;
+                }
+            }
+        }
+    }
+    while(!valid);
 
     int valread;
     struct sockaddr_in serv_addr;
