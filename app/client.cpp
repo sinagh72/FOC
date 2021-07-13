@@ -58,7 +58,6 @@ bool send_secure(){
     }while(1);
 }
 
-void main_loop();
 void listening_loop();
 int sock = 0;
 
@@ -149,7 +148,6 @@ int main(int argc, char const *argv[])
     char *buffer = (char*)malloc(MAX_MESSAGE_LENGTH);
     //handle message type 1
     valread = read( sock , buffer, MAX_MESSAGE_LENGTH);
-    // BIO_dump_fp(stdout, buffer, valread);
 
     if(Message::handle_message_1(buffer, valread, my_user) == -1){
         cout << "Error in handling message type 1" <<endl;
@@ -173,6 +171,7 @@ int main(int argc, char const *argv[])
         //2. listening
         //0. Log out
         client_menu_0();
+        select_main_menu(my_user);
         cin >> input;
         if (!check_user_input(input, 3))
             continue;
@@ -201,7 +200,7 @@ int main(int argc, char const *argv[])
                     cout << c <<". " << usr << endl;
                     c++;
                 }
-                cout << "0. Go Back" <<endl;
+                cout << "0. Exit" <<endl;
                 cin >> input_username;
                 if (!check_user_input(input_username, usernames.size()+1))
                    valid_handshake = false;
@@ -254,6 +253,30 @@ void listening_loop(){
 
     }
 }
-void main_loop(){
-   
+void select_main_menu(User* my_user) {
+    fd_set rfds;
+    int retval;
+
+    /* Watch stdin (fd 0) to see when it has input. */
+    /* add socket with the server to check incoming request */
+    FD_ZERO(&rfds);
+    FD_SET(0, &rfds);
+    FD_SET(my_user->get_socket(), &rfds);
+
+    retval = select(2, &rfds, NULL, NULL, NULL);
+
+    if (retval == -1)
+        perror("Error in select()");
+    else if (retval)
+        if(FD_ISSET(0, &rfds)) {
+            // ready input coming from keyboard
+            //we give priority to the user will
+            return;
+        }
+
+        if(FD_ISSET(my_user->get_socket(), &rfds)) {
+            // message coming from server (at this stage should be a request to talk)
+        }
+
+    exit(EXIT_SUCCESS);
 }
