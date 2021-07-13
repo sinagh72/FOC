@@ -27,7 +27,9 @@ private:
     EVP_PKEY* peer_pubk{nullptr};// dh pub key of other peer or g^b'
     unsigned char *peer_pubk_char{nullptr};// dh pub key of other peer or g^b' in characters
     uint16_t server_counter{0};//server to client counter: #messages that the user has received from the server
-    uint16_t client_counter{0};//client to server counter: #messages that the user has sent to the server
+    uint16_t client_counter{0};//client to server counter: #messages that the user has send to the server
+    uint16_t send_counter{0};//#messages that the user has received from the other user
+    uint16_t receive_counter{0};//#messages that the user has send to the other user
     string peer_username;//the username of the user that we are communicating with
 
 
@@ -103,6 +105,24 @@ public:
     //set the server counter to zero
     void clear_server_counter(){
         this->server_counter = 0;
+    }
+     //increment the send counter
+    uint16_t increment_send_counter(){
+        this->send_counter++;
+        return this->send_counter;
+    }
+    //increment the receive counter
+    uint16_t increment_receive_counter(){
+        this->receive_counter++;
+        return receive_counter;
+    }
+    //set the send counter to zero
+    void clear_send_counter(){
+         this->send_counter = 0;
+    }
+    //set the receive counter to zero
+    void clear_receive_counter(){
+        this->receive_counter = 0;
     }
     //set public key for the client_client communication 
     void set_clients_pubk(EVP_PKEY*dh_pubk){
@@ -211,6 +231,14 @@ public:
     //return the client counter
     uint16_t get_client_counter(){
         return this->client_counter;
+    }
+    //return the send counter
+    uint16_t get_send_counter(){
+        return this->send_counter;
+    }
+    //return the receive counter
+    uint16_t get_receive_counter(){
+        return this->receive_counter;
     }
     // get the client socket
     int get_socket(){

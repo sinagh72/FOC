@@ -91,6 +91,8 @@ void User::clear(){
     this->peer_username.clear();
     this->client_counter = 0;
     this->server_counter = 0;
+    this->send_counter = 0;
+    this->receive_counter = 0;
     this->peer_pubk = nullptr;
     this->server_pubk = nullptr;
     this->server_pubk_char = nullptr;
