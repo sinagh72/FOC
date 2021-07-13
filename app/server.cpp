@@ -4,6 +4,7 @@
 #include <netinet/in.h> 
 #include <sys/time.h> //FD_SET, FD_ISSET, FD_ZERO macros
 #include "Message.h"
+#include <algorithm>
 
 #define TRUE   1 
 #define FALSE  0 
@@ -135,21 +136,11 @@ int main(int argc , char* argv[]) {
                     cerr << "Error in establishing key with the new Client" <<endl;                                          
                 }
             }
-            // if(buffer[0]=='s'){
-            //     string tmp = "sina";
-            //     auto it = find_if(online_users.begin(), online_users.end(), 
-            //     [&tmp](const User *obj) {return obj->get_username() == tmp;});
-            //     (*it)->set_socket(new_socket);
-            // }else if (buffer[0] == 'l') {
-            //     string tmp = "lore";
-            //     auto it = find_if(online_users.begin(), online_users.end(), 
-            //     [&tmp](const User *obj) {return obj->get_username() == tmp;});
-            //     (*it)->set_socket(new_socket);
-            // }
             free(buffer);
            
         }  
         //else its some IO operation on some other socket
+        int index = 0;
         for(User* sender : online_users){
             int sd = sender->get_socket(); 
             if (FD_ISSET( sd , &readfds)){  
@@ -178,6 +169,7 @@ int main(int argc , char* argv[]) {
                         }
                     }
                     sender->clear();
+                    online_users.erase(online_users.begin()+index);
                     break;  
                 }  
                 else { 
@@ -218,8 +210,11 @@ int main(int argc , char* argv[]) {
                         case 17:
                             if(Message::handle_message_17(buffer, valread, sender, online_users) == -1){
                                 sender->set_status(ONLINE);
+                                cout << "bitch" <<endl;
                                 break;
                             }
+                            online_users.erase(online_users.begin()+index);
+                            break;
                             
                         }
                 }
@@ -232,8 +227,9 @@ int main(int argc , char* argv[]) {
                     //     exit(EXIT_FAILURE); 
                     // }
                 free(buffer);  
-            }  
-        }  
+            }
+            index++;
+        }
     }
     close(master_socket);  
     FD_CLR(master_socket, &readfds); 

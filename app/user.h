@@ -6,7 +6,7 @@
 using namespace std;
 
 
-enum STATUS {CONNECTING, ONLINE, CHATTING, RTT};
+enum STATUS {CONNECTING, ONLINE, CHATTING, RTT, OFFLINE};
 
 class User{
 private:
@@ -185,7 +185,7 @@ public:
     }
 
     //return the username
-    string get_username() const{
+    string get_username() {
         return this->username;
     }
     //return the ip

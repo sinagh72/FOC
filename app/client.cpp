@@ -21,24 +21,24 @@ bool establishe_handshake_clients(User * my_user, string receiver_username){
     int val_read = 0;
     my_user->set_status(RTT);
     if (Message::send_message_5(my_user, receiver_username) == -1){
-        cout << "Error: sending message 5 failed" <<endl;
+        cout << "Error in Establishing Secure Connection (5)" <<endl;
         return false;
     }
     char buffer[MAX_MESSAGE_LENGTH] = {0};
     val_read = read(my_user->get_socket() , buffer, MAX_MESSAGE_LENGTH);
     if(buffer[0] == 8){
         if(-1 == Message::handle_message_8(buffer, val_read, my_user)){
-            cerr <<"Error in handling message 8" << endl;
+            cout << "Error in Establishing Secure Connection (8)" <<endl;
             return false;
         }
         if(-1 == Message::send_message_9(my_user)){
-            cout << "Error: sending message 9 failed" <<endl;
+            cout << "Error in Establishing Secure Connection (9)" <<endl;
             return false;
         }
         cout <<"Secure Connection between You and " << receiver_username <<" is Established!" <<endl;
     }else if(buffer[0] == 12){
         if(-1 == Message::handle_message_12(buffer, val_read, my_user)){
-            cerr <<"Error in handling message 12" << endl;
+            cout << "Error in Establishing Secure Connection (12)" <<endl;
             return false;
         }
     }
@@ -67,51 +67,51 @@ User * my_user;
 
 int main(int argc, char const *argv[])
 {
-    // log in
-    // string username("sina");
-    // if (argv[1][0] == 's'){
-    //     username.assign("sina");
-    // }else{
-    //     username.assign("lore");
-    // }
-    // string password("sina");
-    string username;
-    string password;
-    bool valid = false;
-    cout << "====================**Welcome to ChatApp**====================\n";
-    do{
-        cout << "Please Enter Your Username:\n";
-        cin >> username;
-        if(!cin){
-            cerr << "Invalid Input\n";
-            valid = false;
-        }
-        else {
-            string privk_file = "users/" + username + "/rsa_privkey.pem";
-            struct stat buffer;   
-            if (!(stat(privk_file.c_str(), &buffer) == 0)){
-                cout << "No private key is generate for " << username << "\n";
-                valid = false;
-            }
-            else{
-                cout << "Please Enter Your Password:\n";
-                cin >> password;
-                if(!cin){
-                    cerr << "Invalid Input"<<endl;
-                    valid = false;
-                }else{
-                    //check if the password is similar to the PEM file    
-                    FILE* prvk_file = fopen(privk_file.c_str(), "r");
-                    if(!prvk_file){ cerr << "Invalid Password"<<endl; valid = false; }
-                    EVP_PKEY* prvk = PEM_read_PrivateKey(prvk_file, NULL, NULL, (unsigned char*)password.c_str());
-                    fclose(prvk_file);
-                    if(!prvk){ cerr << "Invalid Password"<<endl; valid = false; }
-                    valid = true;
-                }
-            }
-        }
+    //log in
+    string username("sina");
+    if (argv[1][0] == 's'){
+        username.assign("sina");
+    }else{
+        username.assign("lore");
     }
-    while(!valid);
+    string password("sina");
+    // string username;
+    // string password;
+    // bool valid = false;
+    // cout << "====================**Welcome to ChatApp**====================\n";
+    // do{
+    //     cout << "Please Enter Your Username:\n";
+    //     cin >> username;
+    //     if(!cin){
+    //         cerr << "Invalid Input\n";
+    //         valid = false;
+    //     }
+    //     else {
+    //         string privk_file = "users/" + username + "/rsa_privkey.pem";
+    //         struct stat buffer;   
+    //         if (!(stat(privk_file.c_str(), &buffer) == 0)){
+    //             cout << "No private key is generate for " << username << "\n";
+    //             valid = false;
+    //         }
+    //         else{
+    //             cout << "Please Enter Your Password:\n";
+    //             cin >> password;
+    //             if(!cin){
+    //                 cerr << "Invalid Input"<<endl;
+    //                 valid = false;
+    //             }else{
+    //                 //check if the password is similar to the PEM file    
+    //                 FILE* prvk_file = fopen(privk_file.c_str(), "r");
+    //                 if(!prvk_file){ cerr << "Invalid Password"<<endl; valid = false; }
+    //                 EVP_PKEY* prvk = PEM_read_PrivateKey(prvk_file, NULL, NULL, (unsigned char*)password.c_str());
+    //                 fclose(prvk_file);
+    //                 if(!prvk){ cerr << "Invalid Password"<<endl; valid = false; }
+    //                 valid = true;
+    //             }
+    //         }
+    //     }
+    // }
+    // while(!valid);
 
     int valread;
     struct sockaddr_in serv_addr;
@@ -219,7 +219,8 @@ int main(int argc, char const *argv[])
                 continue;
             }else if(out > 0){
                 if(-1 == Message::handle_message_10(my_user)){
-                    cout <<"Error in handing message 10" <<endl;
+                    cout << "Error in Establishing Secure Connection (10)" <<endl;
+                    continue;
                 }
                 cout <<"Secure Connection between You and " << my_user->get_peer_username() <<" is Established!" <<endl;
             }

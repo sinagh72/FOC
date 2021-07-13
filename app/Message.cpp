@@ -65,7 +65,7 @@ int Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16_
     User *client = new User(username,"sina",ip, port, client_socket);
     client->set_status(CONNECTING);
     online_users->insert(online_users->begin(), client);
-    cout << client->get_username() << "is connected with ip: " << ip << ", port: " << port << endl;
+    cout << client->get_username() << " connected with ip: " << ip << ", port: " << port << endl;
     //load server certificate from file and serialize it
     X509* cert;
     if(!Security::load_server_certificate(&cert)) {
@@ -736,7 +736,6 @@ int Message::send_message_5(User* my_user, string receiver_username){
     }
 
     my_user->increment_client_counter();
-
     free(aad);
     free(iv);
     free(gcm_plaintext);
@@ -786,6 +785,7 @@ int Message::handle_message_5(char * message, size_t message_len, User* sender, 
     if(receiver == nullptr){
        return -1;
     }
+    receiver->set_peer_username(sender->get_username());
     if(Message::send_message_6(sender, receiver) == -1){
         cerr <<"Error in sending message 6" << endl;
         return -1;
@@ -1500,7 +1500,7 @@ int Message::send_message_9(User* my_user){
     memcpy(message_buf + aad_len + gcm_ciphertext_len, tag, Security::GCM_TAG_LEN);
     //Send the data to the network!
     if(send(my_user->get_socket(), message_buf, message_buf_len, 0) != message_buf_len){
-            cerr <<"Error: sending message 9 over the socket failed" << endl;
+            cerr <<"Sending Message Failed (9)" << endl;
             free(text_to_sign);
             free(signature);
             free(cipher_signature); 
@@ -1533,11 +1533,6 @@ int Message::send_message_9(User* my_user){
 }
 //received by the server
 int Message::handle_message_9(char * message, size_t message_len, User* sender, vector<User*>users){
-    User *receiver = find_user(sender->get_peer_username(), &users);
-    if(receiver == nullptr){
-        receiver->set_status(ONLINE);
-        return -1;
-    }
     int i;
     string msg = "";
     for (i = 0; i < message_len; i++) {
@@ -1555,19 +1550,21 @@ int Message::handle_message_9(char * message, size_t message_len, User* sender, 
                                 (unsigned char*)gcm_ciphertext.c_str(), gcm_ciphertext.length(),
                                 sender->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &gcm_decryptedtext, 
                                 (unsigned char*)tag.c_str()))){
-        receiver->set_status(ONLINE);
         return -1;
     }
     string gcm_decryptedtext_str ((char*)gcm_decryptedtext);
     free(gcm_decryptedtext);
     uint16_t server_counter = (uint16_t) *(message + MESSAGE_TYPE_LENGTH);
     if(!sender->replay_check(false, server_counter)){
-        receiver->set_status(ONLINE);
         return -1;
     }
     sender->set_peer_username(gcm_decryptedtext_str.substr(sender->get_username().length(), 
                                                             gcm_decryptedtext_str.length() - sender->get_username().length()));
-
+    User *receiver = find_user(sender->get_peer_username(), &users);    
+    if(receiver == nullptr){
+        receiver->set_status(ONLINE);
+        return -1;
+    }
     cout << "handling message 9 from " << sender->get_username()<<endl;
     
     if(Message::send_message_10(sender, receiver,(unsigned char*) clients_ciphertext_str.c_str(),
@@ -1891,7 +1888,6 @@ int Message::handle_message_11(char * message, size_t message_len, User* sender,
     }
     string receiver_username = decryptedtext_str.substr(sender->get_username().length(),
                                 decryptedtext_str.length() - sender->get_username().length());
-    sender->set_peer_username(receiver_username);
     cout << "handling message 11 from " << sender->get_username()<<endl;
    
     if(Message::send_message_12(sender, receiver) == -1){
@@ -1974,7 +1970,8 @@ unsigned int Message::send_message_12(User* sender, User* receiver){
     free(gcm_ciphertext);
     free(message_buf);
     free(tag);
-    sender->set_peer_username("");//remove it
+    sender->set_peer_username("");
+    receiver->set_peer_username("");
     return message_buf_len;
 }
 //received by the client B
@@ -2558,7 +2555,7 @@ int Message::handle_message_17(char * message, size_t message_len, User* sender,
     if(!sender->replay_check(false, server_counter)){
         return -1;
     }
-    if(!sender->get_peer_username().empty()){
+    if(!sender->get_peer_username().empty() && sender->get_status() == CHATTING){
         User *receiver = find_user(sender->get_peer_username(), &users);
         if(receiver == nullptr){
             return -1;
