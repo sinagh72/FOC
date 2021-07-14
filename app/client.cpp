@@ -191,6 +191,7 @@ int main(int argc, char const *argv[])
             }
             bool valid_handshake = false;
             bool established = false;
+
             do{
                 my_user->set_status(ONLINE);
                 cout << "Online Users:\n";
@@ -209,6 +210,7 @@ int main(int argc, char const *argv[])
                 else
                    valid_handshake = establishe_handshake_clients(my_user, usernames.at(stoi(input_username) - 1));
             }while (!valid_handshake);
+
             if (established) 
                 send_secure();
             
@@ -230,29 +232,13 @@ int main(int argc, char const *argv[])
             break;  
         }
     }while (1);
-    //thread t2 (listening_loop);
-    
-    ///TODO:check if the client receive a request
-    // Client does not want to make a request
 
-    // char const *hello = "sina";
-    // send(sock , hello , strlen(hello) , 0 );
-    // printf("Hello message sent\n");
-    // usleep(MSEC);
-    // valread = read( sock , buffer, 1024);
-    // printf("%s\n",buffer);
-    // t1.join();
-    //t2.join();
     close(sock);
 
     return 0;
 }
 
-void listening_loop(){
-    while(1){
 
-    }
-}
 void select_main_menu(User* my_user) {
     fd_set rfds;
     int retval;

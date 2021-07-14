@@ -39,6 +39,8 @@ static bool check_user_input(const string& input, int option_size){
     free(ok_chars);
     return true;
 }
+
+/*
 static size_t print_list_online_users(vector<string> usernames){
     if(usernames.size() == 0){
         cout << "There is No Available User" << endl;
@@ -56,7 +58,7 @@ static size_t print_list_online_users(vector<string> usernames){
 
     return usernames.size() - 1;
 }
-
+*/
 
 static User* find_user(string username, vector<User*>*users){
     for (User* usr : *users) // access by reference to avoid copying
