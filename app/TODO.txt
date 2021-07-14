@@ -10,3 +10,4 @@
 11- client listening and sending
 12 -make a separate file for GUI functions
 13- check counter bit representation
+14- reply attack condition check (interger wrap around)
