@@ -216,7 +216,7 @@ public:
      * @return integer to specify if parsing the message is successful or not. If it is successful it will return the
      * size of the 1, otherwise -1
     */
-    static int handle_message_13(unsigned char ** clients_ciphertext, char * message, size_t message_len, User* sender);
+    static int handle_message_13(char * message, size_t message_len, User* sender, vector<User*>online_users);
     //=================================================================================================================== 
     /**
      * create a message type 14. This function will be called inside the server application
@@ -228,7 +228,7 @@ public:
      * @return unsgined integer to specify if the sending is successful or not. If it is successful it will return the
      * size of the message_buf, otherwise 0
     */
-    static unsigned int send_message_14(User* sender, User* receiver, unsigned char * clients_ciphertext, int clients_ciphertext_len);
+    static unsigned int send_message_14(User* sender, User* receiver, unsigned char * inner_gcm, int inner_gcm_len);
     //=================================================================================================================== 
     /**
      * handle message type 10. This function will be called inside the client application

@@ -201,7 +201,9 @@ public:
     */
     static int serialize_concat_dh_pubkey(EVP_PKEY* a, EVP_PKEY* b, char** concatenated);
 
-
+    static int inner_gcm_encrypt(uint16_t counter, unsigned char * plaintext, int plaintext_len, 
+                                      unsigned char * key,
+                                      unsigned char ** inner_gcm_buf);
 };
 
 #endif
