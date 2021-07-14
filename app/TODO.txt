@@ -2,11 +2,10 @@
 2- not ask buffer(as a parameter) in send_message_0
 3- handle errors
 4- server logging
-5- email to lamanna (iv and counter client in msg 13 14)
 6- max message exchange 
 7- forward rage quite of client A to client B while they are communicating
 8- login check in client
 9- review code
 10- BAN LOGIC
 11- client listening and sending
-
+12 -make a separate file for GUI functions
