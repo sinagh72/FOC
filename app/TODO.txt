@@ -11,3 +11,5 @@
 12 -make a separate file for GUI functions
 13- check counter bit representation
 14- reply attack condition check (interger wrap around)
+15- clear keys in non optimize mode
+
