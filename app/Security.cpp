@@ -671,13 +671,14 @@ int Security::serialize_concat_dh_pubkey(EVP_PKEY* a, EVP_PKEY *b, char** concat
     return 2*DH_PUBK_LENGTH;
 }
 
-int inner_gcm_encrypt(uint16_t counter, unsigned char * plaintext, int plaintext_len, 
+int Security::inner_gcm_encrypt(uint16_t counter, unsigned char * plaintext, int plaintext_len, 
                                       unsigned char * key,
-                                      unsigned char ** inner_gcm_buf){
-    //inner gcm
+                                      unsigned char ** inner_gcm_buf,
+                                      string message_type){
     //initialization vector for inner gcm
     unsigned char* iv{nullptr};
     if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)){
+        cerr << "IV Generation Error (Send" << message_type <<")"<< endl;
         return -1;
     }
     int aad_len = COUNTER_LENGTH + Security::GCM_IV_LEN;
@@ -700,6 +701,7 @@ int inner_gcm_encrypt(uint16_t counter, unsigned char * plaintext, int plaintext
         free(aad);
         free(tag);
         free(gcm_ciphertext);
+        cerr << "Inner Encryption Error (Send" << message_type <<")"<< endl;
         return -1;
     }
     

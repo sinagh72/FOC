@@ -1,8 +1,4 @@
 #include "Message.h"
-#include "Security.h"
-#include <iostream>
-#include <openssl/bio.h>
-#include <openssl/ossl_typ.h>
 
 //sent by the client A
 int Message::send_message_0(char **buffer, User* my_user) {
@@ -1048,7 +1044,8 @@ int Message::send_message_7(User* my_user){
     //inner gcm encryption
     unsigned char * inner_gcm_buf{nullptr};
     int inner_gcm_buf_len = 0;
-    if(-1 == (inner_gcm_buf_len = Security::inner_gcm_encrypt(my_user->get_send_counter(),signature, signature_len, clients_key, &inner_gcm_buf))){
+    if(-1 == (inner_gcm_buf_len = Security::inner_gcm_encrypt(my_user->get_send_counter(),signature, signature_len, clients_key, 
+                                                                &inner_gcm_buf, "7"))){
         cout << "Inner Encryption Error (Send 7)" <<endl;
         EVP_PKEY_free(newB);
         free(text_to_sign);
@@ -1479,7 +1476,7 @@ int Message::send_message_9(User* my_user){
     unsigned char * inner_gcm_buf{nullptr};
     int inner_gcm_buf_len = 0;
     if(-1 == (inner_gcm_buf_len = Security::inner_gcm_encrypt(my_user->get_send_counter(), signature, signature_len, 
-    my_user->get_clients_key(), &inner_gcm_buf))){
+                                                              my_user->get_clients_key(), &inner_gcm_buf, "9"))){
         free(text_to_sign);
         free(signature);
         cout << "Inner Encryption Error (Send 9)" <<endl;
@@ -2085,7 +2082,7 @@ int Message::send_message_13(unsigned char* message, size_t message_len, User* m
     unsigned char* ciphertext{nullptr};
     int ciphertext_len = 0;
     if((ciphertext_len = Security::inner_gcm_encrypt(my_user->get_send_counter(), message, message_len, my_user->get_clients_key(),
-                                                    &ciphertext)) == -1){
+                                                    &ciphertext, "13")) == -1){
         cerr<<"Inner Encryption Error (Send 13)"<<endl;
         return -1;
     }

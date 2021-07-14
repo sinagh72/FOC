@@ -171,7 +171,7 @@ int main(int argc, char const *argv[])
         //2. listening
         //0. Log out
         client_menu_0();
-        select_main_menu(my_user);
+        //select_main_menu(my_user);
         cin >> input;
         if (!check_user_input(input, 3))
             continue;

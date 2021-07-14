@@ -203,7 +203,8 @@ public:
 
     static int inner_gcm_encrypt(uint16_t counter, unsigned char * plaintext, int plaintext_len, 
                                       unsigned char * key,
-                                      unsigned char ** inner_gcm_buf);
+                                      unsigned char ** inner_gcm_buf,
+                                      string message_type);
 };
 
 #endif
