@@ -61,7 +61,6 @@ bool User::replay_check(bool from_server, uint16_t server_counter){
     bool returned = false;
     if (from_server)
         if (server_counter - this->get_server_counter() != 0){//the difference between them should be always 1
-            cerr<< "Replay Attack! This message is discarded!" <<endl;
             return false;
         }
         else {
@@ -70,7 +69,6 @@ bool User::replay_check(bool from_server, uint16_t server_counter){
         }
     else{
         if (server_counter - this->get_client_counter() != 0){//the difference between them should be always 1
-            cerr<< "Replay Attack! This message is discarded!" <<endl;
             return false;
         }
         else {

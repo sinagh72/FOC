@@ -518,7 +518,7 @@ int Security::chars_to_EVP_PKEY(EVP_PKEY ** pkey, unsigned char * pk_buf){
 }
 bool Security::generate_iv(unsigned char**iv, int iv_len){
     *iv = (unsigned char *)malloc(iv_len);
-    if (!*iv){ cerr << "Error: malloc for iv returned NULL (iv is too big?)\n"; return false; }
+    if (!*iv){ return false; }
     //seed OpenSSL PRNG
     RAND_poll();
     RAND_bytes((unsigned char*)iv[0], iv_len);

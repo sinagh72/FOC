@@ -66,7 +66,7 @@ static User* find_user(string username, vector<User*>*users){
             return usr;
         }
     }
-    cerr<< "Error: User '" << username << "' not found!" <<endl;
+    cerr<< "User '" << username << "' Not Found Error" <<endl;
     return NULL;
 }
 
@@ -92,8 +92,15 @@ static int inner_gcm_encrypt(uint16_t counter, unsigned char * plaintext, int pl
     unsigned char* tag{nullptr};
     int gcm_ciphertext_len = 0;
 
-    if(-1 == (gcm_ciphertext_len = Security::gcm_encrypt((unsigned char*)aad, aad_len , plaintext, plaintext_len, 
-                                                        key, iv, &gcm_ciphertext, &tag))) return -1;
+    if(-1 == (gcm_ciphertext_len = Security::gcm_encrypt((unsigned char*)aad, aad_len , 
+                                                        plaintext, plaintext_len, 
+                                                        key, iv, &gcm_ciphertext, &tag))){
+        free(iv);
+        free(aad);
+        free(tag);
+        free(gcm_ciphertext);
+        return -1;
+    }
     
     int inner_gcm_buf_len = aad_len + gcm_ciphertext_len + Security::GCM_TAG_LEN;
     *inner_gcm_buf = (unsigned char*)malloc(inner_gcm_buf_len);
@@ -101,17 +108,10 @@ static int inner_gcm_encrypt(uint16_t counter, unsigned char * plaintext, int pl
     memcpy(*inner_gcm_buf + aad_len, gcm_ciphertext, gcm_ciphertext_len);
     memcpy(*inner_gcm_buf + aad_len + gcm_ciphertext_len, tag, Security::GCM_TAG_LEN);
 
-
-    cout << "========================================tag================================" <<endl;
-    BIO_dump_fp(stdout, (char*)tag, Security::GCM_TAG_LEN);
-    cout << "========================================aad================================"<<endl;
-    BIO_dump_fp(stdout,  (char*)aad, aad_len);
-    cout << "========================================iv================================"<<endl;
-    BIO_dump_fp(stdout,  (char*)iv, Security::GCM_IV_LEN);
-    cout << "==================================inner_ciphertext====================="<<endl;
-    BIO_dump_fp(stdout, (char*)gcm_ciphertext, gcm_ciphertext_len);
-    cout << "================================msg====================="<<endl;
-    BIO_dump_fp(stdout, (char*)*inner_gcm_buf, inner_gcm_buf_len);
+    free(iv);
+    free(aad);
+    free(tag);
+    free(gcm_ciphertext);
 
     return inner_gcm_buf_len;                             
 }

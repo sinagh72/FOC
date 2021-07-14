@@ -105,7 +105,7 @@ public:
      * size of the message_buf, otherwise -1
     */
     static int send_message_8(User* sender, User* receiver, 
-                                        unsigned char * clients_ciphertext, int clients_ciphertext_len);
+                                        unsigned char * inner_gcm, int inner_gcm_len);
     //=================================================================================================================== 
      /**
      * handle message type 8. This function will be called inside the client application
@@ -146,7 +146,7 @@ public:
      * @return unsgined integer to specify if the sending is successful or not. If it is successful it will return the
      * size of the message_buf, otherwise 0
     */
-    static int send_message_10(User* sender, User* receiver, unsigned char * clients_ciphertext, int clients_ciphertext_len);
+    static int send_message_10(User* sender, User* receiver, unsigned char * inner_gcm, int inner_gcm_len);
     //===================================================================================================================
     /**
      * handle message type 10. This function will be called inside the client application
