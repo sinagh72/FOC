@@ -2170,7 +2170,7 @@ int Message::send_message_13(unsigned char* message, size_t message_len, User* m
             my_user->set_clients_key(nullptr, 0);
             return -1;
         }
-        return 1;
+        return 0;
     }
     //encrypt the message with the session key
     unsigned char* ciphertext{nullptr};

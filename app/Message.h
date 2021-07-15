@@ -33,15 +33,18 @@ public:
     static int handle_message_2(char* buffer, int buffer_len, User *client);
 
     // message 3
+    //This function terminates the 
+    // whole program if the counter between server and client reaches max.
     static int send_message_3(User * my_user);
     static int handle_message_3(char * message, size_t message_len, User * my_user, vector<User*>online_users);
 
     // message 4
     static int send_message_4(User* sender, vector<User*>online_users);
     static int handle_message_4(User * my_user, vector<string>*usernames);
-    
+    //===================================================================================================================  
      /**
-     * create a message type 5. This function will be called inside the client application
+     * create a message type 5. This function will be called inside the client application. This function terminates the 
+     * whole program if the counter between server and client reaches max.
      * @param my_user the sender of the message!
      * @param receiver_username the username of the other clients we want to communicate
      * @return integer to specify if the sending is successful or not. If it is successful it will return the
@@ -78,7 +81,8 @@ public:
     static int handle_message_6(User* my_user);
     //=================================================================================================================== 
     /**
-     * create a message type 7. This funciton will be called inside the client application
+     * create a message type 7. This funciton will be called inside the client application. This function terminates the 
+     * whole program if the counter between server and client reaches max.
      * @param my_user the sender of the message!
      * @return integer to specify if the sending is successful or not. If it is successful it will return the
      * size of the message_buf, otherwise -1
@@ -158,7 +162,8 @@ public:
     static int handle_message_10(User* my_user);
     //===================================================================================================================
     /**
-     * create a message type 11. This function will be called inside the client application
+     * create a message type 11. This function will be called inside the client application. This function terminates the 
+     * whole program if the counter between server and client reaches max.
      * @param my_user the sender of the message!
      * @return integer to specify if the sending is successful or not. If it is successful it will return the
      * size of the message_buf, otherwise -1
@@ -195,12 +200,13 @@ public:
     static int handle_message_12(char* message, size_t message_len, User*my_user);
     //=================================================================================================================== 
     /**
-     * create a message type 13. This function will be called inside the client application
+     * create a message type 13. This function will be called inside the client application. This function terminates the 
+     * whole program if the counter between server and client reaches max.
      * @param message the message that the client wants to send to the other client.
      * @param message_len the length of the message that the client wants to send to the other client.
      * @param my_user the sender of the message!
      * @return integer to specify if the sending is successful or not. If it is successful it will return the
-     * size of the message_buf, otherwise -1
+     * size of the message_buf. If an error happens -1, otherwise if the counter between two clients reaches max, it will return 0.
      */
     static int send_message_13(unsigned char* message, size_t message_len, User* my_user);
     //=================================================================================================================== 
@@ -237,7 +243,8 @@ public:
     static int handle_message_14(char * message, size_t message_len, User* my_user);
     //===================================================================================================================
     /**
-     * create a message type 15. This function will be called inside the client application
+     * create a message type 15. This function will be called inside the client application. This function terminates the 
+     * whole program if the counter between server and client reaches max.
      * @param my_user the sender of the message!
      * @return unsgined integer to specify if the sending is successful or not. If it is successful it will return the
      * size of the message_buf, otherwise -1

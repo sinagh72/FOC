@@ -207,6 +207,10 @@ int main(int argc , char* argv[]) {
                                 sender->set_status(ONLINE);
                                 break;
                             }
+                        case 13:
+                            if(Message::handle_message_13(buffer, valread, sender, online_users) == -1){
+                                break;
+                            }
                         case 17:
                             if(Message::handle_message_17(buffer, valread, sender, online_users) == -1){
                                 sender->set_status(ONLINE);
