@@ -27,7 +27,7 @@ public:
      * @param online_users : vector of Users that are online
      */
     static int handle_message_0(char *buffer, int client_socket, char *ip, uint16_t port, vector <User*>*online_users);
-
+    //===================================================================================================================  
     /**
      * handle message for message type 1
      * @param buffer buffer of incoming message 1
@@ -36,7 +36,7 @@ public:
      * @return -1 on error, 1 on success
      */
     static int handle_message_1(char* buffer,  int buffer_len, User *client);
-
+    //===================================================================================================================  
     /**
      * handle message for message type 2
      * @param buffer buffer of incoming message 2
@@ -45,15 +45,38 @@ public:
      * @return -1 on error, 1 on success
      */
     static int handle_message_2(char* buffer, int buffer_len, User *client);
-
-    // message 3
-    //This function terminates the 
-    // whole program if the counter between server and client reaches max.
+    //===================================================================================================================  
+     /**
+     * create a message type 3. This function will be called inside the server application. 
+     * @param my_user the sender of the message 3
+     * @return  -1 on error, 1 on success
+    */
     static int send_message_3(User * my_user);
+    //===================================================================================================================  
+     /**
+     * handle message of message type 3
+     * @param message the message received from the socket
+     * @param message_len the size of the received message
+     * @param my_user the sender of the message
+     * @param username the vector containing the list of active users
+     * @return -1 on error, 1 on success
+     */
     static int handle_message_3(char * message, size_t message_len, User * my_user, vector<User*>online_users);
-
-    // message 4
+    //===================================================================================================================  
+     /**
+     * create a message type 4. This function will be called inside the server application. 
+     * @param my_user the sender of the message 3
+     * @param online_users the vector containing the list of active users
+     * @return  -1 on error, 1 on success
+    */
     static int send_message_4(User* sender, vector<User*>online_users);
+    //===================================================================================================================  
+     /**
+     * handle message of message type 4
+     * @param my_user the sender of the message 3
+     * @param username the vector conatining the list of usernames of the active users
+     * @return -1 on error, 1 on success
+     */
     static int handle_message_4(User * my_user, vector<string>*usernames);
     //===================================================================================================================  
      /**

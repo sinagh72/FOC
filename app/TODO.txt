@@ -9,3 +9,5 @@
 12 -make a separate file for GUI functions
 13- check counter bit representation
 14- check user input more than 10k 
+15- Change establish handshake function in client.cpp //sina
+19- remove test files
