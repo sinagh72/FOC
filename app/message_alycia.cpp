@@ -16,7 +16,7 @@ using namespace std;
 
 // message 3
 
-unsigned int Message::send_message_3(char ** msg_buf, User * my_user) {
+unsigned int NetworkMessage::send_message_3(char ** msg_buf, User * my_user) {
 
     // generate iv
     unsigned char* iv{nullptr};
@@ -72,7 +72,7 @@ unsigned int Message::send_message_3(char ** msg_buf, User * my_user) {
 }
 
 
-int Message::handle_message_3(char * msg_buf, size_t msg_len, User * my_user){
+int NetworkMessage::handle_message_3(char * msg_buf, size_t msg_len, User * my_user){
     int k;
     string msg = "";
     for (k = 0; k < msg_len; k++) {
@@ -108,7 +108,7 @@ int Message::handle_message_3(char * msg_buf, size_t msg_len, User * my_user){
 
 // message 4
 
-unsigned int Message::send_message_4(char** msg_buf, vector<User> * act_usr, User * dest_user) {
+unsigned int NetworkMessage::send_message_4(char** msg_buf, vector<User> * act_usr, User * dest_user) {
 
     // generate iv
     unsigned char* iv{nullptr};
@@ -193,7 +193,7 @@ unsigned int Message::send_message_4(char** msg_buf, vector<User> * act_usr, Use
 }
 
 
-int Message::handle_message_4(char * msg_buf, size_t msg_len, User * dest_user){
+int NetworkMessage::handle_message_4(char * msg_buf, size_t msg_len, User * dest_user){
     int k;
     string msg = "";
     for (k = 0; k < msg_len; k++) {

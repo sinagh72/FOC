@@ -131,7 +131,7 @@ int main(int argc , char* argv[]) {
             valread = read(new_socket, buffer, MAX_MESSAGE_LENGTH);
             //check for message type 0
             if(buffer[0]==0){
-                if(-1 == Message::handle_message_0(buffer, new_socket, inet_ntoa(address.sin_addr),
+                if(-1 == NetworkMessage::handle_message_0(buffer, new_socket, inet_ntoa(address.sin_addr),
                                                      ntohs(address.sin_port), &online_users)){
                     cerr << "Error in establishing key with the new Client" <<endl;                                          
                 }
@@ -164,7 +164,7 @@ int main(int argc , char* argv[]) {
                         if(receiver == nullptr){
                             break;
                         }
-                        if(Message::send_message_16((*it), receiver) == -1){
+                        if(NetworkMessage::send_message_16((*it), receiver) == -1){
                             cerr << "Error in sending message 16" << endl;
                         }
                     }
@@ -178,47 +178,47 @@ int main(int argc , char* argv[]) {
                     //of the data read
                     switch (buffer[0]) {
                         case 2:
-                            Message::handle_message_2(buffer, valread, (*it));
+                            NetworkMessage::handle_message_2(buffer, valread, (*it));
                             break;
                         case 3:
-                            if(Message::handle_message_3(buffer, valread, (*it), online_users) == -1){
+                            if(NetworkMessage::handle_message_3(buffer, valread, (*it), online_users) == -1){
                                 break;
                             }
                             break;
                         case 5:
-                            if(Message::handle_message_5(buffer, valread, (*it), online_users) == -1){
+                            if(NetworkMessage::handle_message_5(buffer, valread, (*it), online_users) == -1){
                                 (*it)->set_status(ONLINE);
                                 break;
                             }
                             break;
                         case 7:
-                            if(Message::handle_message_7(buffer, valread, (*it), online_users) == -1){
+                            if(NetworkMessage::handle_message_7(buffer, valread, (*it), online_users) == -1){
                                 (*it)->set_status(ONLINE);
                                 break;
                             }
                             break;
                         case 9:
-                            if(Message::handle_message_9(buffer, valread, (*it), online_users) == -1){
+                            if(NetworkMessage::handle_message_9(buffer, valread, (*it), online_users) == -1){
                                 (*it)->set_status(ONLINE);
                                 break;
                             }
                             break;
                         case 11:
-                            if(Message::handle_message_11(buffer, valread, (*it), online_users) == -1){
+                            if(NetworkMessage::handle_message_11(buffer, valread, (*it), online_users) == -1){
                                 (*it)->set_status(ONLINE);
                                 break;
                             }
                         case 13:
-                            if(Message::handle_message_13(buffer, valread, (*it), online_users) == -1){
+                            if(NetworkMessage::handle_message_13(buffer, valread, (*it), online_users) == -1){
                                 break;
                             }
                         case 15:
-                            if(Message::handle_message_15(buffer, valread, (*it), online_users) == -1){
+                            if(NetworkMessage::handle_message_15(buffer, valread, (*it), online_users) == -1){
                                 (*it)->set_status(ONLINE);
                                 break;
                             }
                         case 17:
-                            if(Message::handle_message_17(buffer, valread, (*it), online_users) == -1){
+                            if(NetworkMessage::handle_message_17(buffer, valread, (*it), online_users) == -1){
                                 (*it)->set_status(ONLINE);
                                 break;
                             }

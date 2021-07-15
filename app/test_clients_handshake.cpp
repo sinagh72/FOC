@@ -46,7 +46,7 @@ int main(){
     char*message{nullptr};
     unsigned char* t1 = (unsigned char*)"1234567890123456";
     
-    int msg_len = Message::send_message_5(&message, sina, "lore");
+    int msg_len = NetworkMessage::send_message_5(&message, sina, "lore");
     cout << "Message 5 len: "<<msg_len << endl;
     //server receives the message 5 and sends message 6
     //we assumed that the server can realize who is the sender and who is the receiver
@@ -55,65 +55,65 @@ int main(){
     [&tmp](const User *obj) {return obj->get_username() == tmp;});
     unsigned char* t2 = (unsigned char*)"1234567890123456";
 
-    Message::handle_message_5(message, msg_len, *it);
+    NetworkMessage::handle_message_5(message, msg_len, *it);
     char*message2{nullptr};
     //we assumed that the server can realize who is the sender and who is the receiver
-    msg_len = Message::send_message_6(&message2, sina_s, lore_s);
+    msg_len = NetworkMessage::send_message_6(&message2, sina_s, lore_s);
     cout << "Message 6 len: "<<msg_len << endl;
     //client B receives message 6 and sends message 7
-    Message::handle_message_6(message2, msg_len, lore);
+    NetworkMessage::handle_message_6(message2, msg_len, lore);
     char*message3{nullptr};
-    msg_len = Message::send_message_7(&message3, lore);
+    msg_len = NetworkMessage::send_message_7(&message3, lore);
     cout << "Message 7 len: "<<msg_len << endl;
     //server receives the message 7 and sends message 8
     unsigned char* clients_ciphertext{nullptr};
     //we assumed that the server can realize who is the sender and who is the receiver
-    msg_len = Message::handle_message_7(&clients_ciphertext, message3, msg_len, lore_s);
+    msg_len = NetworkMessage::handle_message_7(&clients_ciphertext, message3, msg_len, lore_s);
     char*message4{nullptr};
     //we assumed that the server can realize who is the sender and who is the receiver
-    msg_len = Message::send_message_8(&message4, lore_s , sina_s, clients_ciphertext, msg_len);
+    msg_len = NetworkMessage::send_message_8(&message4, lore_s , sina_s, clients_ciphertext, msg_len);
     cout << "Message 8 len: "<<msg_len << endl;
     //client A receives message 8 and sends message 9 to server  
-    Message::handle_message_8(message4, msg_len, sina);
+    NetworkMessage::handle_message_8(message4, msg_len, sina);
     char*message5{nullptr};
-    msg_len = Message::send_message_9(&message5, sina);
+    msg_len = NetworkMessage::send_message_9(&message5, sina);
     cout << "Message 9 len: "<<msg_len << endl;
     //server receives the message 9 and sends message 10
     unsigned char* clients_ciphertext2{nullptr};
     //we assumed that the server can realize who is the sender and who is the receiver
-    msg_len = Message::handle_message_9(&clients_ciphertext2, message5, msg_len, sina_s);
+    msg_len = NetworkMessage::handle_message_9(&clients_ciphertext2, message5, msg_len, sina_s);
     char*message6{nullptr};
     //we assumed that the server can realize who is the sender and who is the receiver
-    msg_len = Message::send_message_10(&message6, sina_s , lore_s, clients_ciphertext2, msg_len);
+    msg_len = NetworkMessage::send_message_10(&message6, sina_s , lore_s, clients_ciphertext2, msg_len);
     cout << "Message 10 len: "<<msg_len << endl;
     //client B receives message 10
-    Message::handle_message_10(message6, msg_len, lore);
+    NetworkMessage::handle_message_10(message6, msg_len, lore);
     cout <<"=======================================================================================\n";
     //cilent A sends a message
     char*message13{nullptr};
     unsigned char * clients_plaintext = (unsigned char*) "sina";
-    msg_len = Message::send_message_13(&message13, clients_plaintext, strlen((char*)clients_plaintext), sina);
+    msg_len = NetworkMessage::send_message_13(&message13, clients_plaintext, strlen((char*)clients_plaintext), sina);
     cout << "Message 13 len: "<<msg_len << endl;
     //server receives the message 13 and sends message 14
     unsigned char*clients_ciphertext13{nullptr};
-    msg_len = Message::handle_message_13(&clients_ciphertext13, message13, msg_len, sina_s);
+    msg_len = NetworkMessage::handle_message_13(&clients_ciphertext13, message13, msg_len, sina_s);
     char*message14{nullptr};
-    msg_len = Message::send_message_14(&message14, sina_s, lore_s, clients_ciphertext13, msg_len);
+    msg_len = NetworkMessage::send_message_14(&message14, sina_s, lore_s, clients_ciphertext13, msg_len);
     cout << "Message 14 len: "<<msg_len << endl;
     //client B receives message 14
-    Message::handle_message_14(message14, msg_len, lore);
+    NetworkMessage::handle_message_14(message14, msg_len, lore);
     cout <<"=======================================================================================\n";
     //cilent B declined request to talk
     char*message11{nullptr};
-    msg_len = Message::send_message_11(&message11, lore);
+    msg_len = NetworkMessage::send_message_11(&message11, lore);
     cout << "Message 11 len: "<<msg_len << endl;
     //server receives the message 11 and sends message 12
-    Message::handle_message_11(message11, msg_len, lore_s);
+    NetworkMessage::handle_message_11(message11, msg_len, lore_s);
     char*message12{nullptr};
-    Message::send_message_12(&message12, lore_s, sina_s);
+    NetworkMessage::send_message_12(&message12, lore_s, sina_s);
     cout << "Message 12 len: "<<msg_len << endl;
     //client A receives message 12
-    Message::handle_message_12(message12, msg_len, sina);
+    NetworkMessage::handle_message_12(message12, msg_len, sina);
     cout <<"=======================================================================================\n";
     // // //print counters
     cout<<"clients: "<<endl;
@@ -126,9 +126,9 @@ int main(){
     cout <<"=======================================================================================\n";
     //cilent A sends log out message
     char*message17{nullptr};
-    msg_len = Message::send_message_17(&message17, sina);
+    msg_len = NetworkMessage::send_message_17(&message17, sina);
     //server receive the log out message
-    Message::handle_message_17(message17, msg_len, sina_s);
+    NetworkMessage::handle_message_17(message17, msg_len, sina_s);
     cout <<"=======================================================================================\n";
 
     free(message);

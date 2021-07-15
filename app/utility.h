@@ -7,27 +7,32 @@
 const string WHITESPACE = " \n\r\t\f\v";
 const string DELIMITER = "||";
 
+void main_menu(){
+    cout << "Main Menu:\n" << "Please Select an Option:\n" << "1. Check Online Users\n" << "2. Listening\n" 
+    <<"0. Log out" <<endl;
+}
+
 bool establish_handshake_clients(User * my_user, string receiver_username){
     int val_read = 0;
     my_user->set_status(RTT);
-    if (Message::send_message_5(my_user, receiver_username) == -1){
+    if (NetworkMessage::send_message_5(my_user, receiver_username) == -1){
         cout << "Error in Establishing Secure Connection (5)" <<endl;
         return false;
     }
     char buffer[MAX_MESSAGE_LENGTH] = {0};
     val_read = read(my_user->get_socket() , buffer, MAX_MESSAGE_LENGTH);
     if(buffer[0] == 8){
-        if(-1 == Message::handle_message_8(buffer, val_read, my_user)){
+        if(-1 == NetworkMessage::handle_message_8(buffer, val_read, my_user)){
             cout << "Error in Establishing Secure Connection (8)" <<endl;
             return false;
         }
-        if(-1 == Message::send_message_9(my_user)){
+        if(-1 == NetworkMessage::send_message_9(my_user)){
             cout << "Error in Establishing Secure Connection (9)" <<endl;
             return false;
         }
         cout <<"Secure Connection between You and " << receiver_username <<" is Established!" <<endl;
     }else if(buffer[0] == 12){
-        if(-1 == Message::handle_message_12(buffer, val_read, my_user)){
+        if(-1 == NetworkMessage::handle_message_12(buffer, val_read, my_user)){
             cout << "Error in Establishing Secure Connection (12)" <<endl;
             return false;
         }
@@ -64,7 +69,7 @@ bool connect_to_server(string username, string password, char* IP, int PORT, Use
     *my_user = new User(username, password, IP, PORT, sock);
     //send message 0
     char *buffer_0 {nullptr};
-    int buffer_len = Message::send_message_0(&buffer_0, *my_user);
+    int buffer_len = NetworkMessage::send_message_0(&buffer_0, *my_user);
     if(buffer_len == -1){
         cout << endl << "Error in sending message type 0" <<endl;
         cout << "Connection failed";
@@ -75,7 +80,7 @@ bool connect_to_server(string username, string password, char* IP, int PORT, Use
     //handle message type 1
     valread = read( sock , buffer, MAX_MESSAGE_LENGTH);
 
-    if(Message::handle_message_1(buffer, valread, *my_user) == -1){
+    if(NetworkMessage::handle_message_1(buffer, valread, *my_user) == -1){
         cout << endl <<"Error in handling message type 1" <<endl;
         cout <<"Connection failed" <<endl;
         return false;
@@ -103,12 +108,8 @@ static string trim(const string &s) {
     return rtrim(ltrim(s));
 }
 
-static void client_menu_0(){
-    cout << "Main Menu:\n" << "Please Select an Option:\n" << "1. Check Online Users\n" << "2. Listening\n" 
-    <<"0. Log out" <<endl;
-}
 
-static bool check_user_input(const string& input, int option_size){
+bool check_user_input(const string& input, int option_size){
     char * ok_chars = (char*)malloc(option_size);
     for(int i = 0; i < option_size; i++){
         memset(ok_chars + i, '0' + i, 1);

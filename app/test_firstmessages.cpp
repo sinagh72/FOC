@@ -32,13 +32,13 @@ int main(){
     //
     int size = 0;
     char * buffer0{nullptr};
-    Message::send_message_0(&buffer0, sina);
+    NetworkMessage::send_message_0(&buffer0, sina);
 
     cout << sina->get_client_server_pubk() <<endl;
     char* buffer1{nullptr};
-    size = Message::handle_message_0(buffer0, &buffer1, 0, (char*)"ip", 0, users);
+    size = NetworkMessage::handle_message_0(buffer0, &buffer1, 0, (char*)"ip", 0, users);
 
-    Message::handle_message_1(buffer1, size, sina);
+    NetworkMessage::handle_message_1(buffer1, size, sina);
 
 
 

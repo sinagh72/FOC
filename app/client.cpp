@@ -30,19 +30,14 @@ bool send_secure(){
 
 int main(int argc, char const *argv[])
 {
-    //log in
-    // string username("sina");
-    // if (argv[1][0] == 's'){
-    //     username.assign("sina");
-    // }else{
-    //     username.assign("lore");
-    // }
-    // string password("sina");
+ 
     string username;
     string password;
     bool valid = false;
-    cout << "====================**Welcome to ChatApp**====================\n";
+    
     do{
+        system("clear");
+        cout << "====================**Welcome to ChatApp**====================\n";
         cout << "Please Enter Your Username:\n";
         cin >> username;
         if(!cin){
@@ -63,7 +58,7 @@ int main(int argc, char const *argv[])
                     cerr << "Invalid Input"<<endl;
                     valid = false;
                 }else{
-                    //check if the password is similar to the PEM file    
+                    //check if the password is the same to the PEM file    
                     FILE* prvk_file = fopen(privk_file.c_str(), "r");
                     if(!prvk_file){ 
                         cerr << "Invalid Password"<<endl; 
@@ -93,76 +88,14 @@ int main(int argc, char const *argv[])
 
     while(1) {
         //Main Menu:
-        //Please Select One Option:
+        //Please select the user you want to chat with or wait for a request to talk:
         //1. Check Online Users
         //2. listening
         //0. Log out
-        client_menu_0();
-        
-        while(1) {
-            select_main_menu(my_user);
-        }
+        main_menu();
+        select_main_menu(my_user);
 
 
-        cin >> input;
-        if (!check_user_input(input, 3))
-            continue;
-        if(input.compare("1") == 0){
-            if(Message::send_message_3(my_user) == -1){
-                ///TODO:maybe server is off!
-                continue;
-            }
-            vector<string> usernames;
-            int onlines = Message::handle_message_4(my_user, &usernames);
-            if(onlines == -1){
-                ///TODO:error
-                continue;
-            }else if (onlines == 0){
-                cout << "There is No Available User" << endl;
-                continue;
-            }
-            bool valid_handshake = false;
-            bool established = false;
-
-            do{
-                my_user->set_status(ONLINE);
-                cout << "Online Users:\n";
-                cout << "Select The User You Want to Chat:\n";
-                size_t c = 1;
-                for(string usr: usernames){
-                    cout << c <<". " << usr << endl;
-                    c++;
-                }
-                cout << "0. Exit" <<endl;
-                cin >> input_username;
-                if (!check_user_input(input_username, usernames.size()+1))
-                   valid_handshake = false;
-                else if(input_username.compare("0") == 0)
-                    valid_handshake = true;
-                else
-                   valid_handshake = establish_handshake_clients(my_user, usernames.at(stoi(input_username) - 1));
-            }while (!valid_handshake);
-
-            if (established) 
-                send_secure();
-            
-        }else if(input.compare("2") == 0){
-            int out = Message::handle_message_6(my_user);
-            if(-1 == out){
-                continue;
-            }else if(out > 0){
-                if(-1 == Message::handle_message_10(my_user)){
-                    cout << "Error in Establishing Secure Connection (10)" <<endl;
-                    continue;
-                }
-                cout <<"Secure Connection between You and " << my_user->get_peer_username() <<" is Established!" <<endl;
-            }
-        }else if (input.compare("0") == 0){
-            if(0 == Message::send_message_17(my_user)){
-                ///TODO: handle error in sending message 17
-            }
-            break;  
-        }
     }
 
     close(my_user->get_socket());
@@ -189,7 +122,69 @@ void select_main_menu(User* my_user) {
         if(FD_ISSET(0, &rfds)) {
             // ready input coming from keyboard
             //we give priority to the user will
-            return;
+
+
+            cin >> input;
+            if (!check_user_input(input, 3))
+                continue;
+            if(input.compare("1") == 0){
+                if(NetworkMessage::send_message_3(my_user) == -1){
+                    ///TODO:maybe server is off!
+                    continue;
+                }
+                vector<string> usernames;
+                int onlines = NetworkMessage::handle_message_4(my_user, &usernames);
+                if(onlines == -1){
+                    ///TODO:error
+                    continue;
+                }else if (onlines == 0){
+                    cout << "There is No Available User" << endl;
+                    continue;
+                }
+                bool valid_handshake = false;
+                bool established = false;
+
+                do{
+                    my_user->set_status(ONLINE);
+                    cout << "Online Users:\n";
+                    cout << "Select The User You Want to Chat:\n";
+                    size_t c = 1;
+                    for(string usr: usernames){
+                        cout << c <<". " << usr << endl;
+                        c++;
+                    }
+                    cout << "0. Exit" <<endl;
+                    cin >> input_username;
+                    if (!check_user_input(input_username, usernames.size()+1))
+                    valid_handshake = false;
+                    else if(input_username.compare("0") == 0)
+                        valid_handshake = true;
+                    else
+                    valid_handshake = establish_handshake_clients(my_user, usernames.at(stoi(input_username) - 1));
+                }while (!valid_handshake);
+
+                if (established) 
+                    send_secure();
+                
+            }else if(input.compare("2") == 0){
+                int out = NetworkMessage::handle_message_6(my_user);
+                if(-1 == out){
+                    continue;
+                }else if(out > 0){
+                    if(-1 == NetworkMessage::handle_message_10(my_user)){
+                        cout << "Error in Establishing Secure Connection (10)" <<endl;
+                        continue;
+                    }
+                    cout <<"Secure Connection between You and " << my_user->get_peer_username() <<" is Established!" <<endl;
+                }
+            }else if (input.compare("0") == 0){
+                if(0 == NetworkMessage::send_message_17(my_user)){
+                    ///TODO: handle error in sending message 17
+                }
+                break;  
+            }
+
+                return;
         }
 
         if(FD_ISSET(my_user->get_socket(), &rfds)) {

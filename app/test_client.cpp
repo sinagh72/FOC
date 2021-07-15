@@ -18,24 +18,24 @@
 
 bool establishe_handshake_clients(User * my_user, string receiver_username){
     int val_read = 0;
-    if (Message::send_message_5(my_user, receiver_username) == -1){
+    if (NetworkMessage::send_message_5(my_user, receiver_username) == -1){
         cout << "Error: sending message 5 failed" <<endl;
         return false;
     }
     char buffer[10100] = {0};
     val_read = read(my_user->get_socket() , buffer, 10100);
     if(buffer[0] == 8){
-        if(-1 == Message::handle_message_8(buffer, val_read, my_user)){
+        if(-1 == NetworkMessage::handle_message_8(buffer, val_read, my_user)){
             cerr <<"Error in handling message 8" << endl;
             return false;
         }
-        if(-1 == Message::send_message_9(my_user)){
+        if(-1 == NetworkMessage::send_message_9(my_user)){
             cout << "Error: sending message 9 failed" <<endl;
             return false;
         }
         cout <<"Secure Connection between You and " << receiver_username <<" is Established!" <<endl;
     }else if(buffer[0] == 12){
-        if(-1 == Message::handle_message_12(buffer, val_read, my_user)){
+        if(-1 == NetworkMessage::handle_message_12(buffer, val_read, my_user)){
             cerr <<"Error in handling message 12" << endl;
             return false;
         }
@@ -138,7 +138,7 @@ int main(int argc, char const *argv[])
     User * my_user = new User(username, password, IP, PORT, sock);
     //send message 0
     char *buffer_0 {nullptr};
-    int buffer_len = Message::send_message_0(&buffer_0, my_user);
+    int buffer_len = NetworkMessage::send_message_0(&buffer_0, my_user);
     if(buffer_len == -1){
         cout << "Error in sending message type 0" <<endl;
         return -1;
@@ -149,7 +149,7 @@ int main(int argc, char const *argv[])
     valread = read( sock , buffer, 10100);
     // BIO_dump_fp(stdout, buffer, valread);
 
-    Message::handle_message_1(buffer, valread, my_user);
+    NetworkMessage::handle_message_1(buffer, valread, my_user);
     free(buffer);
 
     //now the key between server and the client is established
@@ -171,11 +171,11 @@ int main(int argc, char const *argv[])
         if (!check_user_input(input, 3))
             continue;
         if(input.compare("1") == 0){
-            if(Message::send_message_3(my_user) == -1){
+            if(NetworkMessage::send_message_3(my_user) == -1){
                 ///TODO:maybe server is off!
                 continue;
             }
-            if(Message::handle_message_4(my_user) < 1){
+            if(NetworkMessage::handle_message_4(my_user) < 1){
                 continue;
             }
             bool valid_handshake = false;
@@ -202,18 +202,18 @@ int main(int argc, char const *argv[])
                 send_secure();
             }
         }else if(input.compare("2") == 0){
-            int out = Message::handle_message_6(my_user);
+            int out = NetworkMessage::handle_message_6(my_user);
             if(-1 == out){
                 continue;
             }else if(out > 0){
-                if(-1 == Message::handle_message_10(my_user)){
+                if(-1 == NetworkMessage::handle_message_10(my_user)){
                     cout <<"Error in handing message 10" <<endl;
                 }
                 cout <<"Secure Connection between You and " << my_user->get_peer_username() <<" is Established!" <<endl;
             }
             continue;
         }else if (input.compare("0") == 0){
-            if(0 == Message::send_message_17(my_user)){
+            if(0 == NetworkMessage::send_message_17(my_user)){
                 ///TODO: handle error in sending message 17
             }
             break;  

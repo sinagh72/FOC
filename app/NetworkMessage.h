@@ -1,5 +1,5 @@
-#ifndef APP_MESSAGE_H
-#define APP_MESSAGE_H
+#ifndef APP_NETWORKMESSAGE_H
+#define APP_NETWORKMESSAGE_H
 
 #include "user.h"
 #include <sys/socket.h>
@@ -7,7 +7,7 @@
 #include <unistd.h> 
 
 
-class Message {
+class NetworkMessage {
 
 public:
     /**

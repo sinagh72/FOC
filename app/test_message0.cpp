@@ -100,7 +100,7 @@ int main(){
 
     // printf("prima di create message");
     // char* message{nullptr};
-    // printf("%d\n", Message::create_message_0("pippo", &message));
+    // printf("%d\n", NetworkMessage::create_message_0("pippo", &message));
     // printf("%s", message+33);
 
     return 0;

@@ -131,7 +131,7 @@ int main(int argc , char* argv[]) {
             cout << "User connected: " << inet_ntoa(address.sin_addr) << " " <<ntohs(address.sin_port) << endl;
             //check for message type 0
             if(buffer[0]==0){
-                Message::handle_message_0(buffer, new_socket, inet_ntoa(address.sin_addr), ntohs(address.sin_port), &online_users);
+                NetworkMessage::handle_message_0(buffer, new_socket, inet_ntoa(address.sin_addr), ntohs(address.sin_port), &online_users);
             }
             // if(buffer[0]=='s'){
             //     string tmp = "sina";
@@ -173,30 +173,30 @@ int main(int argc , char* argv[]) {
                     //of the data read
                     switch (buffer[0]) {
                         case 2:
-                            Message::handle_message_2(buffer, valread, sender);
+                            NetworkMessage::handle_message_2(buffer, valread, sender);
                             break;
                         case 3:
-                            if(Message::handle_message_3(buffer, valread, sender, online_users) == -1){
+                            if(NetworkMessage::handle_message_3(buffer, valread, sender, online_users) == -1){
                                 break;
                             }
                             break;
                         case 5:
-                            if(Message::handle_message_5(buffer, valread, sender, online_users) == -1){
+                            if(NetworkMessage::handle_message_5(buffer, valread, sender, online_users) == -1){
                                 break;
                             }
                             break;
                         case 7:
-                            if(Message::handle_message_7(buffer, valread, sender, online_users) == -1){
+                            if(NetworkMessage::handle_message_7(buffer, valread, sender, online_users) == -1){
                                 break;
                             }
                             break;
                         case 9:
-                            if(Message::handle_message_9(buffer, valread, sender, online_users) == -1){
+                            if(NetworkMessage::handle_message_9(buffer, valread, sender, online_users) == -1){
                                 break;
                             }
                             break;
                         case 11:
-                            if(Message::handle_message_11(buffer, valread, sender, online_users) == -1){
+                            if(NetworkMessage::handle_message_11(buffer, valread, sender, online_users) == -1){
                                 break;
                             }
                         }

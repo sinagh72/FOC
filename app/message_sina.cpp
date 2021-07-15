@@ -1,7 +1,7 @@
 #include "message_sina.h"
 
 //sent by the client A
-int Message::send_message_0(char **buffer, User* my_user) {
+int NetworkMessage::send_message_0(char **buffer, User* my_user) {
 
     //generating new dh pubk -> g^a
     EVP_PKEY * g_a{nullptr};
@@ -37,7 +37,7 @@ int Message::send_message_0(char **buffer, User* my_user) {
     return message_len;
 }
 
-int Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16_t port, vector <User*>*online_users) {
+int NetworkMessage::handle_message_0(char *buffer, int client_socket, char *ip, uint16_t port, vector <User*>*online_users) {
 
     string ip_str(ip);
     //extract the username
@@ -175,7 +175,7 @@ int Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16_
     return msg_buffer_len;
 }
 
-void Message::handle_message_1(char *buffer, int buffer_len, User *client) {
+void NetworkMessage::handle_message_1(char *buffer, int buffer_len, User *client) {
     //parsing the incoming message
     uint16_t counter_server = (uint16_t) *(buffer+MESSAGE_TYPE_LENGTH);
     if(counter_server != client->get_server_counter()) {
@@ -367,7 +367,7 @@ void Message::handle_message_1(char *buffer, int buffer_len, User *client) {
 
 }
 
-void Message::handle_message_2(char *buffer, int buffer_len, User *client) {
+void NetworkMessage::handle_message_2(char *buffer, int buffer_len, User *client) {
     //verify message counter
     uint16_t counter = (uint16_t)*(buffer + MESSAGE_TYPE_LENGTH);
     if(counter != client->get_client_counter()) {
@@ -424,7 +424,7 @@ void Message::handle_message_2(char *buffer, int buffer_len, User *client) {
 }
 
 //sent by the client A
-int Message::send_message_3(User * my_user) {
+int NetworkMessage::send_message_3(User * my_user) {
     cout << my_user->get_client_counter() << endl;
     // generate iv
     unsigned char* iv{nullptr};
@@ -493,7 +493,7 @@ int Message::send_message_3(User * my_user) {
 }
 
 //recevied by the server 
-int Message::handle_message_3(char * message, size_t message_len, User * sender, vector<User*>online_users){
+int NetworkMessage::handle_message_3(char * message, size_t message_len, User * sender, vector<User*>online_users){
     int k;
     string msg = "";
     for (k = 0; k < message_len; k++) {
@@ -528,7 +528,7 @@ int Message::handle_message_3(char * message, size_t message_len, User * sender,
         return -1;
     }
 
-    if(Message::send_message_4(sender, online_users) == -1){
+    if(NetworkMessage::send_message_4(sender, online_users) == -1){
         cerr <<"Error in sending message 4" << endl;
         return -1;
     }
@@ -537,7 +537,7 @@ int Message::handle_message_3(char * message, size_t message_len, User * sender,
 }
 
 //sent by the server to client A
-int Message::send_message_4(User* receiver, vector<User*>online_users) {
+int NetworkMessage::send_message_4(User* receiver, vector<User*>online_users) {
 
     // generate iv
     unsigned char* iv{nullptr};
@@ -618,7 +618,7 @@ int Message::send_message_4(User* receiver, vector<User*>online_users) {
 }
 
 //recevied by the client A 
-int Message::handle_message_4(User * my_user){
+int NetworkMessage::handle_message_4(User * my_user){
 
     char*message = (char*)malloc(10100);
     int val_read = read(my_user->get_socket(), message, 10100);
@@ -657,7 +657,7 @@ int Message::handle_message_4(User * my_user){
 }
 
 //sent by the client A
-int Message::send_message_5(User* my_user, string receiver_username){
+int NetworkMessage::send_message_5(User* my_user, string receiver_username){
     //generating new dh pubk -> g^a'
     EVP_PKEY * newA{nullptr};
     if(Security::generate_dh_pubk(&newA) == -1){return -1;}
@@ -755,7 +755,7 @@ int Message::send_message_5(User* my_user, string receiver_username){
     return message_buf_len;
 }
 //recevied by the server 
-int Message::handle_message_5(char * message, size_t message_len, User* sender, vector<User*>online_users){
+int NetworkMessage::handle_message_5(char * message, size_t message_len, User* sender, vector<User*>online_users){
     int i;
     string msg = "";
     for (i = 0; i < message_len; i++) {
@@ -800,7 +800,7 @@ int Message::handle_message_5(char * message, size_t message_len, User* sender, 
     if(receiver == nullptr){
        return -1;
     }
-    if(Message::send_message_6(sender, receiver) == -1){
+    if(NetworkMessage::send_message_6(sender, receiver) == -1){
         cerr <<"Error in sending message 6" << endl;
         return -1;
     }
@@ -808,7 +808,7 @@ int Message::handle_message_5(char * message, size_t message_len, User* sender, 
     return 1;
 }
 //sent by the server to client B
-int Message::send_message_6(User* sender, User* receiver){
+int NetworkMessage::send_message_6(User* sender, User* receiver){
     //
     //initialization vector
     unsigned char* iv{nullptr};
@@ -885,7 +885,7 @@ int Message::send_message_6(User* sender, User* receiver){
     return message_buf_len;
 }
 //received by the client B
-int Message::handle_message_6(User*my_user){
+int NetworkMessage::handle_message_6(User*my_user){
     
     char*message = (char*)malloc(MESSAGE_6_LENGTH);
     int val_read = read(my_user->get_socket(), message, MESSAGE_6_LENGTH);
@@ -963,7 +963,7 @@ int Message::handle_message_6(User*my_user){
     string dh_key = aad.substr(MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN, DH_PUBK_LENGTH); 
     my_user->set_peer_pubk_char((unsigned char *)dh_key.c_str());
 
-    if(-1 == Message::send_message_7(my_user)){
+    if(-1 == NetworkMessage::send_message_7(my_user)){
         cout <<"Error in sending message 7" <<endl;
         return -1;
     }
@@ -971,7 +971,7 @@ int Message::handle_message_6(User*my_user){
 
 }
 //sent by the client B
-int Message::send_message_7(User* my_user){
+int NetworkMessage::send_message_7(User* my_user){
     //generating new dh pubk g^b'
     EVP_PKEY * newB{nullptr};
 
@@ -1185,7 +1185,7 @@ int Message::send_message_7(User* my_user){
     return message_buf_len;
 }
 //recevied by the server 
-int Message::handle_message_7(char * message, size_t message_len, User* sender, vector<User*>users){
+int NetworkMessage::handle_message_7(char * message, size_t message_len, User* sender, vector<User*>users){
     int i;
     string msg = "";
     for (i = 0; i < message_len; i++) {
@@ -1228,7 +1228,7 @@ int Message::handle_message_7(char * message, size_t message_len, User* sender, 
     if(receiver == nullptr){
         return -1;
     }
-    if(Message::send_message_8(sender, receiver,(unsigned char*) clients_ciphertext_str.c_str(),
+    if(NetworkMessage::send_message_8(sender, receiver,(unsigned char*) clients_ciphertext_str.c_str(),
                                     clients_ciphertext_str.length()) == -1){
         cerr <<"Error in sending message 8" << endl;
         return -1;
@@ -1238,7 +1238,7 @@ int Message::handle_message_7(char * message, size_t message_len, User* sender, 
 
 }
 //sent by the server to client A
-int Message::send_message_8(User* sender, User* receiver, unsigned char * clients_ciphertext, int clients_ciphertext_len){
+int NetworkMessage::send_message_8(User* sender, User* receiver, unsigned char * clients_ciphertext, int clients_ciphertext_len){
     //initialization vector
     unsigned char* iv{nullptr};
     if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)){return -1;}
@@ -1347,7 +1347,7 @@ int Message::send_message_8(User* sender, User* receiver, unsigned char * client
     return message_buf_len;
 }
 //received by the client A
-int Message::handle_message_8(char* message, size_t message_len, User * my_user){
+int NetworkMessage::handle_message_8(char* message, size_t message_len, User * my_user){
     int i;
     string msg = "";
     for (i = 0; i < message_len; i++) {
@@ -1442,7 +1442,7 @@ int Message::handle_message_8(char* message, size_t message_len, User * my_user)
     return 1;
 }
 //sent by a client A
-int Message::send_message_9(User* my_user){
+int NetworkMessage::send_message_9(User* my_user){
     //generating the clear text for verification of the signature
     //concatenation g^b'||g^a'
     unsigned char* text_to_sign = (unsigned char*)malloc(2*DH_PUBK_LENGTH);
@@ -1575,7 +1575,7 @@ int Message::send_message_9(User* my_user){
     return message_buf_len;
 }
 //received by the server
-int Message::handle_message_9(char * message, size_t message_len, User* sender, vector<User*>users){
+int NetworkMessage::handle_message_9(char * message, size_t message_len, User* sender, vector<User*>users){
     int i;
     string msg = "";
     for (i = 0; i < message_len; i++) {
@@ -1616,7 +1616,7 @@ int Message::handle_message_9(char * message, size_t message_len, User* sender, 
     if(receiver == nullptr){
         return -1;
     }
-    if(Message::send_message_10(sender, receiver,(unsigned char*) clients_ciphertext_str.c_str(),
+    if(NetworkMessage::send_message_10(sender, receiver,(unsigned char*) clients_ciphertext_str.c_str(),
                                     clients_ciphertext_str.length()) == -1){
         cerr <<"Error in sending message 10" << endl;
         return -1;
@@ -1627,7 +1627,7 @@ int Message::handle_message_9(char * message, size_t message_len, User* sender, 
 
 }
 //sent by the server to client B
-int Message::send_message_10(User* sender, User* receiver, unsigned char * clients_ciphertext, int clients_ciphertext_len){
+int NetworkMessage::send_message_10(User* sender, User* receiver, unsigned char * clients_ciphertext, int clients_ciphertext_len){
      //
     //initialization vector
     unsigned char* iv{nullptr};
@@ -1739,7 +1739,7 @@ int Message::send_message_10(User* sender, User* receiver, unsigned char * clien
     return message_buf_len;
 }
 //received by a client B
-int Message::handle_message_10(User* my_user){
+int NetworkMessage::handle_message_10(User* my_user){
 
     char*message = (char*)malloc(MESSAGE_10_LENGTH);  
     int val_read = read(my_user->get_socket(), message, MESSAGE_10_LENGTH);
@@ -1832,7 +1832,7 @@ int Message::handle_message_10(User* my_user){
 
 
 //sent by client B to the server 
-int Message::send_message_11(User* my_user){
+int NetworkMessage::send_message_11(User* my_user){
     //wrap around check
     if(my_user->get_client_counter() > UINT16_MAX - 2){
         cout <<"This session is not secure anymore! Try to loggin again" <<endl;
@@ -1913,7 +1913,7 @@ int Message::send_message_11(User* my_user){
     return message_buf_len;
 }
 //recevied by the server 
-int Message::handle_message_11(char * message, size_t message_len, User* sender, vector<User*>users){
+int NetworkMessage::handle_message_11(char * message, size_t message_len, User* sender, vector<User*>users){
     int i;
     string msg = "";
     for (i = 0; i < message_len; i++) {
@@ -1951,7 +1951,7 @@ int Message::handle_message_11(char * message, size_t message_len, User* sender,
     if(receiver == nullptr){
         return -1;
     }
-    if(Message::send_message_12(sender, receiver) == -1){
+    if(NetworkMessage::send_message_12(sender, receiver) == -1){
         cerr <<"Error in sending message 12" << endl;
         return -1;
     }
@@ -1960,7 +1960,7 @@ int Message::handle_message_11(char * message, size_t message_len, User* sender,
 }
 
 //sent by the server to client A
-unsigned int Message::send_message_12(User* sender, User* receiver){
+unsigned int NetworkMessage::send_message_12(User* sender, User* receiver){
     //initialization vector
     unsigned char* iv{nullptr};
     if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)){return 0;}
@@ -2036,7 +2036,7 @@ unsigned int Message::send_message_12(User* sender, User* receiver){
     return message_buf_len;
 }
 //received by the client B
-int Message::handle_message_12(char* message, size_t message_len, User*my_user){
+int NetworkMessage::handle_message_12(char* message, size_t message_len, User*my_user){
    int i;
     string msg = "";
     for (i = 0; i < message_len; i++) {
@@ -2078,7 +2078,7 @@ int Message::handle_message_12(char* message, size_t message_len, User*my_user){
 }
 
 //sent by client A to the server 
-int Message::send_message_13(unsigned char* message, size_t message_len, User* my_user){
+int NetworkMessage::send_message_13(unsigned char* message, size_t message_len, User* my_user){
     //wrap around check
     if(my_user->get_client_counter() > UINT16_MAX - 2){
         cout <<"This session is not secure anymore! Try to loggin again" <<endl;
@@ -2160,7 +2160,7 @@ int Message::send_message_13(unsigned char* message, size_t message_len, User* m
     return message_buf_len;
 }
 //recevied by the server 
-int Message::handle_message_13(unsigned char ** clients_ciphertext, char * message, size_t message_len, User* sender){
+int NetworkMessage::handle_message_13(unsigned char ** clients_ciphertext, char * message, size_t message_len, User* sender){
     int i;
     string msg = "";
     for (i = 0; i < message_len; i++) {
@@ -2199,7 +2199,7 @@ int Message::handle_message_13(unsigned char ** clients_ciphertext, char * messa
     return clients_ciphertext_str.length();
 }
 //sent by the server to the client B
-unsigned int Message::send_message_14(User* sender, User* receiver, unsigned char * clients_ciphertext, int clients_ciphertext_len){
+unsigned int NetworkMessage::send_message_14(User* sender, User* receiver, unsigned char * clients_ciphertext, int clients_ciphertext_len){
     //initialization vector
     unsigned char* iv{nullptr};
     if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)){return 0;}
@@ -2267,7 +2267,7 @@ unsigned int Message::send_message_14(User* sender, User* receiver, unsigned cha
     return message_buf_len;
 }
 //received by the client A
-int Message::handle_message_14(char* message, size_t message_len, User * my_user){
+int NetworkMessage::handle_message_14(char* message, size_t message_len, User * my_user){
     int i;
     string msg = "";
     for (i = 0; i < message_len; i++) {
@@ -2312,7 +2312,7 @@ int Message::handle_message_14(char* message, size_t message_len, User * my_user
 }
 
 //sent by client A to the server 
-unsigned int Message::send_message_17(User* my_user){
+unsigned int NetworkMessage::send_message_17(User* my_user){
     //initialization vector
     unsigned char* iv{nullptr};
     if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)){
@@ -2386,7 +2386,7 @@ unsigned int Message::send_message_17(User* my_user){
     return message_buf_len;
 }
 //recevied by the server 
-int Message::handle_message_17(char * message, size_t message_len, User* sender){
+int NetworkMessage::handle_message_17(char * message, size_t message_len, User* sender){
     int i;
     string msg = "";
     for (i = 0; i < message_len; i++) {
