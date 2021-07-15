@@ -1,10 +1,92 @@
 #include "user.h"
 #include <cstddef>
 #include <vector>
+#include <arpa/inet.h>
 
 
 const string WHITESPACE = " \n\r\t\f\v";
 const string DELIMITER = "||";
+
+bool establish_handshake_clients(User * my_user, string receiver_username){
+    int val_read = 0;
+    my_user->set_status(RTT);
+    if (Message::send_message_5(my_user, receiver_username) == -1){
+        cout << "Error in Establishing Secure Connection (5)" <<endl;
+        return false;
+    }
+    char buffer[MAX_MESSAGE_LENGTH] = {0};
+    val_read = read(my_user->get_socket() , buffer, MAX_MESSAGE_LENGTH);
+    if(buffer[0] == 8){
+        if(-1 == Message::handle_message_8(buffer, val_read, my_user)){
+            cout << "Error in Establishing Secure Connection (8)" <<endl;
+            return false;
+        }
+        if(-1 == Message::send_message_9(my_user)){
+            cout << "Error in Establishing Secure Connection (9)" <<endl;
+            return false;
+        }
+        cout <<"Secure Connection between You and " << receiver_username <<" is Established!" <<endl;
+    }else if(buffer[0] == 12){
+        if(-1 == Message::handle_message_12(buffer, val_read, my_user)){
+            cout << "Error in Establishing Secure Connection (12)" <<endl;
+            return false;
+        }
+    }
+    return true;
+}
+
+bool connect_to_server(string username, string password, char* IP, int PORT, User** my_user) {
+    int sock;
+    int valread;
+    struct sockaddr_in serv_addr;
+    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    {
+        printf("\n Socket creation error \n");
+        return false;
+    }
+   
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(PORT);
+       
+    // Convert IPv4 and IPv6 addresses from text to binary form
+    if(inet_pton(AF_INET, IP, &serv_addr.sin_addr)<=0) 
+    {
+        printf("\nInvalid address/ Address not supported \n");
+        return false;
+    }
+   
+    if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+    {
+        printf("\nConnection Failed \n");
+        return false;
+    }
+    //creating the user
+    *my_user = new User(username, password, IP, PORT, sock);
+    //send message 0
+    char *buffer_0 {nullptr};
+    int buffer_len = Message::send_message_0(&buffer_0, *my_user);
+    if(buffer_len == -1){
+        cout << endl << "Error in sending message type 0" <<endl;
+        cout << "Connection failed";
+        return false;
+    }
+    ///TODO:check errors
+    char *buffer = (char*)malloc(MAX_MESSAGE_LENGTH);
+    //handle message type 1
+    valread = read( sock , buffer, MAX_MESSAGE_LENGTH);
+
+    if(Message::handle_message_1(buffer, valread, *my_user) == -1){
+        cout << endl <<"Error in handling message type 1" <<endl;
+        cout <<"Connection failed" <<endl;
+        return false;
+    }
+    free(buffer);
+
+    //now the key between server and the client is established
+    cout <<"Secure Connection is Established" <<endl;
+}
+
+
 
 static string ltrim(const string &s)
 {
@@ -39,26 +121,6 @@ static bool check_user_input(const string& input, int option_size){
     free(ok_chars);
     return true;
 }
-
-/*
-static size_t print_list_online_users(vector<string> usernames){
-    if(usernames.size() == 0){
-        cout << "There is No Available User" << endl;
-        return 0;
-    }
-    cout << "Online Users:\n";
-    cout << "Select The User You Want to Chat:\n";
-        
-    size_t c = 1;
-    for(string usr: usernames){
-        cout << c <<". " << usr;
-        c++;
-    }
-    cout << "0. Go Back" <<endl;
-
-    return usernames.size() - 1;
-}
-*/
 
 static User* find_user(string username, vector<User*>*users){
     for (User* usr : *users) // access by reference to avoid copying

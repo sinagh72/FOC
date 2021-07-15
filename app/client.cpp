@@ -6,44 +6,13 @@
 #include <filesystem>
 #include <fstream>
 #include <sys/stat.h>
-#include <thread>
-#include <mutex>
 #include <vector>
 #include "Message.h"
-
-
 
 #define PORT 8888
 #define MSEC 10000 
 #define IP "127.0.0.1"
 
-bool establishe_handshake_clients(User * my_user, string receiver_username){
-    int val_read = 0;
-    my_user->set_status(RTT);
-    if (Message::send_message_5(my_user, receiver_username) == -1){
-        cout << "Error in Establishing Secure Connection (5)" <<endl;
-        return false;
-    }
-    char buffer[MAX_MESSAGE_LENGTH] = {0};
-    val_read = read(my_user->get_socket() , buffer, MAX_MESSAGE_LENGTH);
-    if(buffer[0] == 8){
-        if(-1 == Message::handle_message_8(buffer, val_read, my_user)){
-            cout << "Error in Establishing Secure Connection (8)" <<endl;
-            return false;
-        }
-        if(-1 == Message::send_message_9(my_user)){
-            cout << "Error in Establishing Secure Connection (9)" <<endl;
-            return false;
-        }
-        cout <<"Secure Connection between You and " << receiver_username <<" is Established!" <<endl;
-    }else if(buffer[0] == 12){
-        if(-1 == Message::handle_message_12(buffer, val_read, my_user)){
-            cout << "Error in Establishing Secure Connection (12)" <<endl;
-            return false;
-        }
-    }
-    return true;
-}
 
 bool send_secure(){
     do{
@@ -58,11 +27,6 @@ bool send_secure(){
     }while(1);
 }
 
-void listening_loop();
-int sock = 0;
-
-mutex user_mutex;
-User * my_user;
 
 int main(int argc, char const *argv[])
 {
@@ -112,66 +76,27 @@ int main(int argc, char const *argv[])
     // }
     // while(!valid);
 
-    int valread;
-    struct sockaddr_in serv_addr;
-    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-    {
-        printf("\n Socket creation error \n");
-        return -1;
-    }
-   
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(PORT);
-       
-    // Convert IPv4 and IPv6 addresses from text to binary form
-    if(inet_pton(AF_INET, IP, &serv_addr.sin_addr)<=0) 
-    {
-        printf("\nInvalid address/ Address not supported \n");
-        return -1;
-    }
-   
-    if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
-    {
-        printf("\nConnection Failed \n");
-        return -1;
-    }
-    //creating the user
-    User * my_user = new User(username, password, IP, PORT, sock);
-    //send message 0
-    char *buffer_0 {nullptr};
-    int buffer_len = Message::send_message_0(&buffer_0, my_user);
-    if(buffer_len == -1){
-        cout << "Error in sending message type 0" <<endl;
-        return -1;
-    }
-    ///TODO:check errors
-    char *buffer = (char*)malloc(MAX_MESSAGE_LENGTH);
-    //handle message type 1
-    valread = read( sock , buffer, MAX_MESSAGE_LENGTH);
-
-    if(Message::handle_message_1(buffer, valread, my_user) == -1){
-        cout << "Error in handling message type 1" <<endl;
-        return -1;
-    }
-    free(buffer);
-
-    //now the key between server and the client is established
-    cout <<"Secure Connection is Established" <<endl;
+    User* my_user = nullptr;
+    if(!connect_to_server(username, password, IP, PORT, &my_user)){
+        exit(EXIT_FAILURE);
+    };
 
     string input;
     string input_username;
-    bool ok1 = false;
-    // buffer[0] = argv[1][0];
-    // send(sock, buffer, 1, 0);
 
-    do{
+    while(1) {
         //Main Menu:
         //Please Select One Option:
         //1. Check Online Users
         //2. listening
         //0. Log out
         client_menu_0();
-        //select_main_menu(my_user);
+        
+        while(1) {
+            select_main_menu(my_user);
+        }
+
+
         cin >> input;
         if (!check_user_input(input, 3))
             continue;
@@ -208,7 +133,7 @@ int main(int argc, char const *argv[])
                 else if(input_username.compare("0") == 0)
                     valid_handshake = true;
                 else
-                   valid_handshake = establishe_handshake_clients(my_user, usernames.at(stoi(input_username) - 1));
+                   valid_handshake = establish_handshake_clients(my_user, usernames.at(stoi(input_username) - 1));
             }while (!valid_handshake);
 
             if (established) 
@@ -231,9 +156,9 @@ int main(int argc, char const *argv[])
             }
             break;  
         }
-    }while (1);
+    }
 
-    close(sock);
+    close(my_user->get_socket());
 
     return 0;
 }
