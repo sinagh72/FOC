@@ -2,6 +2,7 @@
 #define APP_USER_H
 
 #include "Security.h"
+#include <cstddef>
 
 using namespace std;
 
@@ -18,6 +19,8 @@ private:
     int socket;
     unsigned char* server_client_key{nullptr}; // the key between the server and the client
     unsigned char* clients_key{nullptr}; // the key between two clients
+    size_t server_client_key_len = 0;
+    size_t clients_key_len = 0;
     EVP_PKEY* clients_pubk{nullptr}; // dh pub key for generating a'
     unsigned char * clients_pubk_char{nullptr}; // dh pub key for generating a' in characters
     EVP_PKEY* client_server_pubk{nullptr}; //dh pub key for generating a
@@ -61,25 +64,37 @@ public:
     //set the key between client and server
     void set_server_client_key(unsigned char * key, size_t key_len){
         if(!key){
-            if(this->server_client_key != nullptr) free(this->server_client_key);
+            if(this->server_client_key != nullptr){
+                #pragma optimize("", off)
+                memset(this->server_client_key, 0, server_client_key_len);
+                #pragma optimize("", on)
+                free(this->server_client_key);
+            } 
             this->server_client_key = nullptr;
             return;
         }
         if(!this->server_client_key){
             this->server_client_key = (unsigned char*)malloc(key_len);
         }
+        this->server_client_key_len = key_len;
         memcpy(this->server_client_key, key, key_len);
     }
     //set the key between clients
     void set_clients_key(unsigned char * key, size_t key_len){
         if(!key){
-            if(this->clients_key != nullptr) free(this->clients_key);
+            if(this->clients_key != nullptr){
+                #pragma optimize("", off)
+                memset(this->clients_key, 0, clients_key_len);
+                #pragma optimize("", on)
+                free(this->clients_key);
+            }
             this->clients_key = nullptr;
             return;
         }
         if(!this->clients_key){
             this->clients_key = (unsigned char*)malloc(key_len);
         }
+        this->clients_key_len = key_len;
         memcpy(this->clients_key, key, key_len);
     }
 

@@ -1,4 +1,5 @@
 #include "Message.h"
+#include <cstdlib>
 
 //sent by the client A
 int Message::send_message_0(char **buffer, User* my_user) {
@@ -117,13 +118,14 @@ int Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16_
         return -1;
     }
 
-    client->set_server_client_key(shared_key, shared_key_len);
-    
-
     //generate IV
     unsigned char* iv= nullptr;
     if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)) {
         cerr<<"IV Generation Error (Send 1)";
+        #pragma optimize("", off)
+        memset(shared_key, 0, shared_key_len);
+        #pragma optimize("", on)
+        free(shared_key);
         return -1;
     }
 
@@ -133,6 +135,10 @@ int Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16_
     if(!aad) {
         cerr<<"AAD Allocation Error (Send 1)";
         free(iv);
+        #pragma optimize("", off)
+        memset(shared_key, 0, shared_key_len);
+        #pragma optimize("", on)
+        free(shared_key);
         return -1;
     }
 
@@ -140,8 +146,6 @@ int Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16_
     //uint16_t* counter_pointer = aad[0];
     uint16_t * counter_pointer = (uint16_t *) (aad + MESSAGE_TYPE_LENGTH);
     *counter_pointer = client->get_server_counter();
-    client->increment_server_counter();
-
     memcpy(aad+COUNTER_LENGTH+ MESSAGE_TYPE_LENGTH, iv, Security::GCM_IV_LEN);
     memcpy(aad+COUNTER_LENGTH+ MESSAGE_TYPE_LENGTH + Security::GCM_IV_LEN, certificate_serialized, cert_size);
     memcpy(aad+COUNTER_LENGTH+ MESSAGE_TYPE_LENGTH + Security::GCM_IV_LEN+cert_size, dh_pubkey_server_serialized, dh_pubkey_server_size);
@@ -158,6 +162,10 @@ int Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16_
         cerr<<"Message Buffer Allocation Error (Send 1)";
         free(iv);
         free(aad);
+        #pragma optimize("", off)
+        memset(shared_key, 0, shared_key_len);
+        #pragma optimize("", on)
+        free(shared_key);
         return -1;
     }
     memcpy(msg_buffer, aad, aad_len);
@@ -174,8 +182,14 @@ int Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16_
         free(dh_pubkey_server_serialized);
         free(tag);
         free(iv);
+        #pragma optimize("", off)
+        memset(shared_key, 0, shared_key_len);
+        #pragma optimize("", on)
+        free(shared_key);
         return -1;
     }
+    client->increment_server_counter();
+    client->set_server_client_key(shared_key, shared_key_len);
     free(msg_buffer);
     free(aad);
     free(ciphertext);
@@ -183,6 +197,10 @@ int Message::handle_message_0(char *buffer, int client_socket, char *ip, uint16_
     free(dh_pubkey_server_serialized);
     free(tag);
     free(iv);
+    #pragma optimize("", off)
+    memset(shared_key, 0, shared_key_len);
+    #pragma optimize("", on)
+    free(shared_key);
     return msg_buffer_len;
 }
 
@@ -298,7 +316,6 @@ int Message::handle_message_1(char *buffer, int buffer_len, User *client) {
 
     uint16_t* counter_resp = (uint16_t*) (aad_resp + MESSAGE_TYPE_LENGTH);
     *counter_resp = client->get_client_counter();
-    client->increment_client_counter();
 
     unsigned char* iv_answ= nullptr;
     Security::generate_iv(&iv_answ, Security::GCM_IV_LEN);
@@ -380,7 +397,7 @@ int Message::handle_message_1(char *buffer, int buffer_len, User *client) {
         return -1;
     }
 
-
+    client->increment_client_counter();
     free(msg_to_send);
     free(concat);
     free(signature_answ);
@@ -449,6 +466,15 @@ int Message::handle_message_2(char *buffer, int buffer_len, User *client) {
 
 //sent by the client A
 int Message::send_message_3(User * my_user) {
+    if(my_user->get_client_counter() > UINT16_MAX - 2){
+        cout << "The Communication Between You and The Server is Not Secure Anymore."; 
+        cout << "The Session Will Been Terminated Now" <<endl;
+        cout << "You Will be Loged out Automatically!" <<endl;
+        if(send_message_17(my_user) == -1)
+            my_user->clear();
+        exit(1);
+    }
+
     // generate iv
     unsigned char* iv{nullptr};
     if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)){
@@ -466,7 +492,6 @@ int Message::send_message_3(User * my_user) {
     aad[0] = 3;
     uint16_t * counter_pointer = (uint16_t *) (aad + MESSAGE_TYPE_LENGTH);
     *counter_pointer = my_user->get_client_counter();
-    my_user->increment_client_counter();
     memcpy(aad + MESSAGE_TYPE_LENGTH + COUNTER_LENGTH , iv, Security::GCM_IV_LEN);
     // encrypt identifier (username) with gcm 
     int id_pt_len = USERNAME_LENGTH;
@@ -503,7 +528,7 @@ int Message::send_message_3(User * my_user) {
         free(msg_buf);
         return -1;
     }
- 
+    my_user->increment_client_counter();
     free(aad);
     free(iv);
     free(id_pt);
@@ -575,8 +600,6 @@ int Message::send_message_4(User* receiver, vector<User*>online_users) {
     uint16_t * counter_pointer = (uint16_t *) (aad + MESSAGE_TYPE_LENGTH);
     *counter_pointer = receiver->get_server_counter();
     memcpy(aad + MESSAGE_TYPE_LENGTH + COUNTER_LENGTH , iv, Security::GCM_IV_LEN);
-    receiver->increment_server_counter();
-
     // encrypt list of active users with gcm 
     int act_usr_pt_len = online_users.size() * USERNAME_LENGTH +  (online_users.size() - 1) * DELIMITER.length();
     unsigned char * act_usr_pt = (unsigned char*)calloc(act_usr_pt_len, 1);
@@ -620,7 +643,7 @@ int Message::send_message_4(User* receiver, vector<User*>online_users) {
         return -1;
         
     }
-
+    receiver->increment_server_counter();
     free(aad);
     free(iv);
     free(act_usr_pt);
@@ -681,6 +704,14 @@ int Message::handle_message_4(User * my_user, vector<string>*usernames){
 
 //sent by the client A
 int Message::send_message_5(User* my_user, string receiver_username){
+    if(my_user->get_client_counter() > UINT16_MAX - 4){ //1 for message 5, 1 for message 17, 1 for message 9, 1 for extra message
+        cout << "The Communication Between You and The Server is Not Secure Anymore."; 
+        cout << "The Session Will Been Terminated Now" <<endl;
+        cout << "You Will be Loged out Automatically!" <<endl;
+        if(send_message_17(my_user) == -1)
+            my_user->clear();
+        exit(1);
+    }
     //generating new dh pubk -> g^a'
     EVP_PKEY * newA{nullptr};
     if(Security::generate_dh_pubk(&newA) == -1){
@@ -966,6 +997,14 @@ int Message::handle_message_6(User*my_user){
 }
 //sent by the client B
 int Message::send_message_7(User* my_user){
+    if(my_user->get_client_counter() > UINT16_MAX - 3){ //1 for message 7, 1 for message 17, 1 for extra message
+        cout << "The Communication Between You and The Server is Not Secure Anymore."; 
+        cout << "The Session Will Been Terminated Now" <<endl;
+        cout << "You Will be Loged out Automatically!" <<endl;
+        if(send_message_17(my_user) == -1)
+            my_user->clear();
+        exit(1);
+    }
     //generating new dh pubk g^b'
     EVP_PKEY * newB{nullptr};
 
@@ -1040,7 +1079,6 @@ int Message::send_message_7(User* my_user){
         EVP_PKEY_free(peer_pubk);
         return -1;
     }
-    my_user->set_clients_key(clients_key, clients_key_len);
     //inner gcm encryption
     unsigned char * inner_gcm_buf{nullptr};
     int inner_gcm_buf_len = 0;
@@ -1054,6 +1092,9 @@ int Message::send_message_7(User* my_user){
         my_user->set_peer_pubk(nullptr);
         my_user->set_clients_key(nullptr, 0);
         free(signature);
+        #pragma optimize("", off)
+        memset(clients_key, 0, clients_key_len);
+        #pragma optimize("", on)
         free(clients_key);
         EVP_PKEY_free(peer_pubk);
         return -1;
@@ -1070,6 +1111,9 @@ int Message::send_message_7(User* my_user){
         my_user->set_clients_key(nullptr, 0);
         free(signature);
         free(inner_gcm_buf);
+        #pragma optimize("", off)
+        memset(clients_key, 0, clients_key_len);
+        #pragma optimize("", on)
         free(clients_key);
         EVP_PKEY_free(peer_pubk);
         return -1;
@@ -1089,6 +1133,9 @@ int Message::send_message_7(User* my_user){
         free(signature);
         free(iv);
         free(inner_gcm_buf);
+        #pragma optimize("", off)
+        memset(clients_key, 0, clients_key_len);
+        #pragma optimize("", on)
         free(clients_key);
         EVP_PKEY_free(peer_pubk);
     }
@@ -1128,6 +1175,9 @@ int Message::send_message_7(User* my_user){
         free(iv);
         free(inner_gcm_buf);
         free(aad);
+        #pragma optimize("", off)
+        memset(clients_key, 0, clients_key_len);
+        #pragma optimize("", on)
         free(clients_key);
         EVP_PKEY_free(peer_pubk);
         return -1;
@@ -1152,10 +1202,14 @@ int Message::send_message_7(User* my_user){
         free(inner_gcm_buf);
         free(aad);
         free(gcm_ciphertext);
+        #pragma optimize("", off)
+        memset(clients_key, 0, clients_key_len);
+        #pragma optimize("", on)
         free(clients_key);
         free(message_buf);
         return -1;
     }
+    my_user->set_clients_key(clients_key, clients_key_len);
     EVP_PKEY_free(newB);
     EVP_PKEY_free(peer_pubk);
     free(text_to_sign);
@@ -1166,6 +1220,9 @@ int Message::send_message_7(User* my_user){
     free(inner_gcm_buf);
     free(aad);
     free(gcm_ciphertext);
+    #pragma optimize("", off)
+    memset(clients_key, 0, clients_key_len);
+    #pragma optimize("", on)
     free(clients_key);
     free(message_buf);
     return message_buf_len;
@@ -1372,7 +1429,6 @@ int Message::handle_message_8(char* message, size_t message_len, User * my_user)
         EVP_PKEY_free(peers_pubk);
         return -1;
     }
-    my_user->set_clients_key(clients_key, clients_key_len);
     //decrypt the clients cipher text (inner gcm)
     string inner_tag = inner_gcm.substr(inner_gcm.length() - Security::GCM_TAG_LEN, Security::GCM_TAG_LEN);
     string inner_aad = inner_gcm.substr(0, COUNTER_LENGTH + Security::GCM_IV_LEN);
@@ -1389,6 +1445,9 @@ int Message::handle_message_8(char* message, size_t message_len, User * my_user)
                                                              &clients_decryptext, (unsigned char*)inner_tag.c_str()))){
         cerr<< "Inner Decryption Error (Handle 8)" <<endl;
         EVP_PKEY_free(peers_pubk);
+        #pragma optimize("", off)
+        memset(clients_key, 0, clients_key_len);
+        #pragma optimize("", on)
         free(clients_key);
         return -1;
     }
@@ -1396,9 +1455,11 @@ int Message::handle_message_8(char* message, size_t message_len, User * my_user)
     if(my_user->get_receive_counter() != received_counter){
         cerr<< "This message is discarded!" <<endl;
         cerr<< "Repetitive Message Error (Handle 8)" <<endl;
-        EVP_PKEY_free(peers_pubk);
+        EVP_PKEY_free(peers_pubk);        
+        #pragma optimize("", off)
+        memset(clients_key, 0, clients_key_len);
+        #pragma optimize("", on)
         free(clients_key);
-        free(clients_decryptext);
         return -1;
     }
     my_user->increment_receive_counter();
@@ -1410,6 +1471,9 @@ int Message::handle_message_8(char* message, size_t message_len, User * my_user)
         cerr<< "Public Key Serialization Error (Handle 8)" <<endl;
         free(clients_decryptext);
         EVP_PKEY_free(peers_pubk);
+        #pragma optimize("", off)
+        memset(clients_key, 0, clients_key_len);
+        #pragma optimize("", on)
         free(clients_key);
         return -1;
     }
@@ -1421,6 +1485,9 @@ int Message::handle_message_8(char* message, size_t message_len, User * my_user)
         free(clients_decryptext);
         EVP_PKEY_free(peers_pubk);
         EVP_PKEY_free(pkey);
+        #pragma optimize("", off)
+        memset(clients_key, 0, clients_key_len);
+        #pragma optimize("", on)
         free(clients_key);
         return -1;
     }
@@ -1436,15 +1503,22 @@ int Message::handle_message_8(char* message, size_t message_len, User * my_user)
         EVP_PKEY_free(peers_pubk);
         free(text_to_sign);
         EVP_PKEY_free(pkey);
+        #pragma optimize("", off)
+        memset(clients_key, 0, clients_key_len);
+        #pragma optimize("", on)
         free(clients_key);
         return -1;
     }
+    my_user->set_clients_key(clients_key, clients_key_len);
     my_user->set_peer_pubk_char((unsigned char *)dh_key.c_str());
     my_user->set_peer_username(gcm_decryptedtext_str.substr(0,gcm_decryptedtext_str.length()-my_user->get_username().length()));
     free(clients_decryptext);
     EVP_PKEY_free(peers_pubk);
     free(text_to_sign);
     EVP_PKEY_free(pkey);
+    #pragma optimize("", off)
+    memset(clients_key, 0, clients_key_len);
+    #pragma optimize("", on)
     free(clients_key);
     return 1;
 }
@@ -1619,7 +1693,7 @@ int Message::handle_message_9(char * message, size_t message_len, User* sender, 
         return -1;
     }
     cout << "forwarding message 10 from " << sender->get_username() <<" to " << receiver->get_username()<<endl;
-    return inner_gcm.length();
+    return 1;
 
 
 }
@@ -1839,6 +1913,14 @@ int Message::handle_message_10(User* my_user){
 
 //sent by client B to the server 
 int Message::send_message_11(User* my_user){
+    if(my_user->get_client_counter() > UINT16_MAX - 2){ //1 for message 11, 1 for message 17
+        cout << "The Communication Between You and The Server is Not Secure Anymore."; 
+        cout << "The Session Will Been Terminated Now" <<endl;
+        cout << "You Will be Loged out Automatically!" <<endl;
+        if(send_message_17(my_user) == -1)
+            my_user->clear();
+        exit(1);
+    }
     //wrap around check
     if(my_user->get_client_counter() > UINT16_MAX - 2){
         return send_message_17(my_user);
@@ -1961,7 +2043,7 @@ int Message::handle_message_11(char * message, size_t message_len, User* sender,
 }
 
 //sent by the server to client A
-unsigned int Message::send_message_12(User* sender, User* receiver){
+int Message::send_message_12(User* sender, User* receiver){
     //initialization vector
     unsigned char* iv{nullptr};
     if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)){
@@ -2072,11 +2154,23 @@ int Message::handle_message_12(char* message, size_t message_len, User*my_user){
 
 //sent by client A to the server 
 int Message::send_message_13(unsigned char* message, size_t message_len, User* my_user){
-    //wrap around check
-    if(my_user->get_client_counter() > UINT16_MAX - 2){
-        cout <<"This session is not secure anymore! Try to loggin again" <<endl;
-        char * msg {nullptr};
-        return send_message_17(my_user);
+    if(my_user->get_client_counter() > UINT16_MAX - 2){ //1 for message 13, 1 for message 17,
+        cout << "The Communication Between You and The Server is Not Secure Anymore."; 
+        cout << "The Session Will Been Terminated Now" <<endl;
+        cout << "You Will be Loged out Automatically!" <<endl;
+        if(send_message_17(my_user) == -1)
+            my_user->clear();
+        exit(1);
+    } 
+    if(my_user->get_send_counter() > UINT16_MAX - 2){ //1 for message 13, 1 for message 15,
+        cout << "The Communication Between You and" << my_user->get_peer_username() << " is Not Secure Anymore."; 
+        cout << "The Session Will Been Terminated Now" <<endl;
+        if(send_message_15(my_user) == -1){
+            my_user->set_status(ONLINE);
+            my_user->set_clients_key(nullptr, 0);
+            return -1;
+        }
+        return 1;
     }
     //encrypt the message with the session key
     unsigned char* ciphertext{nullptr};
@@ -2202,7 +2296,7 @@ int Message::handle_message_13(char * message, size_t message_len, User* sender,
     return 1;
 }
 //sent by the server to the client B
-unsigned int Message::send_message_14(User* sender, User* receiver, unsigned char * inner_gcm, int inner_gcm_len){
+int Message::send_message_14(User* sender, User* receiver, unsigned char * inner_gcm, int inner_gcm_len){
     //initialization vector
     unsigned char* iv{nullptr};
     if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)){
@@ -2302,7 +2396,6 @@ int Message::handle_message_14(char* message, size_t message_len, User * my_user
         cerr<<"Repetitive Message Error (Handle 14)"<<endl;
         return -1;
     }
-    my_user->increment_receive_counter();
    //decrypt the clients cipher text (inner gcm)
     string inner_tag = inner_gcm.substr(inner_gcm.length() - Security::GCM_TAG_LEN, Security::GCM_TAG_LEN);
     string inner_aad = inner_gcm.substr(0, COUNTER_LENGTH + Security::GCM_IV_LEN);
@@ -2319,18 +2412,28 @@ int Message::handle_message_14(char* message, size_t message_len, User * my_user
         cerr<< "Inner Decryption Error" << endl;
         return -1;
     }
+    uint16_t received_counter = (uint16_t) *(inner_aad.c_str());
+    if(my_user->get_receive_counter() != received_counter){
+        cerr<< "This message is discarded!" <<endl;
+        cerr << "Repetitive Message Error (Handle 10)" <<endl;
+        return -1;
+    }
+    my_user->increment_receive_counter();
     string clients_decryptext_str((char*)clients_decryptext);
     cout << my_user->get_peer_username() <<": " << trim(clients_decryptext_str) <<endl;
-    return clients_decryptext_len;
+    return 1;
 }
 
 //sent by client A to the server 
 int Message::send_message_15(User* my_user){
-    //wrap around check
-    if(my_user->get_client_counter() > UINT16_MAX - 2){
-        cout <<"This session is not secure anymore! Try to loggin again" <<endl;
-        return send_message_17(my_user);
-    }
+    if(my_user->get_client_counter() > UINT16_MAX - 2){ //1 for message 15, 1 for message 17,
+        cout << "The Communication Between You and The Server is Not Secure Anymore."; 
+        cout << "The Session Will Been Terminated Now" <<endl;
+        cout << "You Will be Loged out Automatically!" <<endl;
+        if(send_message_17(my_user) == -1)
+            my_user->clear();
+        exit(1);
+    } 
     //initialization vector
     unsigned char* iv{nullptr};
     if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)){
@@ -2396,11 +2499,12 @@ int Message::send_message_15(User* my_user){
     free(gcm_ciphertext);
     free(tag);
     my_user->set_peer_username("");
+    my_user->set_clients_key(nullptr, 0);
     my_user->set_status(ONLINE);
     return message_buf_len;
 }
 //recevied by the server 
-int Message::handle_message_15(char * message, size_t message_len, User* sender, vector<User*>users){
+int Message::handle_message_15(char * message, size_t message_len, User* sender, vector<User*>online_users){
     int i;
     string msg = "";
     for (i = 0; i < message_len; i++) {
@@ -2432,7 +2536,7 @@ int Message::handle_message_15(char * message, size_t message_len, User* sender,
                                 decryptedtext_str.length() - sender->get_username().length());
     sender->set_peer_username(receiver_username);
     cout << "handling message 15 from " << sender->get_username()<<endl;
-    User *receiver = find_user(sender->get_peer_username(), &users);
+    User *receiver = find_user(sender->get_peer_username(), &online_users);
     if(receiver == nullptr){
         return -1;
     }
@@ -2556,7 +2660,7 @@ int Message::handle_message_16(char* message, size_t message_len, User*my_user){
 }
 
 //sent by client A to the server 
-unsigned int Message::send_message_17(User* my_user){
+int Message::send_message_17(User* my_user){
     //initialization vector
     unsigned char* iv{nullptr};
     if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)){
@@ -2612,7 +2716,6 @@ unsigned int Message::send_message_17(User* my_user){
         return -1;
     }
     ////
-    my_user->increment_client_counter();
     free(aad);
     free(iv);
     free(gcm_plaintext);
@@ -2623,7 +2726,7 @@ unsigned int Message::send_message_17(User* my_user){
     return message_buf_len;
 }
 //recevied by the server 
-int Message::handle_message_17(char * message, size_t message_len, User* sender, vector<User*>users){
+int Message::handle_message_17(char * message, size_t message_len, User* sender, vector<User*>online_users){
     int i;
     string msg = "";
     for (i = 0; i < message_len; i++) {
@@ -2652,11 +2755,9 @@ int Message::handle_message_17(char * message, size_t message_len, User* sender,
         return -1;
     }
     if(!sender->get_peer_username().empty() && sender->get_status() == CHATTING){
-        User *receiver = find_user(sender->get_peer_username(), &users);
-        if(receiver == nullptr)
-            return -1;
-        if(send_message_16(sender, receiver) == -1)
-            return -1;
+        User *receiver = find_user(sender->get_peer_username(), &online_users);
+        if(receiver != nullptr)
+            send_message_16(sender, receiver);
     }
     sender->clear();
     cout << sender->get_username() << " has logged out!"<<endl;

@@ -168,68 +168,6 @@ int Security::verify_signature(EVP_PKEY* pubk, unsigned char * signature, int si
     return 1;
 }
 
-int Security::verify_certificate(string cert_file_name){
-    int ret; // used for return values
-    // load the CA's certificate:
-    string cacert_file_name="certificates/Foc_cert.pem";
-    FILE* cacert_file = fopen(cacert_file_name.c_str(), "r");
-    if(!cacert_file){ cerr << "Error: cannot open file '" << cacert_file_name << "' (missing?)\n"; return -1; }
-    X509* cacert = PEM_read_X509(cacert_file, NULL, NULL, NULL);
-    fclose(cacert_file);
-    if(!cacert){ cerr << "Error: PEM_read_X509 returned NULL\n"; return -1; }
-
-    // load the CRL:
-    string crl_file_name="certificates/Foc_crl.pem";
-    FILE* crl_file = fopen(crl_file_name.c_str(), "r");
-    if(!crl_file){ X509_free(cacert);cerr << "Error: cannot open file '" << crl_file_name << "' (missing?)\n"; return -1; }
-    X509_CRL* crl = PEM_read_X509_CRL(crl_file, NULL, NULL, NULL);
-    fclose(crl_file);
-    if(!crl){ X509_free(cacert); cerr << "Error: PEM_read_X509_CRL returned NULL\n"; return -1; }
-
-    // build a store with the CA's certificate and the CRL:
-    X509_STORE* store = X509_STORE_new();
-    if(!store) { X509_free(cacert);X509_CRL_free(crl);cerr << "Error: X509_STORE_new returned NULL\n" << ERR_error_string(ERR_get_error(), NULL) << "\n"; return -1; }
-    ret = X509_STORE_add_cert(store, cacert);
-    if(ret != 1) { X509_free(cacert);X509_CRL_free(crl);cerr << "Error: X509_STORE_add_cert returned " << ret << "\n" << ERR_error_string(ERR_get_error(), NULL) << "\n"; return -1; }
-    ret = X509_STORE_add_crl(store, crl);
-    if(ret != 1) { X509_free(cacert);X509_CRL_free(crl);cerr << "Error: X509_STORE_add_crl returned " << ret << "\n" << ERR_error_string(ERR_get_error(), NULL) << "\n"; return -1; }
-    ret = X509_STORE_set_flags(store, X509_V_FLAG_CRL_CHECK);
-    if(ret != 1) { X509_free(cacert);X509_CRL_free(crl); 
-        cerr << "Error: X509_STORE_set_flags returned " << ret << "\n" << ERR_error_string(ERR_get_error(), NULL) << "\n"; return -1; 
-    }
-
-    // load the peer's certificate:
-    FILE* cert_file = fopen(cert_file_name.c_str(), "r");
-    if(!cert_file){ X509_free(cacert);X509_CRL_free(crl); X509_STORE_free(store);cerr << "Error: cannot open file '" << cert_file_name << "' (missing?)\n"; return -1; }
-    X509* cert = PEM_read_X509(cert_file, NULL, NULL, NULL);
-    fclose(cert_file);
-    if(!cert){ 
-        X509_free(cacert);X509_CRL_free(crl); X509_STORE_free(store);
-        cerr << "Error: PEM_read_X509 returned NULL\n"; return -1; }
-
-    // verify the certificate:
-    X509_STORE_CTX* certvfy_ctx = X509_STORE_CTX_new();
-    if(!certvfy_ctx) { X509_free(cacert);X509_CRL_free(crl); X509_STORE_free(store);X509_free(cert);cerr << "Error: X509_STORE_CTX_new returned NULL\n" << ERR_error_string(ERR_get_error(), NULL) << "\n"; return -1; }
-    ret = X509_STORE_CTX_init(certvfy_ctx, store, cert, NULL);
-    if(ret != 1) { X509_free(cacert);X509_CRL_free(crl); X509_STORE_free(store);X509_free(cert);cerr << "Error: X509_STORE_CTX_init returned " << ret << "\n" << ERR_error_string(ERR_get_error(), NULL) << "\n"; return -1; }
-    ret = X509_verify_cert(certvfy_ctx);
-    if(ret != 1) { X509_free(cacert);X509_CRL_free(crl); X509_STORE_free(store);X509_free(cert);cerr << "Error: X509_verify_cert returned " << ret << "\n" << ERR_error_string(ERR_get_error(), NULL) << "\n"; return -1; }
-
-    // print the successful verification to screen:
-    char* tmp = X509_NAME_oneline(X509_get_subject_name(cert), NULL, 0);
-    char* tmp2 = X509_NAME_oneline(X509_get_issuer_name(cert), NULL, 0);
-    cout << "Certificate of \"" << tmp << "\" (released by \"" << tmp2 << "\") verified successfully\n";
-    free(tmp);
-    free(tmp2);
-    X509_free(cert);
-    X509_STORE_free(store);
-    X509_free(cacert); // already deallocated by X509_STORE_free()
-    X509_CRL_free(crl); // already deallocated by X509_STORE_free()
-    X509_STORE_CTX_free(certvfy_ctx);
-
-    return 1;
-}
-
 int Security::gcm_encrypt(unsigned char * aad, int aad_len, unsigned char * plaintext, int plaintext_len, 
     unsigned char * key, unsigned char *iv, unsigned char ** ciphertext, unsigned char ** tag){
 
@@ -264,25 +202,8 @@ int Security::gcm_encrypt(unsigned char * aad, int aad_len, unsigned char * plai
         free(*ciphertext);free(*tag);EVP_CIPHER_CTX_free(ctx);
         cerr << "Error: EVP_CIPHER_CTX_ctrl Failed\n"; return -1;
     }
-    // BIO_dump_fp(stdout, (char*)*decryptedtext, decryptedtext_len);
-    // cout <<"====================inside enc=================================="<<endl;
-    // cout <<"==================cipher txt===================================="<<endl;
-    // BIO_dump_fp(stdout, (char*)*ciphertext, ciphertext_len);
-    // cout <<"=====================tag================================="<<endl;
-    // BIO_dump_fp(stdout, (char*)*tag, Security::GCM_TAG_LEN);
-    // cout <<"=======================iv==============================="<<endl;
-    // BIO_dump_fp(stdout, (char*)iv, Security::GCM_IV_LEN);
-    // cout <<"=====================key================================="<<endl;
-    // BIO_dump_fp(stdout, (char*)key, 16);
-    // cout <<"===================aad==================================="<<endl;
-    // BIO_dump_fp(stdout, (char*)aad, aad_len);
-    // cout <<"===================key==================================="<<endl;
-    // BIO_dump_fp(stdout, (char*)key, strlen((char*)key));
-
     /* Clean up */
     EVP_CIPHER_CTX_free(ctx);
-
-
     return ciphertext_len;
 }
 int Security::gcm_decrypt(unsigned char * aad, int aad_len, unsigned char * ciphertext, int ciphertext_len, 

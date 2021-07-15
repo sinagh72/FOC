@@ -78,13 +78,6 @@ public:
     static int verify_signature(EVP_PKEY* pubk, unsigned char * signature, int signature_len, unsigned char * clear_text, int clear_text_len);
     //======================================================================================
     /**
-    * verify the input certificate and verify it according to the store
-    * @param cert_file_name the address of the certificate to verify
-    * @return intger to specify that the verification is succeeded (length of plaintext) or not -1 
-    */
-    static int verify_certificate(string cert_file_name);
-    //======================================================================================
-    /**
     * use the GCM to authenticate and encrypt the plaintext and returns the tag and ciphertext 
     * @param aad aad for the GCM
     * @param aad_len the length of the aad for the GCM
@@ -147,7 +140,6 @@ public:
     */
     static int EVP_PKEY_to_chars(EVP_PKEY *pkey, unsigned char** pk_buf);
     //======================================================================================
-        //======================================================================================
     /**
     * convert char* into EVP_PKEY 
     * @param pk_buf the public key in character
@@ -169,7 +161,7 @@ public:
      * @return true if loaded correctly, false otherwise
      */
     static bool load_server_certificate(X509** cert);
-
+    //======================================================================================
     /**
      * Serialize the X509 certificate in PEM format
      * @param cert the certificate to be serialized
@@ -177,6 +169,7 @@ public:
      * @return the lenght of the allocated buffer, -1 on error
      */
     static int X509_serialization(X509 *cert, unsigned char** buffer);
+    //======================================================================================
     /**
      * Deserialize certificate from PEM format to X509
      * @param buffer array of char containing the certificate serialized
@@ -184,14 +177,14 @@ public:
      * @return
      */
     static bool X509_deserialization(unsigned char* buffer, X509** cert);
-
+    //======================================================================================
     /**
      * Server certificate verification. It checks also the CN of CA and Server to match with the provided one.
      * @param cert the certificate to be validated
      * @return true if the certificate is valid, false is certificate is invalid or some error occurred
      */
     static bool certificate_verification(X509* cert);
-
+    //======================================================================================
     /**
     * serialize and concatenate two DH pubkey. Obtain the text ready to be signed
     * @param a first pubkey
@@ -200,11 +193,22 @@ public:
     * @return the size of the concatenated string, or -1 on error
     */
     static int serialize_concat_dh_pubkey(EVP_PKEY* a, EVP_PKEY* b, char** concatenated);
-
-    static int inner_gcm_encrypt(uint16_t counter, unsigned char * plaintext, int plaintext_len, 
-                                      unsigned char * key,
-                                      unsigned char ** inner_gcm_buf,
-                                      string message_type);
+    //======================================================================================
+    /**
+    * This function will encrypt the message between two clients. 
+    * @param counter the counter inside the AAD
+    * @param plaintext plaintext for encryption
+    * @param plaintext_len the length of the plaintext for encryption
+    * @param key the key for encryption
+    * @param inner_gcm_buf the output buffer contains the inner gcm data frame (AAD + Ciphertext + Tag)
+    * @param message_type indicates the caller of the function.
+    * @return the size of the inner_gcm_buf if encryption is succeeded, otherwise -1.
+    */
+    static int inner_gcm_encrypt(uint16_t counter, 
+                                    unsigned char * plaintext, int plaintext_len, 
+                                    unsigned char * key,
+                                    unsigned char ** inner_gcm_buf,
+                                    string message_type);
 };
 
 #endif
