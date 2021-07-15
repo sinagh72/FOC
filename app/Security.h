@@ -129,7 +129,7 @@ public:
     * @param digest the digest of the established session key
     * @return intger to specify that the generating is succeeded (length of the key) or not -1
     */
-    static unsigned int generate_dh_key(EVP_PKEY * my_dhkey, EVP_PKEY * peers_dhk, unsigned char ** key);
+    static int generate_dh_key(EVP_PKEY * my_dhkey, EVP_PKEY * peers_dhk, unsigned char ** key);
     //======================================================================================
     /**
     * convert the EVP_PKEY into char*

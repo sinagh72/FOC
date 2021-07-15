@@ -140,9 +140,9 @@ int main(int argc , char* argv[]) {
            
         }  
         //else its some IO operation on some other socket
-        int index = 0;
-        for(User* sender : online_users){
-            int sd = sender->get_socket(); 
+        for(auto it = online_users.begin(); it != online_users.end();){
+            int sd = (*it)->get_socket(); 
+            bool removed = false;
             if (FD_ISSET( sd , &readfds)){  
                 //Check if it was for closing , and also read the 
                 //incoming message 
@@ -159,17 +159,18 @@ int main(int argc , char* argv[]) {
                     close( sd ); 
                     FD_CLR(sd , &readfds);
                     //
-                    if(!sender->get_peer_username().empty()){
-                        User *receiver = find_user(sender->get_peer_username(), &online_users);
+                    if(!(*it)->get_peer_username().empty()){
+                        User *receiver = find_user((*it)->get_peer_username(), &online_users);
                         if(receiver == nullptr){
                             break;
                         }
-                        if(Message::send_message_16(sender, receiver) == -1){
+                        if(Message::send_message_16((*it), receiver) == -1){
                             cerr << "Error in sending message 16" << endl;
                         }
                     }
-                    sender->clear();
-                    online_users.erase(online_users.begin()+index);
+                    (*it)->clear();
+                    it = online_users.erase(it);
+                    removed = true;
                     break;  
                 }  
                 else { 
@@ -177,62 +178,54 @@ int main(int argc , char* argv[]) {
                     //of the data read
                     switch (buffer[0]) {
                         case 2:
-                            Message::handle_message_2(buffer, valread, sender);
+                            Message::handle_message_2(buffer, valread, (*it));
                             break;
                         case 3:
-                            if(Message::handle_message_3(buffer, valread, sender, online_users) == -1){
+                            if(Message::handle_message_3(buffer, valread, (*it), online_users) == -1){
                                 break;
                             }
                             break;
                         case 5:
-                            if(Message::handle_message_5(buffer, valread, sender, online_users) == -1){
-                                sender->set_status(ONLINE);
+                            if(Message::handle_message_5(buffer, valread, (*it), online_users) == -1){
+                                (*it)->set_status(ONLINE);
                                 break;
                             }
                             break;
                         case 7:
-                            if(Message::handle_message_7(buffer, valread, sender, online_users) == -1){
-                                sender->set_status(ONLINE);
+                            if(Message::handle_message_7(buffer, valread, (*it), online_users) == -1){
+                                (*it)->set_status(ONLINE);
                                 break;
                             }
                             break;
                         case 9:
-                            if(Message::handle_message_9(buffer, valread, sender, online_users) == -1){
-                                sender->set_status(ONLINE);
+                            if(Message::handle_message_9(buffer, valread, (*it), online_users) == -1){
+                                (*it)->set_status(ONLINE);
                                 break;
                             }
                             break;
                         case 11:
-                            if(Message::handle_message_11(buffer, valread, sender, online_users) == -1){
-                                sender->set_status(ONLINE);
+                            if(Message::handle_message_11(buffer, valread, (*it), online_users) == -1){
+                                (*it)->set_status(ONLINE);
                                 break;
                             }
                         case 13:
-                            if(Message::handle_message_13(buffer, valread, sender, online_users) == -1){
+                            if(Message::handle_message_13(buffer, valread, (*it), online_users) == -1){
                                 break;
                             }
                         case 17:
-                            if(Message::handle_message_17(buffer, valread, sender, online_users) == -1){
-                                sender->set_status(ONLINE);
-                                cout << "bitch" <<endl;
+                            if(Message::handle_message_17(buffer, valread, (*it), online_users) == -1){
+                                (*it)->set_status(ONLINE);
                                 break;
                             }
-                            online_users.erase(online_users.begin()+index);
+                            it = online_users.erase(it);
+                            removed = true;
                             break;
                             
                         }
                 }
-                    // buffer[valread] = '\0';
-                    // std::cout<< "Client " << inet_ntoa(address.sin_addr) <<"_" << ntohs(address.sin_port) << ": "
-                    // << buffer << std::endl; 
-                    // std::cout<< "valread is: " << valread << std::endl;
-                    // if(send(sd , buffer , strlen(buffer) , 0 )!= strlen(buffer)){
-                    //     perror("send");
-                    //     exit(EXIT_FAILURE); 
-                    // }
                 free(buffer);  
             }
-            index++;
+            if(!removed) it++;
         }
     }
     close(master_socket);  
