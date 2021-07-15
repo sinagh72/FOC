@@ -7,9 +7,44 @@
 const string WHITESPACE = " \n\r\t\f\v";
 const string DELIMITER = "||";
 
-void main_menu(){
-    cout << "Main Menu:\n" << "Please Select an Option:\n" << "1. Check Online Users\n" << "2. Listening\n" 
-    <<"0. Log out" <<endl;
+
+bool get_available_users(User*  my_user, vector<string> &usernames) {
+    usernames.clear();
+    if(NetworkMessage::send_message_3(my_user) == -1){
+        cout<< "Error in sending online user request (maybe server is offline)" <<endl;
+        return false;
+    }
+    
+    int onlines = NetworkMessage::handle_message_4(my_user, &usernames);
+    if(onlines == -1){
+        cout << "Error retriving online users" << endl;
+        return false;
+    }else if (onlines == 0){
+        cout << "There is no available User" << endl;
+        false
+    }
+    return true;
+}
+
+void main_menu(User* my_user, vector<string> &usernames){
+    
+    system("clear");
+    cout<<"Welcome "+ my_user->get_username() <<endl;
+    
+    cout << "You can: " <<endl;
+    cout << "r : refresh the list of avaiable users" <<endl;
+    cout << "x : exit the application" <<endl<<endl;
+    if(get_available_users(my_user, usernames)) {
+        cout<<"Or you can request to talk with one of the available user: "<<endl;
+        int c=0;
+        for(string usr: usernames) {
+            cout << c <<". " << usr << endl;
+            c++;
+        }
+    }
+
+    cout<<"Type the character corrisponding to the wanted action or the number of the user you want to chat with:"<<endl;
+    cout<< "> ";
 }
 
 bool establish_handshake_clients(User * my_user, string receiver_username){

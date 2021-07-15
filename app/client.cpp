@@ -85,14 +85,15 @@ int main(int argc, char const *argv[])
 
     string input;
     string input_username;
-
+    vector<string> usernames;
     while(1) {
         //Main Menu:
         //Please select the user you want to chat with or wait for a request to talk:
         //1. Check Online Users
         //2. listening
         //0. Log out
-        main_menu();
+        
+        main_menu(my_user, usernames);
         select_main_menu(my_user);
 
 
@@ -122,12 +123,21 @@ void select_main_menu(User* my_user) {
         if(FD_ISSET(0, &rfds)) {
             // ready input coming from keyboard
             //we give priority to the user will
-
+            string input;
 
             cin >> input;
             if (!check_user_input(input, 3))
-                continue;
-            if(input.compare("1") == 0){
+                return;
+
+            if (input.compare("e") == 0){
+                if(0 == NetworkMessage::send_message_17(my_user)){
+                    ///TODO: handle error in sending message 17
+                    //we should quit anyway
+                }
+                 
+            }
+
+            if(input.compare("r") == 0){
                 if(NetworkMessage::send_message_3(my_user) == -1){
                     ///TODO:maybe server is off!
                     continue;
@@ -163,6 +173,7 @@ void select_main_menu(User* my_user) {
                     valid_handshake = establish_handshake_clients(my_user, usernames.at(stoi(input_username) - 1));
                 }while (!valid_handshake);
 
+                //how established can be true?
                 if (established) 
                     send_secure();
                 
@@ -177,14 +188,9 @@ void select_main_menu(User* my_user) {
                     }
                     cout <<"Secure Connection between You and " << my_user->get_peer_username() <<" is Established!" <<endl;
                 }
-            }else if (input.compare("0") == 0){
-                if(0 == NetworkMessage::send_message_17(my_user)){
-                    ///TODO: handle error in sending message 17
-                }
-                break;  
             }
 
-                return;
+            return;
         }
 
         if(FD_ISSET(my_user->get_socket(), &rfds)) {
