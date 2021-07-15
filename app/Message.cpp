@@ -2500,6 +2500,13 @@ int Message::send_message_15(User* my_user){
     free(tag);
     my_user->set_peer_username("");
     my_user->set_clients_key(nullptr, 0);
+    my_user->clear_send_counter();
+    my_user->clear_receive_counter();
+    my_user->set_clients_pubk_char(nullptr);
+    my_user->set_clients_pubk(nullptr);
+    my_user->set_peer_pubk_char(nullptr);
+    my_user->set_peer_pubk(nullptr);
+    my_user->set_clients_pubk(nullptr);
     my_user->set_status(ONLINE);
     return message_buf_len;
 }
@@ -2653,7 +2660,13 @@ int Message::handle_message_16(char* message, size_t message_len, User*my_user){
     string sender_username = decryptedtext_str.substr(0,
                                 decryptedtext_str.length() - my_user->get_username().length());
     my_user->set_peer_username("");
+    my_user->set_clients_key(nullptr, 0);
+    my_user->clear_send_counter();
+    my_user->clear_receive_counter();
     my_user->set_clients_pubk_char(nullptr);
+    my_user->set_clients_pubk(nullptr);
+    my_user->set_peer_pubk_char(nullptr);
+    my_user->set_peer_pubk(nullptr);
     my_user->set_clients_pubk(nullptr);
     my_user->set_status(ONLINE);
     return 1;

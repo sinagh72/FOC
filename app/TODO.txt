@@ -10,7 +10,4 @@
 13- check counter bit representation
 14- check user input more than 10k 
 15- Change establish handshake function in client.cpp //sina
-16- erase User from the list should be done inside the iterator! //sina
-17- add message 15 to the server //sina
-18- finish commenting Message.h //sina
 19- remove test files
