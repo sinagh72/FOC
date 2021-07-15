@@ -28,8 +28,22 @@ public:
      */
     static int handle_message_0(char *buffer, int client_socket, char *ip, uint16_t port, vector <User*>*online_users);
 
+    /**
+     * handle message for message type 1
+     * @param buffer buffer of incoming message 1
+     * @param buffer_len lenght of the incoming message
+     * @param client Pointer to User struct that represent the client
+     * @return -1 on error, 1 on success
+     */
     static int handle_message_1(char* buffer,  int buffer_len, User *client);
 
+    /**
+     * handle message for message type 2
+     * @param buffer buffer of incoming message 2
+     * @param buffer_len lenght of the incoming message
+     * @param client Pointer to User struct that represent the client into the server
+     * @return -1 on error, 1 on success
+     */
     static int handle_message_2(char* buffer, int buffer_len, User *client);
 
     // message 3
