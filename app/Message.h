@@ -46,43 +46,37 @@ public:
      */
     static int handle_message_2(char* buffer, int buffer_len, User *client);
     //===================================================================================================================  
-    /**
-     * create a message type 3. This function will be called inside the client application. This function terminates the 
-     * whole program if the counter between server and client reaches max.
-     * @param my_user the sender of the message!
-     * @return integer to specify if the sending is successful or not. If it is successful it will return the
-     * size of the message_buf, otherwise -1
+     /**
+     * create a message type 3. This function will be called inside the server application. 
+     * @param my_user the sender of the message 3
+     * @return  -1 on error, 1 on success
     */
     static int send_message_3(User * my_user);
     //===================================================================================================================  
-    /**
-     * handle message type 3. This function will be called inside the server application
-     * @param message the buffer which is received from the socket.
+     /**
+     * handle message of message type 3
+     * @param message the message received from the socket
      * @param message_len the size of the received message
-     * @param sender the sender of the message! This user resides inside the server application (inside a vector of users)
-     * @param online_users the vector of online users inside the server
-     * @return integer to specify if parsing the message is successful or not. If it is successful it will return the
-     * size of the 1, otherwise -1
-    */
-    static int handle_message_3(char * message, size_t message_len, User * sender, vector<User*>online_users);
+     * @param my_user the sender of the message
+     * @param username the vector containing the list of active users
+     * @return -1 on error, 1 on success
+     */
+    static int handle_message_3(char * message, size_t message_len, User * my_user, vector<User*>online_users);
     //===================================================================================================================  
-    /**
-     * create a message type 4. This function will be called inside the server application
-     * @param sender the sender of the message!
-     * @param online_users the vector of online users inside the server
-     * @return integer to specify if the sending is successful or not. If it is successful it will return the
-     * size of the message_buf, otherwise -1
+     /**
+     * create a message type 4. This function will be called inside the server application. 
+     * @param my_user the sender of the message 3
+     * @param online_users the vector containing the list of active users
+     * @return  -1 on error, 1 on success
     */
-    // message 4
     static int send_message_4(User* sender, vector<User*>online_users);
     //===================================================================================================================  
-    /**
-     * handle message type 4. This function will be called inside the client application
-     * @param my_user the receiver of the message!
-     * @param usernames the vector of usernames available for chatting 
-     * @return integer to specify if parsing the message is successful or not. If it is successful it will return the
-     * size of the 1, otherwise -1
-    */
+     /**
+     * handle message of message type 4
+     * @param my_user the sender of the message 3
+     * @param username the vector conatining the list of usernames of the active users
+     * @return -1 on error, 1 on success
+     */
     static int handle_message_4(User * my_user, vector<string>*usernames);
     //===================================================================================================================  
      /**
