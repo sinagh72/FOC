@@ -12,3 +12,5 @@
 15- Change establish handshake function in client.cpp //sina
 19- remove test files
 20- split .h and .cpp in all file
+21- check if user is already connected from another session 
+22- VERIFY THE ACTUAL TYPE OF THE INCOMING MESSAGE
