@@ -111,11 +111,13 @@ public:
     //===================================================================================================================
     /**
      * handle message type 6. This function will be called inside the client application
+     * @param message the buffer which is received from the socket.
+     * @param message_len the size of the received message
      * @param my_user the receiver of the message!
      * @return integer to specify if parsing the message is successful or not. If it is successful it will return the
      * size of the 1, otherwise -1
     */
-    static int handle_message_6(User* my_user);
+    static int handle_message_6(char * message, size_t message_len, User* my_user);
     //=================================================================================================================== 
     /**
      * create a message type 7. This funciton will be called inside the client application. This function terminates the 
@@ -190,8 +192,6 @@ public:
     //===================================================================================================================
     /**
      * handle message type 10. This function will be called inside the client application
-     * @param message the buffer which is received from the socket.
-     * @param message_len the size of the received message
      * @param my_user the receiver of the message!
      * @return integer to specify if parsing the message is successful or not. If it is successful it will return the
      * size of the 1, otherwise -1

@@ -35,10 +35,9 @@ int main(int argc, char const *argv[])
     string username;
     string password;
     bool valid = false;
-    
+    cout << "====================**Welcome to ChatApp**====================\n";
     do{
-        system("clear");
-        cout << "====================**Welcome to ChatApp**====================\n";
+        //system("clear");
         cout << "Please Enter Your Username:\n";
         cin >> username;
         if(!cin){
@@ -76,25 +75,23 @@ int main(int argc, char const *argv[])
                 }
             }
         }
-    }
-    while(!valid);
-
+    }while(!valid);
     User* my_user = nullptr;
     if(!connect_to_server(username, password, IP.c_str(), PORT, &my_user)){
         exit(EXIT_FAILURE);
     };
-
+    cout<<"Welcome "+ my_user->get_username() <<endl<<endl;
     string input;
     string input_username;
     vector<string> usernames;
-    while(1) {
+    do{
     
         //cin_flush();
         main_menu(my_user, usernames);
         select_main_menu(my_user, usernames);
 
 
-    }
+    }while(1);
 
     close(my_user->get_socket());
 

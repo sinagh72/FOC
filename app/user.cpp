@@ -81,6 +81,7 @@ bool User::replay_check(bool from_server, uint16_t server_counter){
 }
 
 void User::clear(){
+    this->set_status(ONLINE);
     this->IP.clear();
     this->port = 0;
     this->socket = 0;
@@ -94,7 +95,6 @@ void User::clear(){
     this->peer_pubk = nullptr;
     this->server_pubk = nullptr;
     this->server_pubk_char = nullptr;
-    this->status = OFFLINE;
     set_peer_pubk_char(nullptr);
     set_clients_pubk_char(nullptr);
     set_client_server_pubk_char(nullptr);

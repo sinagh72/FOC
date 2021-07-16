@@ -220,7 +220,7 @@ public:
     }
 
     //return the username
-    string get_username() {
+    string get_username(){
         return this->username;
     }
     //return the ip

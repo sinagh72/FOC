@@ -131,9 +131,16 @@ int main(int argc , char* argv[]) {
             valread = read(new_socket, buffer, MAX_MESSAGE_LENGTH);
             //check for message type 0
             if(buffer[0]==0){
-                if(-1 == NetworkMessage::handle_message_0(buffer, new_socket, inet_ntoa(address.sin_addr),
-                                                     ntohs(address.sin_port), &online_users)){
-                    cerr << "Error in establishing key with the new Client" <<endl;                                          
+                int output = NetworkMessage::handle_message_0(buffer, new_socket, inet_ntoa(address.sin_addr),
+                                                     ntohs(address.sin_port), &online_users);
+                if(output < 1){
+                    cerr << "Error in establishing key with the new Client" <<endl;
+                    char* error_msg;
+                    if (output == -1)
+                        error_msg = (char*) "Error in establishing key with you! Try again later.\n";
+                    else if (output == -2)
+                        error_msg = (char*) "You are already logged in!\n";
+                    send(new_socket, error_msg, strlen(error_msg), 0);                                          
                 }
             }
             free(buffer);
@@ -151,9 +158,9 @@ int main(int argc , char* argv[]) {
                 if (valread == 0){  
                     //Somebody disconnected , get his details and print 
                     getpeername(sd , (struct sockaddr*)&address , \
-                        (socklen_t*)&addrlen);  
-                    printf("Host disconnected , ip %s , port %d \n" , 
-                          inet_ntoa(address.sin_addr) , ntohs(address.sin_port));  
+                        (socklen_t*)&addrlen);
+                    cout << (*it)->get_username() << " disconnected, ip: " << inet_ntoa(address.sin_addr) 
+                    << ", port: " << ntohs(address.sin_port) << endl;
                          
                     //Close the socket and mark as 0 in list for reuse 
                     close( sd ); 
@@ -166,7 +173,10 @@ int main(int argc , char* argv[]) {
                         }
                         if(NetworkMessage::send_message_16((*it), receiver) == -1){
                             cerr << "Error in sending message 16" << endl;
+                        }else{
+                            cout <<"sending message 16 to " << receiver->get_username() <<endl;
                         }
+
                     }
                     (*it)->clear();
                     it = online_users.erase(it);
@@ -178,7 +188,10 @@ int main(int argc , char* argv[]) {
                     //of the data read
                     switch (buffer[0]) {
                         case 2:
-                            NetworkMessage::handle_message_2(buffer, valread, (*it));
+                            if(NetworkMessage::handle_message_2(buffer, valread, (*it)) == -1){
+                                ///TODO:send error message
+                                break;
+                            }
                             break;
                         case 3:
                             if(NetworkMessage::handle_message_3(buffer, valread, (*it), online_users) == -1){
@@ -208,15 +221,18 @@ int main(int argc , char* argv[]) {
                                 (*it)->set_status(ONLINE);
                                 break;
                             }
+                            break;
                         case 13:
                             if(NetworkMessage::handle_message_13(buffer, valread, (*it), online_users) == -1){
                                 break;
                             }
+                            break;
                         case 15:
                             if(NetworkMessage::handle_message_15(buffer, valread, (*it), online_users) == -1){
                                 (*it)->set_status(ONLINE);
                                 break;
                             }
+                            break;
                         case 17:
                             if(NetworkMessage::handle_message_17(buffer, valread, (*it), online_users) == -1){
                                 (*it)->set_status(ONLINE);

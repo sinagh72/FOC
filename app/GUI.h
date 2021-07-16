@@ -1,10 +1,12 @@
 #ifndef APP_GUI_H
 #define APP_GUI_H
 
+#include <cstddef>
+#include <cstdlib>
+#include <unistd.h>
 #include <vector>
 #include <arpa/inet.h>
 #include <limits>
-#include <unistd.h>
 #include "NetworkMessage.h"
 #include "user.h"
 #include "utility.h"
@@ -29,46 +31,53 @@ bool get_available_users(User*  my_user, vector<string> &usernames) {
 
 void main_menu(User* my_user, vector<string> &usernames){
     
-    system("clear");
-    cout<<"Welcome "+ my_user->get_username() <<endl<<endl;
-    
-    cout << "You can: " <<endl;
-    cout << "r : refresh the list of avaiable users" <<endl;
-    cout << "x : exit the application" <<endl<<endl;
-    if(get_available_users(my_user, usernames)) {
-        cout<<"Or you can request to talk with one of the available user: "<<endl;
-        int c=0;
-        for(string usr: usernames) {
-            cout << c <<". " << usr << endl;
-            c++;
+    //system("clear");
+    //cout<<"Welcome "+ my_user->get_username() <<endl<<endl;
+    if(my_user->get_status() == CHATTING){
+       
+    }else if(my_user->get_status() == RTT){
+
+    }else{
+        cout << "You can: " <<endl;
+        cout << "r : refresh the list of avaiable users" <<endl;
+        cout << "x : exit the application" <<endl<<endl;
+        if(get_available_users(my_user, usernames)) {
+            cout<<"Or you can request to talk with one of the available users: "<<endl;
+            int c=0;
+            for(string usr: usernames) {
+                cout << c <<": " << usr << endl;
+                c++;
+            }
         }
+        cout<<"Type the character corresponding to the wanted action or the number of the user you want to chat with:" <<endl;
     }
 
-    cout<<"Type the character corrisponding to the wanted action or the number of the user you want to chat with: "<<endl<< "Input: ";
+  
 }
 
 bool establish_handshake_clients(User * my_user, string receiver_username){
     int val_read = 0;
     my_user->set_status(RTT);
     if (NetworkMessage::send_message_5(my_user, receiver_username) == -1){
-        cout << "Error in Establishing Secure Connection (5)" <<endl;
         return false;
     }
     char buffer[MAX_MESSAGE_LENGTH] = {0};
     val_read = read(my_user->get_socket() , buffer, MAX_MESSAGE_LENGTH);
+    if(val_read < 0){
+        cout << "Connection Failed Error" <<endl;
+        exit(EXIT_FAILURE);
+    }
     if(buffer[0] == 8){
         if(-1 == NetworkMessage::handle_message_8(buffer, val_read, my_user)){
-            cout << "Error in Establishing Secure Connection (8)" <<endl;
             return false;
         }
         if(-1 == NetworkMessage::send_message_9(my_user)){
-            cout << "Error in Establishing Secure Connection (9)" <<endl;
             return false;
         }
-        cout <<"Secure Connection between You and " << receiver_username <<" is Established!" <<endl;
+        cout <<"\nSecure Connection between You and " << receiver_username <<" is Established!\nYou May Now Start Chatting:\n" <<endl;
+        my_user->set_status(CHATTING);
     }else if(buffer[0] == 12){
         if(-1 == NetworkMessage::handle_message_12(buffer, val_read, my_user)){
-            cout << "Error in Establishing Secure Connection (12)" <<endl;
             return false;
         }
     }
@@ -106,24 +115,19 @@ bool connect_to_server(string username, string password, const char* IP, const i
     char *buffer_0 {nullptr};
     int buffer_len = NetworkMessage::send_message_0(&buffer_0, *my_user);
     if(buffer_len == -1){
-        cout << endl << "Error in sending message type 0" <<endl;
-        cout << "Connection failed";
         return false;
     }
-    ///TODO:check errors
     char *buffer = (char*)malloc(MAX_MESSAGE_LENGTH);
     //handle message type 1
     valread = read( sock , buffer, MAX_MESSAGE_LENGTH);
 
     if(NetworkMessage::handle_message_1(buffer, valread, *my_user) == -1){
-        cout << endl <<"Error in handling message type 1" <<endl;
-        cout <<"Connection failed" <<endl;
         return false;
     }
     free(buffer);
 
     //now the key between server and the client is established
-    cout <<"Secure Connection is Established" <<endl;
+    cout <<"\nSecure Connection is Established\n" <<endl;
     return true;
 }
 
@@ -147,23 +151,70 @@ void select_main_menu(User* my_user, vector<string> &usernames) {
     else if (retval)
         if(FD_ISSET(my_user->get_socket(), &rfds)) {
             // message coming from server (at this stage should be a request to talk)
-            int out = NetworkMessage::handle_message_6(my_user);
-            if(-1 == out){
-                return;
-            }else if(out > 0){
-                if(-1 == NetworkMessage::handle_message_10(my_user)){
-                    cout << "Error in Establishing Secure Connection (10)" <<endl;
-                    return;
-                }
-                cout <<"Secure Connection between You and " << my_user->get_peer_username() <<" is Established!" <<endl;
-            }
-        }
+            char*message = (char*)malloc(MAX_MESSAGE_LENGTH);
+            int val_read = read(my_user->get_socket(), message, MAX_MESSAGE_LENGTH);
 
+            if(val_read < 1){
+                cout << "Connection Failed" <<endl;
+                exit(EXIT_FAILURE);
+
+            }
+            int accept;
+            switch (message[0]) {
+                case 6:
+                    if(my_user->get_status() == CHATTING) break;//make sure user is not in chatting state
+                    accept = NetworkMessage::handle_message_6(message, val_read, my_user);
+                    if(accept < 1){
+                        break;
+                    }
+                    //after message 6, the client program blocks until receiving message 10
+                    //read is inside message 10
+                    if(-1 == NetworkMessage::handle_message_10(my_user)){ 
+                        break;
+                    }
+                    cout <<"\nSecure Connection between You and " << my_user->get_peer_username() <<
+                    " is Established!\nYou May now Sart Chatting:\n" <<endl;
+                    break;
+                case 12:
+                    if(my_user->get_status() == CHATTING) break;
+                    if(-1 == NetworkMessage::handle_message_12(message, val_read, my_user)){
+                        break;
+                    }
+                    break;
+                case 14:
+                    if(my_user->get_status() != CHATTING) break; // make sure user is in chatting state
+                    if(-1 == NetworkMessage::handle_message_14(message, val_read, my_user)){
+                        break;
+                    }
+                    break;
+                case 16:
+                    if(-1 == NetworkMessage::handle_message_16(message, val_read, my_user)){
+                        break;
+                    }
+                    break;
+                
+            }
+            free(message);
+            return;
+        }
         if(FD_ISSET(0, &rfds)) {
             // ready input coming from keyboard
             //we give priority to the user will
             string input;
-
+            if (my_user->get_status() == CHATTING){
+                getline(cin, input);
+                if(input.empty()) return;
+                size_t len = (input.length() > MAX_CHARS) ? MAX_CHARS : input.length();
+                do{
+                    if(NetworkMessage::send_message_13((unsigned char *)input.substr(0, len).c_str(), len ,my_user) == -1){
+                        break;
+                    }
+                    input.erase(0, len);
+                    len = (input.length() > MAX_CHARS) ? MAX_CHARS : input.length();
+                    usleep(DELAY);
+                }while(!input.empty()); // check 10k characters
+                return;   
+            }
             cin >> input;
             if (input.compare("x") == 0){
                 if(-1 == NetworkMessage::send_message_17(my_user)){
@@ -176,22 +227,13 @@ void select_main_menu(User* my_user, vector<string> &usernames) {
             if(input.compare("r") == 0){
                 return;
             }
-
+            
             if(!check_user_input(input, usernames.size())) {
-                cout<< "Wrong input, try again"<<endl;
-                sleep(1);
+                cout<< "Invalid input, try again"<<endl;
+                //sleep(1);
                 return;
             }
-            
-
-            bool valid_handshake = false;
-            bool established = false;
-            valid_handshake = establish_handshake_clients(my_user, usernames.at(stoi(input)));
-
-            //how established can be true?
-            //if (established) 
-                //send_secure();
-            
+            establish_handshake_clients(my_user, usernames.at(stoi(input)));
         }
 
 }

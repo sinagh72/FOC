@@ -1,9 +1,11 @@
 #include "NetworkMessage.h"
-//#include <cstdlib>
+#include <cstdio>
+#include <openssl/bio.h>
+#include <unistd.h>
 
 //sent by the client A
 int NetworkMessage::send_message_0(char **buffer, User* my_user) {
-
+    usleep(DELAY);
     //generating new dh pubk -> g^a
     EVP_PKEY * g_a{nullptr};
     if(Security::generate_dh_pubk(&g_a) == -1){return 0;}
@@ -33,14 +35,13 @@ int NetworkMessage::send_message_0(char **buffer, User* my_user) {
         EVP_PKEY_free(g_a);
         return -1;
     }
-
     ///
     free(a_char);
     return message_len;
 }
 
 int NetworkMessage::handle_message_0(char *buffer, int client_socket, char *ip, uint16_t port, vector <User*>*online_users) {
-
+    usleep(DELAY);
     string ip_str(ip);
     //extract the username
     string username(buffer+MESSAGE_TYPE_LENGTH);
@@ -64,10 +65,16 @@ int NetworkMessage::handle_message_0(char *buffer, int client_socket, char *ip, 
     }
     fclose(pubkey_file);
     EVP_PKEY_free(evpPkey);
-    User *client = new User(username,"sina",ip, port, client_socket);
+    User *client = new User(username,"",ip, port, client_socket);
+    for(auto it = online_users->begin(); it != online_users->end(); it++){
+        if((*it)->get_username().compare(username) == 0){
+            cout << username << " has already logged in!" << endl;
+            return -2;
+        }
+    }
     client->set_status(CONNECTING);
     online_users->insert(online_users->begin(), client);
-    cout << client->get_username() << " connected with ip: " << ip << ", port: " << port << endl;
+    cout << client->get_username() << " connected, ip: " << ip << ", port: " << port << endl;
     //load server certificate from file and serialize it
     X509* cert;
     if(!Security::load_server_certificate(&cert)) {
@@ -205,6 +212,12 @@ int NetworkMessage::handle_message_0(char *buffer, int client_socket, char *ip, 
 }
 
 int NetworkMessage::handle_message_1(char *buffer, int buffer_len, User *client) {
+    usleep(DELAY);
+    if(buffer[0] != 1){
+        cout << buffer << endl;
+        cout << "Error (Handle 1)" << endl;
+        return -1;
+    }
     //parsing the incoming message
     uint16_t counter_server = (uint16_t) *(buffer+MESSAGE_TYPE_LENGTH);
     if(counter_server != client->get_server_counter()) {
@@ -406,6 +419,7 @@ int NetworkMessage::handle_message_1(char *buffer, int buffer_len, User *client)
 }
 
 int NetworkMessage::handle_message_2(char *buffer, int buffer_len, User *client) {
+    usleep(DELAY);
     //verify message counter
     uint16_t counter = (uint16_t)*(buffer + MESSAGE_TYPE_LENGTH);
     if(counter != client->get_client_counter()) {
@@ -466,6 +480,7 @@ int NetworkMessage::handle_message_2(char *buffer, int buffer_len, User *client)
 
 //sent by the client A
 int NetworkMessage::send_message_3(User * my_user) {
+    usleep(DELAY);
     if(my_user->get_client_counter() > UINT16_MAX - 2){
         cout << "The Communication Between You and The Server is Not Secure Anymore."; 
         cout << "The Session Will Been Terminated Now" <<endl;
@@ -541,6 +556,7 @@ int NetworkMessage::send_message_3(User * my_user) {
 
 //recevied by the server 
 int NetworkMessage::handle_message_3(char * message, size_t message_len, User * sender, vector<User*>online_users){
+    usleep(DELAY);
     int k;
     string msg = "";
     for (k = 0; k < message_len; k++) {
@@ -581,7 +597,7 @@ int NetworkMessage::handle_message_3(char * message, size_t message_len, User * 
 
 //sent by the server to client A
 int NetworkMessage::send_message_4(User* receiver, vector<User*>online_users) {
-
+    usleep(DELAY);
     // generate iv
     unsigned char* iv{nullptr};
     if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)){
@@ -596,7 +612,7 @@ int NetworkMessage::send_message_4(User* receiver, vector<User*>online_users) {
         cerr<< "AAD Allocation Error (Send 4)!" <<endl;
         return 0;
     }    
-    aad[0] = 3;
+    aad[0] = 4;
     uint16_t * counter_pointer = (uint16_t *) (aad + MESSAGE_TYPE_LENGTH);
     *counter_pointer = receiver->get_server_counter();
     memcpy(aad + MESSAGE_TYPE_LENGTH + COUNTER_LENGTH , iv, Security::GCM_IV_LEN);
@@ -655,11 +671,16 @@ int NetworkMessage::send_message_4(User* receiver, vector<User*>online_users) {
 
 //recevied by the client A 
 int NetworkMessage::handle_message_4(User * my_user, vector<string>*usernames){
-
+    usleep(DELAY);
     char*message = (char*)malloc(MAX_MESSAGE_LENGTH);
     int val_read = read(my_user->get_socket(), message, MAX_MESSAGE_LENGTH);
     if(val_read < 1){
         cerr<< "Socket Error (Handle 4)!" <<endl;
+        return -1;
+    }
+    if(message[0] != 4){
+        cout << "Error (Handle 4)" << endl;
+        cout << message << endl;
         return -1;
     }
     int k;
@@ -704,6 +725,7 @@ int NetworkMessage::handle_message_4(User * my_user, vector<string>*usernames){
 
 //sent by the client A
 int NetworkMessage::send_message_5(User* my_user, string receiver_username){
+    usleep(DELAY);
     if(my_user->get_client_counter() > UINT16_MAX - 4){ //1 for message 5, 1 for message 17, 1 for message 9, 1 for extra message
         cout << "The Communication Between You and The Server is Not Secure Anymore."; 
         cout << "The Session Will Been Terminated Now" <<endl;
@@ -805,6 +827,7 @@ int NetworkMessage::send_message_5(User* my_user, string receiver_username){
 }
 //recevied by the server 
 int NetworkMessage::handle_message_5(char * message, size_t message_len, User* sender, vector<User*>online_users){
+    usleep(DELAY);
     sender->set_status(RTT);
     int i;
     string msg = "";
@@ -856,6 +879,7 @@ int NetworkMessage::handle_message_5(char * message, size_t message_len, User* s
 }
 //sent by the server to client B
 int NetworkMessage::send_message_6(User* sender, User* receiver){
+    usleep(DELAY);
     //initialization vector
     unsigned char* iv{nullptr};
     if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)){
@@ -927,17 +951,10 @@ int NetworkMessage::send_message_6(User* sender, User* receiver){
     return message_buf_len;
 }
 //received by the client B
-int NetworkMessage::handle_message_6(User*my_user){
-    
-    char*message = (char*)malloc(MAX_MESSAGE_LENGTH);
-    int val_read = read(my_user->get_socket(), message, MAX_MESSAGE_LENGTH);
-
-    if(val_read < 1){
-        cout << "Socket Error (Handle 6)" <<endl;
-        return -1;
-    }
+int NetworkMessage::handle_message_6(char * message, size_t message_len, User*my_user){
+    usleep(DELAY);
     string msg = "";
-    for (int i = 0; i < val_read; i++) {
+    for (int i = 0; i < message_len; i++) {
         msg = msg + message[i];
     }
     string tag = msg.substr(msg.length() - Security::GCM_TAG_LEN, Security::GCM_TAG_LEN);
@@ -971,7 +988,7 @@ int NetworkMessage::handle_message_6(User*my_user){
     //accept or reject the request to talk
     string input;
     do{
-        cout << sender_username << " has requested to talk to you.\nPlease Select an Option:\n"
+        cout <<"\n" << sender_username << " has requested to talk to you\nPlease Select an Option:\n"
         <<"1. Accept"<<endl
         <<"0. Reject"<<endl;
         cin >> input;
@@ -997,6 +1014,7 @@ int NetworkMessage::handle_message_6(User*my_user){
 }
 //sent by the client B
 int NetworkMessage::send_message_7(User* my_user){
+    usleep(DELAY);
     if(my_user->get_client_counter() > UINT16_MAX - 3){ //1 for message 7, 1 for message 17, 1 for extra message
         cout << "The Communication Between You and The Server is Not Secure Anymore."; 
         cout << "The Session Will Been Terminated Now" <<endl;
@@ -1229,6 +1247,7 @@ int NetworkMessage::send_message_7(User* my_user){
 }
 //recevied by the server 
 int NetworkMessage::handle_message_7(char * message, size_t message_len, User* sender, vector<User*>users){
+    usleep(DELAY);
     User * receiver = find_user(sender->get_peer_username(), &users);
     if(receiver == nullptr){
         receiver->set_status(ONLINE);
@@ -1287,6 +1306,7 @@ int NetworkMessage::handle_message_7(char * message, size_t message_len, User* s
 }
 //sent by the server to client A
 int NetworkMessage::send_message_8(User* sender, User* receiver, unsigned char * inner_gcm, int inner_gcm_len){
+    usleep(DELAY);
     //initialization vector
     unsigned char* iv{nullptr};
     if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)){
@@ -1387,6 +1407,12 @@ int NetworkMessage::send_message_8(User* sender, User* receiver, unsigned char *
 }
 //received by the client A
 int NetworkMessage::handle_message_8(char* message, size_t message_len, User * my_user){
+    usleep(DELAY);
+    if(message[0] != 8){
+        cout << message << endl;
+        cout << "Error (Handle 8)" << endl;
+        return -1;
+    }
     int i;
     string msg = "";
     for (i = 0; i < message_len; i++) {
@@ -1524,6 +1550,7 @@ int NetworkMessage::handle_message_8(char* message, size_t message_len, User * m
 }
 //sent by a client A
 int NetworkMessage::send_message_9(User* my_user){
+    usleep(DELAY);
     //generating the clear text for verification of the signature
     //concatenation g^b'||g^a'
     unsigned char* text_to_sign = (unsigned char*)malloc(2*DH_PUBK_LENGTH);
@@ -1650,6 +1677,7 @@ int NetworkMessage::send_message_9(User* my_user){
 }
 //received by the server
 int NetworkMessage::handle_message_9(char * message, size_t message_len, User* sender, vector<User*>users){
+    usleep(DELAY);
     int i;
     string msg = "";
     for (i = 0; i < message_len; i++) {
@@ -1699,6 +1727,7 @@ int NetworkMessage::handle_message_9(char * message, size_t message_len, User* s
 }
 //sent by the server to client B
 int NetworkMessage::send_message_10(User* sender, User* receiver, unsigned char * inner_gcm, int inner_gcm_len){
+    usleep(DELAY);
     //initialization vector
     unsigned char* iv{nullptr};
     if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)){
@@ -1806,11 +1835,16 @@ int NetworkMessage::send_message_10(User* sender, User* receiver, unsigned char 
 }
 //received by a client B
 int NetworkMessage::handle_message_10(User* my_user){
-
+    usleep(DELAY);
     char*message = (char*)malloc(MAX_MESSAGE_LENGTH);  
     int val_read = read(my_user->get_socket(), message, MAX_MESSAGE_LENGTH);
     if(val_read < 1){
         cout << "Socket Error (Handle 10)" <<endl;
+        return -1;
+    }
+    if(message[0] != 10){
+        cout << message << endl;
+        cout << "Error (Handle 10)" << endl;
         return -1;
     }
     int i;
@@ -1818,6 +1852,7 @@ int NetworkMessage::handle_message_10(User* my_user){
     for (i = 0; i < val_read; i++) {
         msg = msg + message[i];
     }
+    
     string tag = msg.substr(msg.length() - Security::GCM_TAG_LEN, Security::GCM_TAG_LEN);
     string gcm_ciphertext = msg.substr(msg.length() - Security::GCM_TAG_LEN - 2 * USERNAME_LENGTH, 2 * USERNAME_LENGTH);
     string aad = msg.substr(0, msg.length() - gcm_ciphertext.length() - tag.length());
@@ -1913,6 +1948,7 @@ int NetworkMessage::handle_message_10(User* my_user){
 
 //sent by client B to the server 
 int NetworkMessage::send_message_11(User* my_user){
+    usleep(DELAY);
     if(my_user->get_client_counter() > UINT16_MAX - 2){ //1 for message 11, 1 for message 17
         cout << "The Communication Between You and The Server is Not Secure Anymore."; 
         cout << "The Session Will Been Terminated Now" <<endl;
@@ -1993,6 +2029,7 @@ int NetworkMessage::send_message_11(User* my_user){
 }
 //recevied by the server 
 int NetworkMessage::handle_message_11(char * message, size_t message_len, User* sender, vector<User*>users){
+    usleep(DELAY);
     User *receiver = find_user(sender->get_peer_username(), &users);
     if(receiver == nullptr){
         receiver->set_status(ONLINE);
@@ -2044,6 +2081,7 @@ int NetworkMessage::handle_message_11(char * message, size_t message_len, User* 
 
 //sent by the server to client A
 int NetworkMessage::send_message_12(User* sender, User* receiver){
+    usleep(DELAY);
     //initialization vector
     unsigned char* iv{nullptr};
     if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)){
@@ -2116,6 +2154,7 @@ int NetworkMessage::send_message_12(User* sender, User* receiver){
 }
 //received by the client B
 int NetworkMessage::handle_message_12(char* message, size_t message_len, User*my_user){
+    usleep(DELAY);
     int i;
     string msg = "";
     for (i = 0; i < message_len; i++) {
@@ -2154,6 +2193,7 @@ int NetworkMessage::handle_message_12(char* message, size_t message_len, User*my
 
 //sent by client A to the server 
 int NetworkMessage::send_message_13(unsigned char* message, size_t message_len, User* my_user){
+    usleep(DELAY);
     if(my_user->get_client_counter() > UINT16_MAX - 2){ //1 for message 13, 1 for message 17,
         cout << "The Communication Between You and The Server is Not Secure Anymore."; 
         cout << "The Session Will Been Terminated Now" <<endl;
@@ -2230,7 +2270,6 @@ int NetworkMessage::send_message_13(unsigned char* message, size_t message_len, 
     memcpy(message_buf, aad, aad_len);
     memcpy(message_buf + aad_len, gcm_ciphertext, gcm_ciphertext_len);
     memcpy(message_buf + aad_len + gcm_ciphertext_len, tag, Security::GCM_TAG_LEN);
-    cout << my_user->get_username()<<" sends message 13"<<endl;
     ///Send the data to the network!
     if(send(my_user->get_socket(), message_buf, message_buf_len, 0) != message_buf_len){   
         cerr<<"Socket Error (Send 13)"<<endl;
@@ -2255,6 +2294,7 @@ int NetworkMessage::send_message_13(unsigned char* message, size_t message_len, 
 }
 //recevied by the server 
 int NetworkMessage::handle_message_13(char * message, size_t message_len, User* sender, vector<User*>online_users){
+    usleep(DELAY);
     int i;
     string msg = "";
     for (i = 0; i < message_len; i++) {
@@ -2288,6 +2328,7 @@ int NetworkMessage::handle_message_13(char * message, size_t message_len, User* 
     if(receiver == nullptr){
         return -1;
     }
+    cout << "handling message 13 from " << sender->get_username()<<endl;
     if(send_message_14(sender, receiver, (unsigned char *)inner_gcm.c_str(), inner_gcm.length()) == -1){
         return -1;
     }
@@ -2297,6 +2338,7 @@ int NetworkMessage::handle_message_13(char * message, size_t message_len, User* 
 }
 //sent by the server to the client B
 int NetworkMessage::send_message_14(User* sender, User* receiver, unsigned char * inner_gcm, int inner_gcm_len){
+    usleep(DELAY);
     //initialization vector
     unsigned char* iv{nullptr};
     if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)){
@@ -2344,7 +2386,6 @@ int NetworkMessage::send_message_14(User* sender, User* receiver, unsigned char 
     memcpy(message_buf, aad, aad_len);
     memcpy(message_buf + aad_len, gcm_ciphertext, gcm_ciphertext_len);
     memcpy(message_buf + aad_len + gcm_ciphertext_len, tag, Security::GCM_TAG_LEN);
-    cout << "Server sends message 14 to " << receiver->get_username() <<endl;
     ///Send the data to the network!
     if(send(receiver->get_socket(), message_buf, message_buf_len, 0) != message_buf_len){   
         cerr<<"Socket Error (Send 14)"<<endl;
@@ -2369,6 +2410,7 @@ int NetworkMessage::send_message_14(User* sender, User* receiver, unsigned char 
 }
 //received by the client A
 int NetworkMessage::handle_message_14(char* message, size_t message_len, User * my_user){
+    usleep(DELAY);
     int i;
     string msg = "";
     for (i = 0; i < message_len; i++) {
@@ -2415,17 +2457,19 @@ int NetworkMessage::handle_message_14(char* message, size_t message_len, User * 
     uint16_t received_counter = (uint16_t) *(inner_aad.c_str());
     if(my_user->get_receive_counter() != received_counter){
         cerr<< "This message is discarded!" <<endl;
-        cerr << "Repetitive Message Error (Handle 10)" <<endl;
+        cerr << "Repetitive Message Error (Handle 14)" <<endl;
         return -1;
     }
     my_user->increment_receive_counter();
     string clients_decryptext_str((char*)clients_decryptext);
-    cout << my_user->get_peer_username() <<": " << trim(clients_decryptext_str) <<endl;
+    cout << my_user->get_peer_username() <<": " << clients_decryptext_str.substr(0,clients_decryptext_len) <<endl;
+    free(clients_decryptext);
     return 1;
 }
 
 //sent by client A to the server 
 int NetworkMessage::send_message_15(User* my_user){
+    usleep(DELAY);
     if(my_user->get_client_counter() > UINT16_MAX - 2){ //1 for message 15, 1 for message 17,
         cout << "The Communication Between You and The Server is Not Secure Anymore."; 
         cout << "The Session Will Been Terminated Now" <<endl;
@@ -2512,6 +2556,7 @@ int NetworkMessage::send_message_15(User* my_user){
 }
 //recevied by the server 
 int NetworkMessage::handle_message_15(char * message, size_t message_len, User* sender, vector<User*>online_users){
+    usleep(DELAY);
     int i;
     string msg = "";
     for (i = 0; i < message_len; i++) {
@@ -2558,6 +2603,7 @@ int NetworkMessage::handle_message_15(char * message, size_t message_len, User* 
 
 //sent by server to the client
 int NetworkMessage::send_message_16(User* sender, User* receiver){
+    usleep(DELAY);
     //initialization vector
     unsigned char* iv{nullptr};
     if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)){
@@ -2626,10 +2672,12 @@ int NetworkMessage::send_message_16(User* sender, User* receiver){
     free(tag);
     sender->set_peer_username("");
     receiver->set_peer_username("");
+    receiver->set_status(ONLINE);
     return message_buf_len;
 }
 //recevied by the client
 int NetworkMessage::handle_message_16(char* message, size_t message_len, User*my_user){
+    usleep(DELAY);
     int i;
     string msg = "";
     for (i = 0; i < message_len; i++) {
@@ -2659,6 +2707,7 @@ int NetworkMessage::handle_message_16(char* message, size_t message_len, User*my
     }
     string sender_username = decryptedtext_str.substr(0,
                                 decryptedtext_str.length() - my_user->get_username().length());
+    cout << "\n" <<my_user->get_peer_username() << " has logged out!" << endl<< endl;
     my_user->set_peer_username("");
     my_user->set_clients_key(nullptr, 0);
     my_user->clear_send_counter();
@@ -2674,6 +2723,7 @@ int NetworkMessage::handle_message_16(char* message, size_t message_len, User*my
 
 //sent by client A to the server 
 int NetworkMessage::send_message_17(User* my_user){
+    usleep(DELAY);
     //initialization vector
     unsigned char* iv{nullptr};
     if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)){
@@ -2741,6 +2791,7 @@ int NetworkMessage::send_message_17(User* my_user){
 }
 //recevied by the server 
 int NetworkMessage::handle_message_17(char * message, size_t message_len, User* sender, vector<User*>online_users){
+    usleep(DELAY);
     int i;
     string msg = "";
     for (i = 0; i < message_len; i++) {
