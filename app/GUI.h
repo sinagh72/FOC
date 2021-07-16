@@ -112,8 +112,7 @@ bool connect_to_server(string username, string password, const char* IP, const i
     //creating the user
     *my_user = new User(username, password, IP, PORT, sock);
     //send message 0
-    char *buffer_0 {nullptr};
-    int buffer_len = NetworkMessage::send_message_0(&buffer_0, *my_user);
+    int buffer_len = NetworkMessage::send_message_0(*my_user);
     if(buffer_len == -1){
         return false;
     }

@@ -16,7 +16,7 @@ public:
      * @param my_user the sender of the message!
      * @return the length of the message sent to toward the server. It will return -1 if some error happens
     */
-    static int send_message_0(char **buffer, User* my_user);
+    static int send_message_0(User* my_user);
     //===================================================================================================================  
     /**
      * handle function for message type 0

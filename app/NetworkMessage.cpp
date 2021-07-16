@@ -1,14 +1,15 @@
 #include "NetworkMessage.h"
 #include <cstdio>
 #include <openssl/bio.h>
+#include <openssl/x509.h>
 #include <unistd.h>
 
 //sent by the client A
-int NetworkMessage::send_message_0(char **buffer, User* my_user) {
+int NetworkMessage::send_message_0(User* my_user) {
     usleep(DELAY);
     //generating new dh pubk -> g^a
     EVP_PKEY * g_a{nullptr};
-    if(Security::generate_dh_pubk(&g_a) == -1){return 0;}
+    if(Security::generate_dh_pubk(&g_a) == -1){return -1;}
     my_user->set_client_server_pubk(g_a);
     //serialize the g^a
     unsigned char*a_char{nullptr};
@@ -22,21 +23,24 @@ int NetworkMessage::send_message_0(char **buffer, User* my_user) {
     my_user->set_client_server_pubk_char(a_char);
 
     unsigned int message_len = MESSAGE_TYPE_LENGTH + USERNAME_LENGTH + a_char_size;
-    *buffer=(char*) malloc(message_len);
-    memset(*buffer, 0, 1);
-    memcpy(*buffer + MESSAGE_TYPE_LENGTH, my_user->get_username().c_str(), USERNAME_LENGTH);
-    memcpy(*buffer + MESSAGE_TYPE_LENGTH + USERNAME_LENGTH, a_char, a_char_size);
+    char * buffer=(char*) malloc(message_len);
+    memset(buffer, 0, 1);
+    memcpy(buffer + MESSAGE_TYPE_LENGTH, my_user->get_username().c_str(), USERNAME_LENGTH);
+    memcpy(buffer + MESSAGE_TYPE_LENGTH + USERNAME_LENGTH, a_char, a_char_size);
     //
     ///TODO: check for the timeout
     ///https://stackoverflow.com/questions/9847441/setting-socket-timeout
-    if (message_len != send(my_user->get_socket() , *buffer , message_len , 0)){
+    if (message_len != send(my_user->get_socket() , buffer , message_len , 0)){
         my_user->set_client_server_pubk(nullptr);
+        my_user->set_client_server_pubk_char(nullptr);
         free(a_char);
         EVP_PKEY_free(g_a);
+        free(buffer);
         return -1;
     }
     ///
     free(a_char);
+    free(buffer);
     return message_len;
 }
 
@@ -73,7 +77,6 @@ int NetworkMessage::handle_message_0(char *buffer, int client_socket, char *ip, 
         }
     }
     client->set_status(CONNECTING);
-    online_users->insert(online_users->begin(), client);
     cout << client->get_username() << " connected, ip: " << ip << ", port: " << port << endl;
     //load server certificate from file and serialize it
     X509* cert;
@@ -85,7 +88,7 @@ int NetworkMessage::handle_message_0(char *buffer, int client_socket, char *ip, 
     unsigned char* certificate_serialized= nullptr;
     int cert_size = 0;
     if((cert_size = Security::X509_serialization(cert, &certificate_serialized)) ==-1) {
-        cerr << "Certification Serialization Error (Send 1)" <<endl;
+        cerr << "Certification Serialization Error (Handle 0)" <<endl;
         X509_free(cert);
         return -1;
     };
@@ -96,32 +99,71 @@ int NetworkMessage::handle_message_0(char *buffer, int client_socket, char *ip, 
     unsigned char* dh_pubkey_server_serialized = nullptr;
     EVP_PKEY *dh_pubkey_server = nullptr;
     //generate our own DH pubkey
-    Security::generate_dh_pubk(&dh_pubkey_server);
+    if(-1 == Security::generate_dh_pubk(&dh_pubkey_server)){
+        cerr << "Public Key Generation Error (Handle 0)" <<endl;
+        free(certificate_serialized);
+        return -1;
+    }
     EVP_PKEY *peer_pubk {nullptr};
-    Security::chars_to_EVP_PKEY(&peer_pubk,  (unsigned char*)dh_pubkey_peer.c_str());
+    if(-1 == Security::chars_to_EVP_PKEY(&peer_pubk,  (unsigned char*)dh_pubkey_peer.c_str())){
+        cerr << "Public Key Deserialization Error (Handle 0)" <<endl;
+        free(certificate_serialized);
+        EVP_PKEY_free(dh_pubkey_server);
+        return -1;
+    }
     client->set_server_pubk(dh_pubkey_server);
     client->set_client_server_pubk(peer_pubk);
 
 
-    dh_pubkey_server_size = Security::EVP_PKEY_to_chars(dh_pubkey_server,&dh_pubkey_server_serialized);
+    if(-1 == (dh_pubkey_server_size = Security::EVP_PKEY_to_chars(dh_pubkey_server,&dh_pubkey_server_serialized))){
+        cerr << "Public Key Serialization Error (Send 1)" <<endl;
+        EVP_PKEY_free(dh_pubkey_server);
+        free(certificate_serialized);
+        client->set_server_pubk(nullptr);
+        client->set_client_server_pubk(nullptr);
+        EVP_PKEY_free(peer_pubk);
+        return -1;
+
+    }
     //concatenate and sign DH pubkey
     char* dh_param_to_sign = nullptr;
-    Security::serialize_concat_dh_pubkey(client->get_client_server_pubk(), client->get_server_pubk(), &dh_param_to_sign);
+    if (-1 == Security::serialize_concat_dh_pubkey(client->get_client_server_pubk(), client->get_server_pubk(), &dh_param_to_sign)){
+        cerr << "Public Key Concatenation Error (Send 1)" <<endl;
+        EVP_PKEY_free(dh_pubkey_server);
+        free(certificate_serialized);
+        client->set_server_pubk(nullptr);
+        client->set_client_server_pubk(nullptr);
+        free(dh_pubkey_server_serialized);
+        EVP_PKEY_free(peer_pubk);
+        return -1;
+    }
 
     unsigned char* signature = nullptr;
     int signature_len = Security::signature("./server_privK/ChatApp_key.pem", NULL, (unsigned char*)dh_param_to_sign,
                                             2*DH_PUBK_LENGTH, &signature);
+    if(signature_len == -1){
+        cerr << "Signature Signing Error (Send 1)" <<endl;
+        EVP_PKEY_free(dh_pubkey_server);
+        free(certificate_serialized);
+        client->set_server_pubk(nullptr);
+        client->set_client_server_pubk(nullptr);
+        free(dh_pubkey_server_serialized);
+        EVP_PKEY_free(peer_pubk);
+        free(dh_param_to_sign);
+        return -1;
+    }
     free(dh_param_to_sign);
-
-
-    
-
-    client->set_client_server_pubk(peer_pubk);
 
     unsigned char* shared_key= nullptr;
     int shared_key_len = Security::generate_dh_key(dh_pubkey_server, peer_pubk, &shared_key);
     if(shared_key_len==-1) {
         cerr<<"Key Generation Error (Send 1)"<<endl;
+        EVP_PKEY_free(dh_pubkey_server);
+        free(certificate_serialized);
+        client->set_server_pubk(nullptr);
+        client->set_client_server_pubk(nullptr);
+        free(dh_pubkey_server_serialized);
+        EVP_PKEY_free(peer_pubk);
         return -1;
     }
 
@@ -129,6 +171,12 @@ int NetworkMessage::handle_message_0(char *buffer, int client_socket, char *ip, 
     unsigned char* iv= nullptr;
     if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)) {
         cerr<<"IV Generation Error (Send 1)";
+        EVP_PKEY_free(dh_pubkey_server);
+        free(certificate_serialized);
+        client->set_server_pubk(nullptr);
+        client->set_client_server_pubk(nullptr);
+        free(dh_pubkey_server_serialized);
+        EVP_PKEY_free(peer_pubk);
         #pragma optimize("", off)
         memset(shared_key, 0, shared_key_len);
         #pragma optimize("", on)
@@ -141,6 +189,12 @@ int NetworkMessage::handle_message_0(char *buffer, int client_socket, char *ip, 
     unsigned char* aad = (unsigned char*)malloc(aad_len);
     if(!aad) {
         cerr<<"AAD Allocation Error (Send 1)";
+        EVP_PKEY_free(dh_pubkey_server);
+        free(certificate_serialized);
+        client->set_server_pubk(nullptr);
+        client->set_client_server_pubk(nullptr);
+        free(dh_pubkey_server_serialized);
+        EVP_PKEY_free(peer_pubk);
         free(iv);
         #pragma optimize("", off)
         memset(shared_key, 0, shared_key_len);
@@ -161,14 +215,37 @@ int NetworkMessage::handle_message_0(char *buffer, int client_socket, char *ip, 
     unsigned char* tag = nullptr;
     int ciphertext_len = Security::gcm_encrypt(aad, aad_len, signature, signature_len, shared_key,
                           iv, &ciphertext, &tag);
-
+    if (ciphertext_len == -1){
+        cerr<<"Encryption Error (Send 1)";
+        EVP_PKEY_free(dh_pubkey_server);
+        free(certificate_serialized);
+        client->set_server_pubk(nullptr);
+        client->set_client_server_pubk(nullptr);
+        free(dh_pubkey_server_serialized);
+        EVP_PKEY_free(peer_pubk);
+        free(iv);
+        free(aad);
+        #pragma optimize("", off)
+        memset(shared_key, 0, shared_key_len);
+        #pragma optimize("", on)
+        free(shared_key);
+        return -1;
+    }
     int msg_buffer_len =  aad_len+ciphertext_len+Security::GCM_TAG_LEN;
     char* msg_buffer = nullptr;
     msg_buffer = (char*)malloc(msg_buffer_len);
     if(!msg_buffer) {
         cerr<<"Message Buffer Allocation Error (Send 1)";
+        EVP_PKEY_free(dh_pubkey_server);
+        free(certificate_serialized);
+        client->set_server_pubk(nullptr);
+        client->set_client_server_pubk(nullptr);
+        free(dh_pubkey_server_serialized);
+        EVP_PKEY_free(peer_pubk);
         free(iv);
         free(aad);
+        free(tag);
+        free(ciphertext);
         #pragma optimize("", off)
         memset(shared_key, 0, shared_key_len);
         #pragma optimize("", on)
@@ -182,11 +259,15 @@ int NetworkMessage::handle_message_0(char *buffer, int client_socket, char *ip, 
     //send the message to the client
     if (send(client->get_socket(), msg_buffer, msg_buffer_len, 0) != msg_buffer_len){
         cerr<<"Socket Error (Send 1)";
+        client->set_server_pubk(nullptr);
+        client->set_client_server_pubk(nullptr);
         free(msg_buffer);
         free(aad);
         free(ciphertext);
         free(certificate_serialized);
         free(dh_pubkey_server_serialized);
+        EVP_PKEY_free(dh_pubkey_server);
+        EVP_PKEY_free(peer_pubk);
         free(tag);
         free(iv);
         #pragma optimize("", off)
@@ -204,6 +285,7 @@ int NetworkMessage::handle_message_0(char *buffer, int client_socket, char *ip, 
     free(dh_pubkey_server_serialized);
     free(tag);
     free(iv);
+    online_users->insert(online_users->begin(), client);
     #pragma optimize("", off)
     memset(shared_key, 0, shared_key_len);
     #pragma optimize("", on)
@@ -248,10 +330,11 @@ int NetworkMessage::handle_message_1(char *buffer, int buffer_len, User *client)
         cerr<<"Public Key Deserialization Error (Handle 1)"<<endl;
         free(iv);
         EVP_PKEY_free(server_dh_pubkey);
+        free(server_dh_pubkey_serialized);
         return -1;
     }
     client->set_server_pubk(server_dh_pubkey);
-
+    free(server_dh_pubkey_serialized);
     
     // compute symmetric key with DH pubkey
     unsigned char* skey = nullptr;
@@ -261,8 +344,10 @@ int NetworkMessage::handle_message_1(char *buffer, int buffer_len, User *client)
         free(iv);
         free(skey);
         EVP_PKEY_free(server_dh_pubkey);
+        client->set_server_pubk(nullptr);
         return -1;
     }
+    client->set_server_pubk(server_dh_pubkey);
     client->set_server_client_key(skey, skey_len);
 
     //verify tag and decrypt signature
@@ -270,7 +355,17 @@ int NetworkMessage::handle_message_1(char *buffer, int buffer_len, User *client)
     int aad_len= MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN + server_certificate_serialized.length() + 1 + DH_PUBK_LENGTH;
 
     int signature_len = Security::gcm_decrypt((unsigned char*)buffer, aad_len, ciphertext,ciphertext_len, skey, iv, &signature, tag);
-
+    if(signature_len == -1){
+        cerr<<"Decryption Error (Handle 1)"<<endl;
+        free(iv);
+        #pragma optimize("", off)
+        memset(skey, 0, skey_len);
+        #pragma optimize("", on)
+        free(skey);
+        client->set_server_pubk(nullptr);
+        client->set_server_client_key(nullptr, 0);
+        return -1;
+    }
    
     // server certificate validation
     X509* cert = nullptr;
@@ -278,8 +373,12 @@ int NetworkMessage::handle_message_1(char *buffer, int buffer_len, User *client)
     if(!Security::certificate_verification(cert)) {
         cerr<<"Certificate Deserialization Error (Handle 1)"<<endl;
         free(iv);
+        #pragma optimize("", off)
+        memset(skey, 0, skey_len);
+        #pragma optimize("", on)
         free(skey);
-        EVP_PKEY_free(server_dh_pubkey);
+        client->set_server_pubk(nullptr);
+        client->set_server_client_key(nullptr, 0);
         free(signature);
         return -1;
     }
@@ -292,21 +391,28 @@ int NetworkMessage::handle_message_1(char *buffer, int buffer_len, User *client)
     if(serialized_pair_len==-1) {
         cerr<<"Serialization Concatenation Error (Handle 1)"<<endl;
         free(iv);
+        #pragma optimize("", off)
+        memset(skey, 0, skey_len);
+        #pragma optimize("", on)
         free(skey);
-        EVP_PKEY_free(server_dh_pubkey);
-        X509_free(cert);
+        client->set_server_pubk(nullptr);
+        client->set_server_client_key(nullptr, 0);
         free(signature);
-        free(serialized_pair);
+        X509_free(cert);
         return -1;
     }
 
     if(!Security::verify_signature(X509_get0_pubkey(cert), signature, signature_len, (unsigned char*)serialized_pair, serialized_pair_len)) {
         cerr<<"Certification Verification Error (Handle 1)"<<endl;
         free(iv);
+        #pragma optimize("", off)
+        memset(skey, 0, skey_len);
+        #pragma optimize("", on)
         free(skey);
-        EVP_PKEY_free(server_dh_pubkey);
-        X509_free(cert);
+        client->set_server_pubk(nullptr);
+        client->set_server_client_key(nullptr, 0);
         free(signature);
+        X509_free(cert);
         free(serialized_pair);
         return -1;
     }
@@ -320,8 +426,12 @@ int NetworkMessage::handle_message_1(char *buffer, int buffer_len, User *client)
     unsigned char* aad_resp = (unsigned char*) malloc(aad_resp_len);
     if(!aad_resp) {
         cerr<<"AAD Allocation Error (Send 2)";
+        #pragma optimize("", off)
+        memset(skey, 0, skey_len);
+        #pragma optimize("", on)
         free(skey);
-        EVP_PKEY_free(server_dh_pubkey);
+        client->set_server_pubk(nullptr);
+        client->set_server_client_key(nullptr, 0);
         return -1;
     }
 
@@ -331,7 +441,17 @@ int NetworkMessage::handle_message_1(char *buffer, int buffer_len, User *client)
     *counter_resp = client->get_client_counter();
 
     unsigned char* iv_answ= nullptr;
-    Security::generate_iv(&iv_answ, Security::GCM_IV_LEN);
+    if(!Security::generate_iv(&iv_answ, Security::GCM_IV_LEN)){
+        cerr<<"IV Generation Error (Send 2)";
+        #pragma optimize("", off)
+        memset(skey, 0, skey_len);
+        #pragma optimize("", on)
+        free(skey);
+        client->set_server_pubk(nullptr);
+        client->set_server_client_key(nullptr, 0);
+        free(aad_resp);
+        return -1;
+    }
     memcpy(aad_resp+MESSAGE_TYPE_LENGTH+COUNTER_LENGTH, iv_answ, Security::GCM_IV_LEN);
 
     //generate the concatenation and sign it
@@ -339,10 +459,15 @@ int NetworkMessage::handle_message_1(char *buffer, int buffer_len, User *client)
     int concat_len = Security::serialize_concat_dh_pubkey(client->get_server_pubk(), client->get_client_server_pubk(), &concat);
     if(concat_len==-1) {
         cerr<<"Serialization Concatenation Error (Send 2)";
+        #pragma optimize("", off)
+        memset(skey, 0, skey_len);
+        #pragma optimize("", on)
         free(skey);
+        client->set_server_pubk(nullptr);
+        client->set_server_client_key(nullptr, 0);
+        free(aad_resp);
         free(iv_answ);
         free(aad_resp);
-        EVP_PKEY_free(server_dh_pubkey);
         return -1;
     }
     
@@ -352,12 +477,17 @@ int NetworkMessage::handle_message_1(char *buffer, int buffer_len, User *client)
                                                 (unsigned char*)concat, concat_len, &signature_answ);
     if(signature_answ_len==-1) {
         cerr<<"Signature Signing Error (Send 2)";
+        #pragma optimize("", off)
+        memset(skey, 0, skey_len);
+        #pragma optimize("", on)
         free(skey);
+        client->set_server_pubk(nullptr);
+        client->set_server_client_key(nullptr, 0);
+        free(aad_resp);
         free(iv_answ);
         free(aad_resp);
         free(concat);
         free(signature_answ);
-        EVP_PKEY_free(server_dh_pubkey);
         return -1;
     }
 
@@ -368,12 +498,16 @@ int NetworkMessage::handle_message_1(char *buffer, int buffer_len, User *client)
     int ciphertext_answ_len = Security::gcm_encrypt(aad_resp, aad_resp_len, signature_answ, signature_answ_len, skey, iv_answ, &ciphertext_answ, &tag_answ);
     if(ciphertext_answ_len==-1) {
         cerr<<"Encryption Error (Send 2)";
+        #pragma optimize("", off)
+        memset(skey, 0, skey_len);
+        #pragma optimize("", on)
         free(skey);
+        client->set_server_pubk(nullptr);
+        client->set_server_client_key(nullptr, 0);
         free(iv_answ);
         free(aad_resp);
         free(concat);
         free(signature_answ);
-        EVP_PKEY_free(server_dh_pubkey);
         return -1;
     }
 
@@ -383,14 +517,18 @@ int NetworkMessage::handle_message_1(char *buffer, int buffer_len, User *client)
     char* msg_to_send = (char*) malloc(msg_len);
     if(!msg_to_send) {
         cerr<<"Message Buffer Allocation Error (Send 2)";
+        cerr<<"Encryption Error (Send 2)";
+        #pragma optimize("", off)
+        memset(skey, 0, skey_len);
+        #pragma optimize("", on)
         free(skey);
-        free(iv_answ);
+        client->set_server_pubk(nullptr);
+        client->set_server_client_key(nullptr, 0);
         free(aad_resp);
         free(concat);
         free(signature_answ);
         free(ciphertext_answ);
         free(tag_answ);
-        EVP_PKEY_free(server_dh_pubkey);
         return -1;
     }
 
@@ -403,13 +541,21 @@ int NetworkMessage::handle_message_1(char *buffer, int buffer_len, User *client)
 
     //send the message
     if(send(client->get_socket(), msg_to_send, msg_len, 0) != msg_len){
-        cerr<<"Socket Error (Send 2)";
-        free(msg_to_send);
+       cerr<<"Message Buffer Allocation Error (Send 2)";
+        cerr<<"Encryption Error (Send 2)";
+        #pragma optimize("", off)
+        memset(skey, 0, skey_len);
+        #pragma optimize("", on)
+        free(skey);
+        client->set_server_pubk(nullptr);
+        client->set_server_client_key(nullptr, 0);
         free(concat);
         free(signature_answ);
+        EVP_PKEY_free(server_dh_pubkey);
         return -1;
     }
-
+    client->set_server_pubk(nullptr);
+    client->set_client_server_pubk(nullptr);
     client->increment_client_counter();
     free(msg_to_send);
     free(concat);
@@ -450,6 +596,7 @@ int NetworkMessage::handle_message_2(char *buffer, int buffer_len, User *client)
     int concatenated_len = Security::serialize_concat_dh_pubkey(client->get_server_pubk(), client->get_client_server_pubk(), &concatenated);
     if (concatenated_len==-1) {
         cerr<<"Serialization Concatenation Error (Handle 2)"<<endl;
+        free(signature);
         return -1;
     }
 
@@ -457,12 +604,17 @@ int NetworkMessage::handle_message_2(char *buffer, int buffer_len, User *client)
     string file_addr = "./users/"+client->get_username()+"/rsa_pubkey.pem";
     FILE* pubkey_file = fopen(file_addr.c_str(), "r");
     if(!pubkey_file) {
+        free(signature);
+        free(concatenated);
+        printf("User %s not registered", client->get_username().c_str());
         printf("User %s not registered", client->get_username().c_str());
         return -1;
     }
     EVP_PKEY* evpPkey;
     evpPkey= PEM_read_PUBKEY(pubkey_file, NULL, NULL, NULL);
     if(!evpPkey) {
+        free(signature);
+        free(concatenated);
         printf("Error: pubkey of user %s not loaded correctly", client->get_username().c_str());
         fclose(pubkey_file);
         return -1;
@@ -471,9 +623,16 @@ int NetworkMessage::handle_message_2(char *buffer, int buffer_len, User *client)
 
     if(!Security::verify_signature(evpPkey, signature, signature_len, (unsigned char*)concatenated, concatenated_len)) {
         cerr<<"Signature Verification Error (Handle 2)"<<endl;
+        free(signature);
+        free(concatenated);
         return -1;
     }
+    free(signature);
+    free(concatenated);
+
     client->set_status(ONLINE);
+    client->set_server_pubk(nullptr); 
+    client->set_client_server_pubk(nullptr);
     return 1;
 
 }
@@ -502,6 +661,7 @@ int NetworkMessage::send_message_3(User * my_user) {
     char * aad = (char*)malloc(aad_len);
     if(!aad) {
         cerr<<"AAD Allocation Error (Send 3)"<<endl;
+        free(iv);
         return -1;
     }    
     aad[0] = 3;
@@ -602,7 +762,7 @@ int NetworkMessage::send_message_4(User* receiver, vector<User*>online_users) {
     unsigned char* iv{nullptr};
     if(!Security::generate_iv(&iv, Security::GCM_IV_LEN)){
         cerr<< "IV Generation Error (Send 4)!" <<endl;
-        return 0;
+        return -1;
     }
 
     // msg creation
@@ -610,7 +770,7 @@ int NetworkMessage::send_message_4(User* receiver, vector<User*>online_users) {
     char * aad = (char*)malloc(aad_len);
     if(!aad) {
         cerr<< "AAD Allocation Error (Send 4)!" <<endl;
-        return 0;
+        return -1;
     }    
     aad[0] = 4;
     uint16_t * counter_pointer = (uint16_t *) (aad + MESSAGE_TYPE_LENGTH);
@@ -640,7 +800,7 @@ int NetworkMessage::send_message_4(User* receiver, vector<User*>online_users) {
         free(act_usr_pt);    
         free(iv);
         free(aad);
-        return 0;
+        return -1;
     } 
     int msg_buf_len = aad_len + act_usr_ct_len + Security::GCM_TAG_LEN;
     char * msg_buf = (char*)malloc(msg_buf_len);

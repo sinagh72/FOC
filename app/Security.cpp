@@ -1,4 +1,5 @@
 #include "Security.h"
+#include <openssl/x509.h>
 
 const EVP_CIPHER* const Security::AES_CIPHER = EVP_aes_256_cbc();
 const int Security::AES_IV_LEN = EVP_CIPHER_iv_length(Security::AES_CIPHER);
@@ -481,6 +482,7 @@ int Security::X509_serialization(X509 *cert, unsigned char **buffer) {
     memset(*buffer+cert_size, 0, 1);
 
     BIO_free(bio);
+    X509_free(cert);
     return cert_size+1;
 }
 
