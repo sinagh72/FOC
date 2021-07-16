@@ -21,7 +21,7 @@ bool get_available_users(User*  my_user, vector<string> &usernames) {
         return false;
     }else if (onlines == 0){
         cout << "There is no available User" << endl;
-        false
+        return false;
     }
     return true;
 }

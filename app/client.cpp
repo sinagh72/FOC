@@ -7,7 +7,7 @@
 #include <fstream>
 #include <sys/stat.h>
 #include <vector>
-#include "Message.h"
+#include "NetworkMessage.h"
 
 #define PORT 8888
 #define MSEC 10000 
