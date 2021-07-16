@@ -1,5 +1,5 @@
 #include "NetworkMessage.h"
-#include <cstdlib>
+//#include <cstdlib>
 
 //sent by the client A
 int NetworkMessage::send_message_0(char **buffer, User* my_user) {
@@ -2686,6 +2686,7 @@ int NetworkMessage::send_message_17(User* my_user){
     if(!aad){
         free(iv);
         cerr<< "AAD Allocation Error (Send 17)" <<endl;
+        return -1;
     }
     
     aad[0] = 17;

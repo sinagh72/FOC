@@ -11,3 +11,4 @@
 14- check user input more than 10k 
 15- Change establish handshake function in client.cpp //sina
 19- remove test files
+20- split .h and .cpp in all file
