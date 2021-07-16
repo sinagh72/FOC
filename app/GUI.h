@@ -44,8 +44,7 @@ void main_menu(User* my_user, vector<string> &usernames){
         }
     }
 
-    cout<<"Type the character corrisponding to the wanted action or the number of the user you want to chat with:"<<endl;
-    cout<< "> ";
+    cout<<"Type the character corrisponding to the wanted action or the number of the user you want to chat with: "<<endl<< "Input: ";
 }
 
 bool establish_handshake_clients(User * my_user, string receiver_username){
@@ -138,12 +137,28 @@ void select_main_menu(User* my_user, vector<string> &usernames) {
     FD_ZERO(&rfds);
     FD_SET(0, &rfds);
     FD_SET(my_user->get_socket(), &rfds);
-
-    retval = select(2, &rfds, NULL, NULL, NULL);
+    
+    int max_sock = max(my_user->get_socket(), 0) +1 ;
+    
+    retval = select(max_sock, &rfds, NULL, NULL, NULL);
 
     if (retval == -1)
         perror("Error in select()");
     else if (retval)
+        if(FD_ISSET(my_user->get_socket(), &rfds)) {
+            // message coming from server (at this stage should be a request to talk)
+            int out = NetworkMessage::handle_message_6(my_user);
+            if(-1 == out){
+                return;
+            }else if(out > 0){
+                if(-1 == NetworkMessage::handle_message_10(my_user)){
+                    cout << "Error in Establishing Secure Connection (10)" <<endl;
+                    return;
+                }
+                cout <<"Secure Connection between You and " << my_user->get_peer_username() <<" is Established!" <<endl;
+            }
+        }
+
         if(FD_ISSET(0, &rfds)) {
             // ready input coming from keyboard
             //we give priority to the user will
@@ -177,21 +192,6 @@ void select_main_menu(User* my_user, vector<string> &usernames) {
             //if (established) 
                 //send_secure();
             
-        }
-
-        if(FD_ISSET(my_user->get_socket(), &rfds)) {
-            cin_flush();
-            // message coming from server (at this stage should be a request to talk)
-            int out = NetworkMessage::handle_message_6(my_user);
-            if(-1 == out){
-                return;
-            }else if(out > 0){
-                if(-1 == NetworkMessage::handle_message_10(my_user)){
-                    cout << "Error in Establishing Secure Connection (10)" <<endl;
-                    return;
-                }
-                cout <<"Secure Connection between You and " << my_user->get_peer_username() <<" is Established!" <<endl;
-            }
         }
 
 }
