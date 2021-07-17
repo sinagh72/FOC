@@ -1,15 +1,5 @@
-#ifndef APP_GUI_H
-#define APP_GUI_H
+#include "CLI.h"
 
-#include <cstddef>
-#include <cstdlib>
-#include <unistd.h>
-#include <vector>
-#include <arpa/inet.h>
-#include <limits>
-#include "NetworkMessage.h"
-#include "user.h"
-#include "utility.h"
 
 bool get_available_users(User*  my_user, vector<string> &usernames) {
     usernames.clear();
@@ -247,5 +237,3 @@ void select_main_menu(User* my_user, vector<string> &usernames) {
         }
 
 }
-
-#endif

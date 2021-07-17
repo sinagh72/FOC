@@ -8,7 +8,7 @@
 #include <sys/stat.h>
 #include <vector>
 #include "NetworkMessage.h"
-#include "GUI.h"
+#include "CLI.h"
 
 #define PORT 8888
 #define MSEC 10000 

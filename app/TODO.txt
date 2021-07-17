@@ -1,12 +1,11 @@
 1- received message buffer freed outside the handle function
-2- not ask buffer(as a parameter) in send_message_0
 3- handle errors
 9- review code (message 0 to 3 is checked by sina)
 10- BAN LOGIC
-20- split .h and .cpp in all file
 21- check if user is already connected from another session: completed in server, and server is sending an non authenticated
  message to client
 22- VERIFY THE ACTUAL TYPE OF THE INCOMING MESSAGE
-23- set my_user status in client (check status changes)
+23- set my_user status in client (check status changes) //should be done
 24- create error message
 25- Check cin_flush is necessary or not
+26- usleep is not POSIX standard (not portable)
