@@ -19,7 +19,6 @@ bool check_user_input(const string& input, int nOption){
 }
 
 
-
 User* find_user(string username, vector<User*>*users){
     for (User* usr : *users) // access by reference to avoid copying
     {  

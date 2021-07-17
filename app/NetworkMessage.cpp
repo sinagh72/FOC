@@ -1,6 +1,5 @@
 #include "NetworkMessage.h"
 #include <cstdio>
-#include <openssl/bio.h>
 #include <openssl/x509.h>
 #include <unistd.h>
 
@@ -891,7 +890,8 @@ int NetworkMessage::handle_message_4(User * my_user, vector<string>*usernames){
 int NetworkMessage::send_message_5(User* my_user, string receiver_username){
     my_user->set_status(RTT);
     usleep(DELAY);
-    if(my_user->get_client_counter() > UINT16_MAX - 4){ //1 for message 5, 1 for message 17, 1 for message 9, 1 for extra message
+    //1 for message 5, 1 for message 17, 1 for message 9, 1 for message 16, 1 for extra
+    if(my_user->get_client_counter() > UINT16_MAX - 5){ 
         cout << "The Communication Between You and The Server is Not Secure Anymore."; 
         cout << "The Session Will Been Terminated Now" <<endl;
         cout << "You Will be Loged out Automatically!" <<endl;
@@ -981,6 +981,7 @@ int NetworkMessage::send_message_5(User* my_user, string receiver_username){
         return -1;
     }
     my_user->increment_client_counter();
+    my_user->set_peer_username(receiver_username);
     free(aad);
     free(iv);
     free(gcm_plaintext);
@@ -1188,7 +1189,7 @@ int NetworkMessage::handle_message_6(char * message, size_t message_len, User*my
 //sent by the client B
 int NetworkMessage::send_message_7(User* my_user){
     usleep(DELAY);
-    if(my_user->get_client_counter() > UINT16_MAX - 3){ //1 for message 7, 1 for message 17, 1 for extra message
+    if(my_user->get_client_counter() > UINT16_MAX - 4){ //1 for message 7, 1 for message 17, 1 for 16 message
         cout << "The Communication Between You and The Server is Not Secure Anymore."; 
         cout << "The Session Will Been Terminated Now" <<endl;
         cout << "You Will be Loged out Automatically!" <<endl;
@@ -1732,6 +1733,10 @@ int NetworkMessage::handle_message_8(char* message, size_t message_len, User * m
     memset(clients_key, 0, clients_key_len);
     #pragma optimize("", on)
     free(clients_key);
+
+    if(-1 == NetworkMessage::send_message_9(my_user)){
+        my_user->set_status(ONLINE);
+    }
     return 1;
 }
 //sent by a client A
@@ -2151,7 +2156,7 @@ int NetworkMessage::handle_message_10(User* my_user){
 //sent by client B to the server 
 int NetworkMessage::send_message_11(User* my_user){
     usleep(DELAY);
-    if(my_user->get_client_counter() > UINT16_MAX - 2){ //1 for message 11, 1 for message 17
+    if(my_user->get_client_counter() > UINT16_MAX - 4){ //1 for message 11, 1 for message 17 and 1 for 16
         cout << "The Communication Between You and The Server is Not Secure Anymore."; 
         cout << "The Session Will Been Terminated Now" <<endl;
         cout << "You Will be Loged out Automatically!" <<endl;
@@ -2396,18 +2401,15 @@ int NetworkMessage::handle_message_12(char* message, size_t message_len, User*my
     }
     string sender_username = decryptedtext_str.substr(0,
                                 decryptedtext_str.length() - my_user->get_username().length());
-    my_user->set_peer_username("");
-    my_user->set_clients_pubk_char(nullptr);
-    my_user->set_clients_pubk(nullptr);
+    my_user->clear_peer();
     cout<< sender_username <<" Decliend Your Request to Chat!" <<endl;
-    my_user->set_status(ONLINE);
     return 1;
 }
 
 //sent by client A to the server 
 int NetworkMessage::send_message_13(unsigned char* message, size_t message_len, User* my_user){
     usleep(DELAY);
-    if(my_user->get_client_counter() > UINT16_MAX - 2){ //1 for message 13, 1 for message 17,
+    if(my_user->get_client_counter() > UINT16_MAX - 4){ //1 for message 13, 1 for message 17, 1 for 16
         cout << "The Communication Between You and The Server is Not Secure Anymore."; 
         cout << "The Session Will Been Terminated Now" <<endl;
         cout << "You Will be Loged out Automatically!" <<endl;
@@ -2700,7 +2702,7 @@ int NetworkMessage::handle_message_14(char* message, size_t message_len, User * 
 //sent by client A to the server 
 int NetworkMessage::send_message_15(User* my_user){
     usleep(DELAY);
-    if(my_user->get_client_counter() > UINT16_MAX - 2){ //1 for message 15, 1 for message 17,
+    if(my_user->get_client_counter() > UINT16_MAX - 4){ //1 for message 15, 1 for message 17, one for 16
         cout << "The Communication Between You and The Server is Not Secure Anymore."; 
         cout << "The Session Will Been Terminated Now" <<endl;
         cout << "You Will be Loged out Automatically!" <<endl;
@@ -2772,16 +2774,7 @@ int NetworkMessage::send_message_15(User* my_user){
     free(gcm_plaintext);
     free(gcm_ciphertext);
     free(tag);
-    my_user->set_peer_username("");
-    my_user->set_clients_key(nullptr, 0);
-    my_user->clear_send_counter();
-    my_user->clear_receive_counter();
-    my_user->set_clients_pubk_char(nullptr);
-    my_user->set_clients_pubk(nullptr);
-    my_user->set_peer_pubk_char(nullptr);
-    my_user->set_peer_pubk(nullptr);
-    my_user->set_clients_pubk(nullptr);
-    my_user->set_status(ONLINE);
+    my_user->clear_peer();
     return message_buf_len;
 }
 //recevied by the server 
@@ -2955,17 +2948,8 @@ int NetworkMessage::handle_message_16(char* message, size_t message_len, User*my
     }
     string sender_username = decryptedtext_str.substr(0,
                                 decryptedtext_str.length() - my_user->get_username().length());
-    cout << "\n" <<my_user->get_peer_username() << " has logged out!" << endl<< endl;
-    my_user->set_peer_username("");
-    my_user->set_clients_key(nullptr, 0);
-    my_user->clear_send_counter();
-    my_user->clear_receive_counter();
-    my_user->set_clients_pubk_char(nullptr);
-    my_user->set_clients_pubk(nullptr);
-    my_user->set_peer_pubk_char(nullptr);
-    my_user->set_peer_pubk(nullptr);
-    my_user->set_clients_pubk(nullptr);
-    my_user->set_status(ONLINE);
+    cout << "\n" <<my_user->get_peer_username() << " has exited the chat!" << endl<< endl;
+    my_user->clear_peer();
     return 1;
 }
 
@@ -3086,6 +3070,13 @@ int NetworkMessage::handle_message_17(char * message, size_t message_len, User* 
 
 //sent by the server 
 int NetworkMessage::send_error_message(unsigned char * message, size_t message_len, User* receiver){
+    if(receiver->get_server_counter() > UINT16_MAX - 4){ //1 for error message, 1 for message 17, 1 for 16
+        cout << "The Communication Between You and The Server is Not Secure Anymore."; 
+        cout << "The Session Will Been Terminated Now" <<endl;
+        cout << "You Will be Loged out Automatically!" <<endl;
+        if(send_message_17(receiver) == -1)
+            receiver->clear();
+    }
     usleep(DELAY);
     //initialization vector
     unsigned char* iv{nullptr};
@@ -3139,8 +3130,7 @@ int NetworkMessage::send_error_message(unsigned char * message, size_t message_l
         return -2;
     }
     ////
-    receiver->increment_server_counter();
-    receiver->set_status(ONLINE);
+    receiver->clear_peer();
     free(aad);
     free(iv);
     free(gcm_ciphertext);
@@ -3148,7 +3138,7 @@ int NetworkMessage::send_error_message(unsigned char * message, size_t message_l
     free(tag);
     return message_buf_len;
 }
-
+//received by the client 
 int NetworkMessage::handle_error_message(char * message, size_t message_len, User* my_user){
     usleep(DELAY);
     int i;

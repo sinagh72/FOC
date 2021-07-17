@@ -102,6 +102,19 @@ void User::clear(){
     set_server_client_key(nullptr, 0);
 
 }
+
+void User::clear_peer(){
+    this->set_status(ONLINE);
+    this->clients_pubk = nullptr;
+    this->peer_username.clear();
+    this->send_counter = 0;
+    this->receive_counter = 0;
+    this->peer_pubk = nullptr;
+    set_peer_pubk_char(nullptr);
+    set_clients_pubk_char(nullptr);
+    set_clients_key(nullptr, 0);
+}
+
 User::~User(){
     set_peer_pubk_char(nullptr);
     set_clients_pubk_char(nullptr);

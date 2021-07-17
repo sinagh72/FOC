@@ -302,6 +302,8 @@ public:
     bool replay_check(bool from_server, uint16_t server_counter);
     //this method is called when the user has logged out in order to clear any data inside the client!
     void clear();
+    //this method is called when the user want exit the communication with another client!
+    void clear_peer();
     //destructor
     ~User();
 };

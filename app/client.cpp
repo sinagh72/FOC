@@ -65,7 +65,7 @@ int main(int argc, char const *argv[])
     if(!connect_to_server(username, password, IP.c_str(), PORT, &my_user)){
         exit(EXIT_FAILURE);
     };
-    
+    cout<<"Welcome "+ my_user->get_username() <<endl<<endl;
     string input;
     string input_username;
     vector<string> usernames;

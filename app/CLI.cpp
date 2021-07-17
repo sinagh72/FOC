@@ -4,7 +4,7 @@
 bool get_available_users(User*  my_user, vector<string> &usernames) {
     usernames.clear();
     if(NetworkMessage::send_message_3(my_user) == -1){
-        cout<< "Error in sending online user request (maybe server is offline)" <<endl;
+        cout<< "Error in sending online user request" <<endl;
         return false;
     }
     
@@ -19,15 +19,13 @@ bool get_available_users(User*  my_user, vector<string> &usernames) {
 }
 
 void main_menu(User* my_user, vector<string> &usernames){
-    // system("clear");
-    // cout<<"Welcome "+ my_user->get_username() <<endl<<endl;
     if(my_user->get_status() == CHATTING){
        
     }else if(my_user->get_status() == RTT){
 
     }else{
-        system("clear");
-        cout<<"Welcome "+ my_user->get_username() <<endl<<endl;
+        //system("clear");
+        // cout<<"Welcome "+ my_user->get_username() <<endl<<endl;
         cout << "You can: " <<endl;
         cout << "r : refresh the list of avaiable users" <<endl;
         cout << "x : exit the application" <<endl<<endl;
@@ -44,41 +42,6 @@ void main_menu(User* my_user, vector<string> &usernames){
     }
 
   
-}
-
-bool establish_handshake_clients(User * my_user, string receiver_username){
-    int val_read = 0;
-    my_user->set_status(RTT);
-    if (NetworkMessage::send_message_5(my_user, receiver_username) == -1){
-        return false;
-    }
-    cout<<endl<<"Request to talk sent to "<<receiver_username<<endl;
-    char buffer[MAX_MESSAGE_LENGTH] = {0};
-    val_read = read(my_user->get_socket() , buffer, MAX_MESSAGE_LENGTH);
-    if(val_read < 0){
-        cout << "Server is Down. Try Again Later" <<endl;
-        exit(EXIT_FAILURE);
-    }
-    if(buffer[0] == 8){
-        if(-1 == NetworkMessage::handle_message_8(buffer, val_read, my_user)){
-            my_user->set_status(ONLINE);
-            return false;
-        }
-        if(-1 == NetworkMessage::send_message_9(my_user)){
-            my_user->set_status(ONLINE);
-            return false;
-        }
-        cout <<"\nSecure Connection between You and " << receiver_username <<" is Established!"<<endl;
-        cout<< "You can type /q to close the chat and return to main menu"<<endl;
-        cout<<"You May Now Start Chatting:" <<endl<<endl;
-        my_user->set_status(CHATTING);
-        return true;
-    }else if(buffer[0] == 12){
-        if(-1 == NetworkMessage::handle_message_12(buffer, val_read, my_user)){
-            return false;
-        }
-    }
-    return false;
 }
 
 bool connect_to_server(string username, string password, const char* IP, const int PORT, User** my_user) {
@@ -103,7 +66,7 @@ bool connect_to_server(string username, string password, const char* IP, const i
    
     if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
     {
-        cout << "Server is Down. Try Again Later" <<endl;
+        cerr << "Server is Down. Try Again Later" <<endl;
         return false;
     }
     //creating the user
@@ -123,7 +86,7 @@ bool connect_to_server(string username, string password, const char* IP, const i
     free(buffer);
 
     //now the key between server and the client is established
-    cout <<"\nSecure Connection is Established\n" <<endl;
+    cout <<"\nSecure connection is established\n" <<endl;
     return true;
 }
 
@@ -170,10 +133,18 @@ void select_main_menu(User* my_user, vector<string> &usernames) {
                     if(-1 == NetworkMessage::handle_message_10(my_user)){ 
                         break;
                     }
-                    cout <<"\nSecure Connection between You and " << my_user->get_peer_username() <<
-                    " is Established!"<<endl;
+                    cout <<"\nSecure connection between you and " << my_user->get_peer_username() <<" is established!"<<endl;
                     cout<< "You can type /q to close the chat and return to main menu"<<endl;
-                    cout<<"You May now Start Chatting:" <<endl<<endl;
+                    cout<<"You may now start chatting:" <<endl<<endl;
+                    break;
+                case 8:
+                    if(my_user->get_status() != RTT) break;
+                    if(-1 == NetworkMessage::handle_message_8(message, val_read, my_user)){
+                        my_user->set_status(ONLINE);
+                    }
+                    cout <<"\nSecure connection between you and " << my_user->get_peer_username() <<" is established!"<<endl;
+                    cout<< "You can type /q to close the chat and return to main menu"<<endl;
+                    cout<<"You may now start chatting:" <<endl<<endl;
                     break;
                 case 12:
                     if(my_user->get_status() == CHATTING) break;
@@ -238,11 +209,17 @@ void select_main_menu(User* my_user, vector<string> &usernames) {
             }
             
             if(!check_user_input(input, usernames.size())) {
-                cout<< "Invalid input, try again"<<endl;
+                cout<< "Invalid input, Try again"<<endl;
                 // sleep(1);
                 return;
             }
-            establish_handshake_clients(my_user, usernames.at(stoi(input)));
+             my_user->set_status(RTT);
+            if (NetworkMessage::send_message_5(my_user, usernames.at(stoi(input))) == -1){
+                return;
+            }
+            cout<<endl<<"Request to talk has been sent to "<< usernames.at(stoi(input))<< " sucessfully" <<endl;
+
+            //establish_handshake_clients(my_user, );
         }
 
 }
