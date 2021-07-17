@@ -145,11 +145,12 @@ int main(int argc , char* argv[]) {
             }
             free(buffer);
            
-        }  
+        } 
+        bool removed = false;
         //else its some IO operation on some other socket
         for(auto it = online_users.begin(); it != online_users.end();){
             int sd = (*it)->get_socket(); 
-            bool removed = false;
+            removed = false;
             if (FD_ISSET( sd , &readfds)){  
                 //Check if it was for closing , and also read the 
                 //incoming message 
@@ -195,18 +196,24 @@ int main(int argc , char* argv[]) {
                             break;
                         case 3:
                             if(NetworkMessage::handle_message_3(buffer, valread, (*it), online_users) == -1){
+                                string err_msg = "Server Cannot Handle Your Request";
+                                NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), (*it));
                                 break;
                             }
                             break;
                         case 5:
                             if(NetworkMessage::handle_message_5(buffer, valread, (*it), online_users) == -1){
                                 (*it)->set_status(ONLINE);
+                                string err_msg = "Server Cannot Handle Your Request";
+                                NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), (*it));
                                 break;
                             }
                             break;
                         case 7:
                             if(NetworkMessage::handle_message_7(buffer, valread, (*it), online_users) == -1){
                                 (*it)->set_status(ONLINE);
+                                string err_msg = "Server Cannot Handle Your Request";
+                                NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), (*it));
                                 break;
                             }
                             break;
