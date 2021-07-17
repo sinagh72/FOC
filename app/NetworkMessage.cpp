@@ -2636,7 +2636,7 @@ int NetworkMessage::send_message_15(User* my_user){
         cout << "You Will be Loged out Automatically!" <<endl;
         if(send_message_17(my_user) == -1)
             my_user->clear();
-        exit(1);
+        exit(EXIT_FAILURE);
     } 
     //initialization vector
     unsigned char* iv{nullptr};

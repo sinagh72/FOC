@@ -38,6 +38,8 @@ void main_menu(User* my_user, vector<string> &usernames){
     }else if(my_user->get_status() == RTT){
 
     }else{
+        system("clear");
+        cout<<"Welcome "+ my_user->get_username() <<endl<<endl;
         cout << "You can: " <<endl;
         cout << "r : refresh the list of avaiable users" <<endl;
         cout << "x : exit the application" <<endl<<endl;
@@ -172,7 +174,8 @@ void select_main_menu(User* my_user, vector<string> &usernames) {
                         break;
                     }
                     cout <<"\nSecure Connection between You and " << my_user->get_peer_username() <<
-                    " is Established!\nYou May now Sart Chatting:\n" <<endl;
+                    " is Established!"<<endl;
+                    cout<<"You May now Start Chatting:" <<endl<<endl;
                     break;
                 case 12:
                     if(my_user->get_status() == CHATTING) break;
@@ -203,6 +206,10 @@ void select_main_menu(User* my_user, vector<string> &usernames) {
             if (my_user->get_status() == CHATTING){
                 getline(cin, input);
                 if(input.empty()) return;
+                if(input.compare("/q")) {
+                    NetworkMessage::send_message_15(my_user);
+                    return;
+                };
                 size_t len = (input.length() > MAX_CHARS) ? MAX_CHARS : input.length();
                 do{
                     if(NetworkMessage::send_message_13((unsigned char *)input.substr(0, len).c_str(), len ,my_user) == -1){
