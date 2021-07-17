@@ -77,7 +77,9 @@ bool establish_handshake_clients(User * my_user, string receiver_username){
         if(-1 == NetworkMessage::send_message_9(my_user)){
             return false;
         }
-        cout <<"\nSecure Connection between You and " << receiver_username <<" is Established!\nYou May Now Start Chatting:\n" <<endl;
+        cout <<"\nSecure Connection between You and " << receiver_username <<" is Established!"<<endl;
+        cout<< "You can type /q to close the chat and return to main menu"<<endl;
+        cout<<"You May Now Start Chatting:" <<endl<<endl;
         my_user->set_status(CHATTING);
     }else if(buffer[0] == 12){
         if(-1 == NetworkMessage::handle_message_12(buffer, val_read, my_user)){
@@ -176,6 +178,7 @@ void select_main_menu(User* my_user, vector<string> &usernames) {
                     }
                     cout <<"\nSecure Connection between You and " << my_user->get_peer_username() <<
                     " is Established!"<<endl;
+                    cout<< "You can type /q to close the chat and return to main menu"<<endl;
                     cout<<"You May now Start Chatting:" <<endl<<endl;
                     break;
                 case 12:

@@ -11,6 +11,7 @@
 const string WHITESPACE = " \n\r\t\f\v";
 const string DELIMITER = "||";
 
+
 static void cin_flush() {
     cin.ignore(numeric_limits<streamsize>::max());
     cin.clear();

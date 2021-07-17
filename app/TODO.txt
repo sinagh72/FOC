@@ -9,4 +9,4 @@
 22- VERIFY THE ACTUAL TYPE OF THE INCOMING MESSAGE
 23- set my_user status in client (check status changes)
 24- create error message
-25- mechanism to come outside of chatting without rage quit!
+25- Check cin_flush is necessary or not
