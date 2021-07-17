@@ -51,7 +51,7 @@ void main_menu(User* my_user, vector<string> &usernames){
                 c++;
             }
         }
-        cout<<"Type the character corresponding to the wanted action or the number of the user you want to chat with:" <<endl;
+        cout<<endl<<"Type the character corresponding to the wanted action or the number of the user you want to chat with:" <<endl<<"> "<<flush;
     }
 
   
@@ -63,6 +63,7 @@ bool establish_handshake_clients(User * my_user, string receiver_username){
     if (NetworkMessage::send_message_5(my_user, receiver_username) == -1){
         return false;
     }
+    cout<<endl<<"Request to talk sent to "<<receiver_username<<endl;
     char buffer[MAX_MESSAGE_LENGTH] = {0};
     val_read = read(my_user->get_socket() , buffer, MAX_MESSAGE_LENGTH);
     if(val_read < 0){
@@ -206,7 +207,7 @@ void select_main_menu(User* my_user, vector<string> &usernames) {
             if (my_user->get_status() == CHATTING){
                 getline(cin, input);
                 if(input.empty()) return;
-                if(input.compare("/q")) {
+                if(input.compare("/q")==0) {
                     NetworkMessage::send_message_15(my_user);
                     return;
                 };
@@ -236,7 +237,7 @@ void select_main_menu(User* my_user, vector<string> &usernames) {
             
             if(!check_user_input(input, usernames.size())) {
                 cout<< "Invalid input, try again"<<endl;
-                //sleep(1);
+                sleep(1);
                 return;
             }
             establish_handshake_clients(my_user, usernames.at(stoi(input)));

@@ -1148,9 +1148,11 @@ int NetworkMessage::handle_message_6(char * message, size_t message_len, User*my
     //accept or reject the request to talk
     string input;
     do{
-        cout <<"\n" << sender_username << " has requested to talk to you\nPlease Select an Option:\n"
+        cout <<endl<<endl << sender_username << " has requested to talk to you"<<endl
+        <<"Please Select an Option:"<<endl
         <<"1. Accept"<<endl
-        <<"0. Reject"<<endl;
+        <<"0. Reject"<<endl
+        <<"> "<<flush;
         cin >> input;
     }while(!check_user_input(input, 2));
 
