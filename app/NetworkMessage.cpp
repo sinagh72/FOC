@@ -2694,7 +2694,7 @@ int NetworkMessage::handle_message_14(char* message, size_t message_len, User * 
     }
     my_user->increment_receive_counter();
     string clients_decryptext_str((char*)clients_decryptext);
-    cout << my_user->get_peer_username() <<": " << clients_decryptext_str.substr(0,clients_decryptext_len) <<endl;
+    cout << "\n" << my_user->get_peer_username() <<": " << clients_decryptext_str.substr(0,clients_decryptext_len) <<endl;
     free(clients_decryptext);
     return 1;
 }
