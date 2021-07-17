@@ -1,15 +1,5 @@
-#ifndef APP_GUI_H
-#define APP_GUI_H
+#include "CLI.h"
 
-#include <cstddef>
-#include <cstdlib>
-#include <unistd.h>
-#include <vector>
-#include <arpa/inet.h>
-#include <limits>
-#include "NetworkMessage.h"
-#include "user.h"
-#include "utility.h"
 
 bool get_available_users(User*  my_user, vector<string> &usernames) {
     usernames.clear();
@@ -36,6 +26,8 @@ void main_menu(User* my_user, vector<string> &usernames){
     }else if(my_user->get_status() == RTT){
 
     }else{
+        system("clear");
+        cout<<"Welcome "+ my_user->get_username() <<endl<<endl;
         cout << "You can: " <<endl;
         cout << "r : refresh the list of avaiable users" <<endl;
         cout << "x : exit the application" <<endl<<endl;
@@ -76,8 +68,9 @@ bool establish_handshake_clients(User * my_user, string receiver_username){
             my_user->set_status(ONLINE);
             return false;
         }
-        cout <<"\nSecure Connection between You and " << receiver_username <<
-        " is Established!\nYou May Now Start Chatting(You Can Quit by /q):\n" <<endl;
+        cout <<"\nSecure Connection between You and " << receiver_username <<" is Established!"<<endl;
+        cout<< "You can type /q to close the chat and return to main menu"<<endl;
+        cout<<"You May Now Start Chatting:" <<endl<<endl;
         my_user->set_status(CHATTING);
         return true;
     }else if(buffer[0] == 12){
@@ -179,7 +172,8 @@ void select_main_menu(User* my_user, vector<string> &usernames) {
                     }
                     cout <<"\nSecure Connection between You and " << my_user->get_peer_username() <<
                     " is Established!"<<endl;
-                    cout<<"You May now Start Chatting (You Can Quit by /q):" <<endl<<endl;
+                    cout<< "You can type /q to close the chat and return to main menu"<<endl;
+                    cout<<"You May now Start Chatting:" <<endl<<endl;
                     break;
                 case 12:
                     if(my_user->get_status() == CHATTING) break;
@@ -252,5 +246,3 @@ void select_main_menu(User* my_user, vector<string> &usernames) {
         }
 
 }
-
-#endif

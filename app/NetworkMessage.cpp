@@ -1165,7 +1165,6 @@ int NetworkMessage::handle_message_6(char * message, size_t message_len, User*my
         <<"Please Select an Option:"<<endl
         <<"1. Accept"<<endl
         <<"0. Reject"<<endl;
-        // <<"> "<<flush;
         cin >> input;
     }while(!check_user_input(input, 2));
 

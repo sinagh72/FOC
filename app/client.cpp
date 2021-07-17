@@ -8,26 +8,11 @@
 #include <sys/stat.h>
 #include <vector>
 #include "NetworkMessage.h"
-#include "GUI.h"
+#include "CLI.h"
 
 #define PORT 8888
 #define MSEC 10000 
 const string IP = "127.0.0.1";
-
-
-bool send_secure(){
-    do{
-        cout << "You: ";
-        string input;
-        cin >> input;
-        if(!cin){
-
-        }else{
-
-        }
-    }while(1);
-}
-
 
 int main(int argc, char const *argv[])
 {
@@ -80,16 +65,13 @@ int main(int argc, char const *argv[])
     if(!connect_to_server(username, password, IP.c_str(), PORT, &my_user)){
         exit(EXIT_FAILURE);
     };
-    cout<<"Welcome "+ my_user->get_username() <<endl<<endl;
+    
     string input;
     string input_username;
     vector<string> usernames;
     do{
-    
-        //cin_flush();
         main_menu(my_user, usernames);
         select_main_menu(my_user, usernames);
-
 
     }while(1);
 

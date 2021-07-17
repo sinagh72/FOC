@@ -1,7 +1,7 @@
 #ifndef APP_NETWORKMESSAGE_H
 #define APP_NETWORKMESSAGE_H
 
-#include "user.h"
+#include "User.h"
 #include <sys/socket.h>
 #include "utility.h"
 #include <unistd.h> 
