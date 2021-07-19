@@ -131,7 +131,6 @@ int main(int argc , char* argv[]) {
         //then its an incoming connection 
         if (FD_ISSET(master_socket, &readfds))  
         {  
-
             if ((new_socket = accept(master_socket, 
                     (struct sockaddr *)&address, (socklen_t*)&addrlen))<0)  
             {  
@@ -146,13 +145,7 @@ int main(int argc , char* argv[]) {
                 int output = NetworkMessage::handle_message_0(buffer, new_socket, inet_ntoa(address.sin_addr),
                                                      ntohs(address.sin_port), &online_users);
                 if(output < 1){
-                    cerr << "Error in establishing key with the new Client" <<endl;
-                    char* error_msg;
-                    if (output == -1)
-                        error_msg = (char*) "Error in establishing key with you! Try again later.\n";
-                    else if (output == -2)
-                        error_msg = (char*) "You are already logged in!\n";
-                    send(new_socket, error_msg, strlen(error_msg), 0);                                          
+                    cerr << "Error in establishing key with the new Client" <<endl;             
                 }
             }
             free(buffer);
@@ -202,7 +195,6 @@ int main(int argc , char* argv[]) {
                     switch (buffer[0]) {
                         case 2:
                             if(NetworkMessage::handle_message_2(buffer, valread, (*it)) == -1){
-                                ///TODO:send error message
                                 break;
                             }
                             break;
@@ -232,23 +224,31 @@ int main(int argc , char* argv[]) {
                         case 9:
                             if(NetworkMessage::handle_message_9(buffer, valread, (*it), online_users) == -1){
                                 (*it)->set_status(ONLINE);
+                                 string err_msg = "Server Cannot Handle Your Request";
+                                NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), (*it));
                                 break;
                             }
                             break;
                         case 11:
                             if(NetworkMessage::handle_message_11(buffer, valread, (*it), online_users) == -1){
                                 (*it)->set_status(ONLINE);
+                                string err_msg = "Server Cannot Handle Your Request";
+                                NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), (*it));
                                 break;
                             }
                             break;
                         case 13:
                             if(NetworkMessage::handle_message_13(buffer, valread, (*it), online_users) == -1){
+                                string err_msg = "Server Cannot Handle Your Request";
+                                NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), (*it));
                                 break;
                             }
                             break;
                         case 15:
                             if(NetworkMessage::handle_message_15(buffer, valread, (*it), online_users) == -1){
                                 (*it)->set_status(ONLINE);
+                                string err_msg = "Server Cannot Handle Your Request";
+                                NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), (*it));
                                 break;
                             }
                             break;
