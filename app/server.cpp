@@ -28,16 +28,28 @@ int main(int argc , char* argv[]) {
     //set of socket descriptors
     // list of connections and sockets
     fd_set readfds;
-    // User * sina = new User("sina", "sina", "127.0.0.1", port, -1);
-    // unsigned char key_gcm[]="1234567890123456";
-    // sina->set_server_client_key(key_gcm ,16);
-    // online_users.push_back(sina);
 
-    // User * lore = new User("lore", "sina", "127.0.0.1", port, -1);
-    // unsigned char* server_client_2 = (unsigned char*)"0987654321098765";
-    // lore->set_server_client_key(server_client_2 ,16);
-    // online_users.push_back(lore);
-  
+    
+    if(argc>2) {
+        cout<<"Invalid argument number: run using ./server listening_port"<<endl;
+        return EXIT_FAILURE;
+    }
+
+    if(argc==2) {
+        int int_port=0;
+        string port_string(argv[1]);
+        try {
+            int_port = stoi(port_string);
+            if(int_port<1024 or int_port>65535) throw out_of_range("Not valid port");
+        } catch (invalid_argument const &exception) {
+            cout<<"Error: server listening port number is not an integer"<<endl;
+            return EXIT_FAILURE;
+        } catch (out_of_range const &exception) {
+            cout<<"Error: server listening port number must be in range 1024-65535"<<endl;
+            return EXIT_FAILURE;
+        }
+        port = int_port;
+    }   
          
     //create a master socket
     //AF_INET: IPV4
