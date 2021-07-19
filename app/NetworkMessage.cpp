@@ -1036,10 +1036,21 @@ int NetworkMessage::handle_message_5(char * message, size_t message_len, User* s
         NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), sender);
         return -2;
     }
+
+    if(receiver->get_status()==CHATTING) {
+        sender->set_status(ONLINE);
+        string err_msg = "Your peer is in another chat! Try to check later!";
+        NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), sender);
+        return -2;
+    }
+
     receiver->set_peer_username(sender->get_username());
     int output = NetworkMessage::send_message_6(sender, receiver);
     if(output == -1){
+        string err_msg = "Error in forwarding your message to other client";
+        NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), sender);
         receiver->set_status(ONLINE);
+        sender->set_status(ONLINE);
         return -1;
     }
     if(output == -2){

@@ -4,3 +4,4 @@
 3- VERIFY THE ACTUAL TYPE OF THE INCOMING MESSAGE
 4- Check cin_flush is necessary or not
 5- usleep is not POSIX standard (not portable)
+IMPORTANT if user is chatting return a message directly from server (list of user can be not syncronizeed)
