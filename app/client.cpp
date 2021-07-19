@@ -10,13 +10,43 @@
 #include "NetworkMessage.h"
 #include "CLI.h"
 
-#define PORT 8888
 #define MSEC 10000 
-const string IP = "127.0.0.1";
+
 
 int main(int argc, char const *argv[])
 {
+    string IP = "127.0.0.1";
+    uint16_t PORT=8888;
+    if(argc>4) {
+        cout<<"Invalid argument number: run using ./server listening_port"<<endl;
+        return EXIT_FAILURE;
+    }
+
+    if(argc==3) {
+        int int_port=0;
+        string port_string(argv[2]);
+        try {
+            int_port = stoi(port_string);
+            if(int_port<1024 or int_port>65535) throw out_of_range("Not valid port");
+        } catch (invalid_argument const &exception) {
+            cout<<"Error: server listening port number is not an integer"<<endl;
+            return EXIT_FAILURE;
+        } catch (out_of_range const &exception) {
+            cout<<"Error: server listening port number must be in range 1024-65535"<<endl;
+            return EXIT_FAILURE;
+        }
+        PORT = int_port;
+    }
+
+    if(argc==2 || argc== 3) {
+        IP = argv[1];
+    
+    }
  
+        cout<<"IP: "<<IP<<endl;
+        cout<<"PORT: "<<PORT<<endl;
+
+
     string username;
     string password;
     bool valid = false;
