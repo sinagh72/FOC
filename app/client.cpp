@@ -42,9 +42,6 @@ int main(int argc, char const *argv[])
         IP = argv[1];
     
     }
- 
-        cout<<"IP: "<<IP<<endl;
-        cout<<"PORT: "<<PORT<<endl;
 
 
     string username;
