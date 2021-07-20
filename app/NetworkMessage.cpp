@@ -1037,7 +1037,7 @@ int NetworkMessage::handle_message_5(char * message, size_t message_len, User* s
         return -2;
     }
 
-    if(receiver->get_status()==CHATTING) {
+    if(receiver->get_status()==CHATTING || receiver->get_status()==RTT) {
         sender->set_status(ONLINE);
         string err_msg = "Your peer is in another chat! Try to check later!";
         NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), sender);
@@ -3141,6 +3141,7 @@ int NetworkMessage::send_error_message(unsigned char * message, size_t message_l
         return -2;
     }
     ////
+    receiver->increment_server_counter();
     receiver->clear_peer();
     free(aad);
     free(iv);
