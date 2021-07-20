@@ -3178,7 +3178,7 @@ int NetworkMessage::handle_error_message(char * message, size_t message_len, Use
         cerr<<"Repetitive Message Error (Handle e)"<<endl;
         return -1;
     }
-    cout << my_user->get_peer_username() <<": " << ciphertext_str.substr(0,decryptedtext_len) <<endl;
+    cout << ciphertext_str.substr(0,decryptedtext_len) <<endl;
     my_user->set_peer_username("");
     my_user->set_clients_pubk_char(nullptr);
     my_user->set_clients_pubk(nullptr);
