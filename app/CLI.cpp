@@ -1,4 +1,6 @@
 #include "CLI.h"
+#include <cstdlib>
+#include <openssl/bio.h>
 
 
 bool get_available_users(User*  my_user, vector<string> &usernames) {
@@ -7,8 +9,31 @@ bool get_available_users(User*  my_user, vector<string> &usernames) {
         cout<< "Error in sending online user request" <<endl;
         return false;
     }
-    
-    int onlines = NetworkMessage::handle_message_4(my_user, &usernames);
+    char*message = (char*)malloc(MAX_MESSAGE_LENGTH);
+    int val_read = read(my_user->get_socket(), message, MAX_MESSAGE_LENGTH);
+    if(val_read < 1){
+        free(message);
+        cerr<< "Socket Error (Handle 4)" <<endl;
+        return false;
+    }
+    if(message[0] == 16){
+        NetworkMessage::handle_message_16(message, val_read, my_user);
+        free(message);
+        return false;
+    }
+    if(message[0] == 'e'){
+        NetworkMessage::handle_error_message(message, val_read, my_user);
+        free(message);
+        return false;
+    }
+    if(message[0] != 4){
+        cout << "Error (Handle 4)" << endl;
+        cout << message << endl;
+        free(message);
+        return false;
+    }
+
+    int onlines = NetworkMessage::handle_message_4(message, val_read, my_user, &usernames);
     if(onlines == -1){
         return false;
     }else if (onlines == 0){
@@ -120,6 +145,10 @@ void select_main_menu(User* my_user, vector<string> &usernames) {
             }
             int accept;
             switch (message[0]) {
+                case 4:
+                    if(my_user->get_status() != ONLINE) break;
+                    NetworkMessage::handle_message_4(message, val_read, my_user, &usernames);
+                    break;
                 case 6:
                     //make sure user is not in chatting nor request to talk state
                     if(my_user->get_status() == CHATTING or my_user->get_status() == RTT) break;
@@ -141,6 +170,7 @@ void select_main_menu(User* my_user, vector<string> &usernames) {
                     if(my_user->get_status() != RTT) break;
                     if(-1 == NetworkMessage::handle_message_8(message, val_read, my_user)){
                         my_user->set_status(ONLINE);
+                        break;
                     }
                     cout <<"\nSecure connection between you and " << my_user->get_peer_username() <<" is established!"<<endl;
                     cout<< "You can type /q to close the chat and return to main menu"<<endl;
@@ -148,25 +178,19 @@ void select_main_menu(User* my_user, vector<string> &usernames) {
                     break;
                 case 12:
                     if(my_user->get_status() == CHATTING) break;
-                    if(-1 == NetworkMessage::handle_message_12(message, val_read, my_user)){
-                        break;
-                    }
+                    if(-1 == NetworkMessage::handle_message_12(message, val_read, my_user)){}
                     break;
                 case 14:
                     if(my_user->get_status() != CHATTING) break; // make sure user is in chatting state
-                    if(-1 == NetworkMessage::handle_message_14(message, val_read, my_user)){
-                        break;
-                    }
+                    if(-1 == NetworkMessage::handle_message_14(message, val_read, my_user)){}
                     break;
                 case 16:
-                    if(-1 == NetworkMessage::handle_message_16(message, val_read, my_user)){
-                        break;
-                    }
+                    cout <<"handling message 16 before" <<endl;
+                    if(-1 == NetworkMessage::handle_message_16(message, val_read, my_user)){}
+                    cout <<"handling message 16 after" <<endl;
                     break;
                 case 'e':
-                    if(-1 == NetworkMessage::handle_error_message(message, val_read, my_user)){
-                        break;
-                    }
+                    if(-1 == NetworkMessage::handle_error_message(message, val_read, my_user)){}
                     break;
                 
             }
@@ -191,7 +215,7 @@ void select_main_menu(User* my_user, vector<string> &usernames) {
                     }
                     input.erase(0, len);
                     len = (input.length() > MAX_CHARS) ? MAX_CHARS : input.length();
-                    usleep(DELAY);
+                    usleep(CLIENT_DELAY);
                 }while(!input.empty()); // check 10k characters
                 return;   
             }
@@ -213,7 +237,7 @@ void select_main_menu(User* my_user, vector<string> &usernames) {
                 // sleep(1);
                 return;
             }
-             my_user->set_status(RTT);
+            my_user->set_status(RTT);
             if (NetworkMessage::send_message_5(my_user, usernames.at(stoi(input))) == -1){
                 return;
             }

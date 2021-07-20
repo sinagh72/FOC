@@ -16,6 +16,6 @@ void cin_flush();
 
 bool check_user_input(const string& input, int nOption);
 
-User* find_user(string username, vector<User*>*users);
+User* find_user(string username, vector<User*>*users, string message_type);
 
 #endif

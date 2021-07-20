@@ -741,7 +741,6 @@ int NetworkMessage::handle_message_3(char * message, size_t message_len, User * 
     if(!sender->replay_check(false, server_counter)){
         cerr<< "This message is discarded!" <<endl;
         cerr<< "Repetitive Message Error (Handle 3)" <<endl;
-        free(id_pt);
         return -3;
     }
     if(NetworkMessage::send_message_4(sender, online_users) == -1){
@@ -828,24 +827,11 @@ int NetworkMessage::send_message_4(User* receiver, vector<User*>online_users) {
 }
 
 //recevied by the client A 
-int NetworkMessage::handle_message_4(User * my_user, vector<string>*usernames){
+int NetworkMessage::handle_message_4(char * message, size_t message_len, User * my_user, vector<string>*usernames){
     usleep(DELAY);
-    char*message = (char*)malloc(MAX_MESSAGE_LENGTH);
-    int val_read = read(my_user->get_socket(), message, MAX_MESSAGE_LENGTH);
-    if(val_read < 1){
-        free(message);
-        cerr<< "Socket Error (Handle 4)" <<endl;
-        return -1;
-    }
-    if(message[0] != 4){
-        cout << "Error (Handle 4)" << endl;
-        cout << message << endl;
-        free(message);
-        return -1;
-    }
     int k;
     string msg = "";
-    for (k = 0; k < val_read; k++) {
+    for (k = 0; k < message_len; k++) {
         msg = msg + message[k];
     }
 
@@ -861,7 +847,6 @@ int NetworkMessage::handle_message_4(User * my_user, vector<string>*usernames){
     my_user->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &pt, (unsigned char*)tag.c_str());
     if(pt_len == -1) {
         cerr<< "Decryption Error (Handle 4)" <<endl;
-        free(message);
         return -1;
     }
 
@@ -871,7 +856,6 @@ int NetworkMessage::handle_message_4(User * my_user, vector<string>*usernames){
     if(!my_user->replay_check(true, server_counter)){
         cerr<< "This message is discarded!" <<endl;
         cerr<< "Repetitive Message Error (Handle 4)" <<endl;
-        free(message);
         return -1;
     }
     size_t pos = 0;
@@ -882,7 +866,6 @@ int NetworkMessage::handle_message_4(User * my_user, vector<string>*usernames){
             usernames->push_back(token);
         pt_str.erase(0, pos + DELIMITER.length());
     }
-    free(message);
     return usernames->size();
 }
 
@@ -1030,17 +1013,17 @@ int NetworkMessage::handle_message_5(char * message, size_t message_len, User* s
 
     cout << "handling message 5 from " << sender->get_username()<<endl;
 
-    User * receiver = find_user(sender->get_peer_username(), &online_users);
+    User * receiver = find_user(sender->get_peer_username(), &online_users, "Handle 5");
     if(receiver == nullptr){
         string err_msg = "Your Peer has Logged out";
-        NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), sender);
+        NetworkMessage::NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), sender);
         return -2;
     }
 
     if(receiver->get_status()==CHATTING || receiver->get_status()==RTT) {
         sender->set_status(ONLINE);
         string err_msg = "Your peer is in another chat! Try to check later!";
-        NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), sender);
+        NetworkMessage::NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), sender);
         return -2;
     }
 
@@ -1048,14 +1031,14 @@ int NetworkMessage::handle_message_5(char * message, size_t message_len, User* s
     int output = NetworkMessage::send_message_6(sender, receiver);
     if(output == -1){
         string err_msg = "Error in forwarding your message to other client";
-        NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), sender);
+        NetworkMessage::NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), sender);
         receiver->set_status(ONLINE);
         sender->set_status(ONLINE);
         return -1;
     }
     if(output == -2){
         string err_msg = "Your Peer has Logged out";
-        NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), sender);
+        NetworkMessage::NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), sender);
         return -2;
     }
     cout << "forwarding message 6 from " << sender->get_username() <<" to " << receiver->get_username()<<endl;
@@ -1181,13 +1164,12 @@ int NetworkMessage::handle_message_6(char * message, size_t message_len, User*my
     }while(!check_user_input(input, 2));
 
     if(input.compare("0") == 0){
-        if (send_message_11(my_user) == -1){
+        if(NetworkMessage::send_message_11(my_user) == -1){
             return -1;
         }
         return 0;
     }
     ///if user accepts
-    char * dh = message + MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN;
     string dh_key = aad.substr(MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN, DH_PUBK_LENGTH); 
     my_user->set_peer_pubk_char((unsigned char *)dh_key.c_str());
 
@@ -1433,13 +1415,6 @@ int NetworkMessage::send_message_7(User* my_user){
 //recevied by the server 
 int NetworkMessage::handle_message_7(char * message, size_t message_len, User* sender, vector<User*>users){
     usleep(DELAY);
-    User * receiver = find_user(sender->get_peer_username(), &users);
-    if(receiver == nullptr){
-        string err_msg = "Your Peer has Logged out";
-        NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), sender);
-        return -2;
-    }
-
     int i;
     string msg = "";
     for (i = 0; i < message_len; i++) {
@@ -1457,11 +1432,15 @@ int NetworkMessage::handle_message_7(char * message, size_t message_len, User* s
     if(-1==(Security::gcm_decrypt((unsigned char*)aad.c_str(), aad.length(), 
                                 (unsigned char*)gcm_ciphertext.c_str(), gcm_ciphertext.length(),
                                 sender->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &gcm_decryptedtext, 
-                                (unsigned char*)tag.c_str()))){   
-        receiver->set_status(ONLINE);
+                                (unsigned char*)tag.c_str()))){  
+
         cout << "Decryption Error (Handle 7)" <<endl;
+        User * receiver = find_user(sender->get_peer_username(), &users, "Handle 7");
+        if(receiver == nullptr){
+            return -2;
+        } 
         string err_msg = "Your Peer has a Problem in Communicating with the Server";
-        send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), receiver);
+        NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), receiver);
         return -1;
     }
     
@@ -1469,31 +1448,36 @@ int NetworkMessage::handle_message_7(char * message, size_t message_len, User* s
     free(gcm_decryptedtext);
     uint16_t server_counter = (uint16_t) *(message + MESSAGE_TYPE_LENGTH);
     if(!sender->replay_check(false, server_counter)){
-        receiver->set_status(ONLINE);
         cerr<< "This message is discarded!" <<endl;
         cout << "Repetitive Message Error (Handle 7)" <<endl;
+        User * receiver = find_user(sender->get_peer_username(), &users, "Handle 7");
+        if(receiver == nullptr){
+            return -2;
+        }
         string err_msg = "Your Peer has a Problem in Communicating with the Server";
-        send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), receiver);
+        NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), receiver);
         return -3;
     }
+
     sender->set_peer_username(gcm_decryptedtext_str.substr(sender->get_username().length(), 
                                                             gcm_decryptedtext_str.length() - sender->get_username().length()));
     
     string dh_key = aad.substr(MESSAGE_TYPE_LENGTH + COUNTER_LENGTH + Security::GCM_IV_LEN, DH_PUBK_LENGTH);
     sender->set_clients_pubk_char((unsigned char *)dh_key.c_str());
     cout << "handling message 7 from " << sender->get_username()<<endl;
-   
+
+    User * receiver = find_user(sender->get_peer_username(), &users, "Handle 7");
+    if(receiver == nullptr){
+        return -2;
+    }
     int output = NetworkMessage::send_message_8(sender, receiver,(unsigned char*) inner_gcm.c_str(), inner_gcm.length());
 
     if(output == -1){
-        receiver->set_status(ONLINE);
         string err_msg = "Your Peer has a Problem in Communicating with the Server";
-        send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), receiver);
+        NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), receiver);
         return -1;
     }
     if(output == -2){
-        string err_msg = "Your Peer has Logged out";
-        NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), sender);
         return -2;
     }
 
@@ -1550,7 +1534,6 @@ int NetworkMessage::send_message_8(User* sender, User* receiver, unsigned char *
     memcpy(aad + MESSAGE_TYPE_LENGTH +  COUNTER_LENGTH + Security::GCM_IV_LEN + DH_PUBK_LENGTH, pk_buf, rsa_buf_size);
     //put the inner gcm into the aad
     memcpy(aad + MESSAGE_TYPE_LENGTH +  COUNTER_LENGTH + Security::GCM_IV_LEN + DH_PUBK_LENGTH + rsa_buf_size, inner_gcm, inner_gcm_len);
-
     //generate the gcm plaintext: sender username||receiver username
     int gcm_plaintext_len = 2*USERNAME_LENGTH;
     unsigned char* gcm_plaintext = (unsigned char*)calloc(gcm_plaintext_len, 1);
@@ -1880,13 +1863,6 @@ int NetworkMessage::send_message_9(User* my_user){
 //received by the server
 int NetworkMessage::handle_message_9(char * message, size_t message_len, User* sender, vector<User*>users){
     usleep(DELAY);
-    User *receiver = find_user(sender->get_peer_username(), &users);    
-    if(receiver == nullptr){
-        string err_msg = "Your Peer has Logged out";
-        send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), sender);
-        return -2;
-    }
-    
     int i;
     string msg = "";
     for (i = 0; i < message_len; i++) {
@@ -1905,8 +1881,12 @@ int NetworkMessage::handle_message_9(char * message, size_t message_len, User* s
                                 sender->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &gcm_decryptedtext, 
                                 (unsigned char*)tag.c_str()))){
         cerr << "Decryption Error (Handle 9)" <<endl;
+        User * receiver = find_user(sender->get_peer_username(), &users, "Handle 9");
+        if(receiver == nullptr){
+            return -2;
+        } 
         string err_msg = "Your Peer has a Problem in Communicating with the Server";
-        send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), receiver);
+        NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), receiver);
         return -1;
     }
     string gcm_decryptedtext_str ((char*)gcm_decryptedtext);
@@ -1915,24 +1895,29 @@ int NetworkMessage::handle_message_9(char * message, size_t message_len, User* s
     if(!sender->replay_check(false, server_counter)){
         cerr<< "This message is discarded!" <<endl;
         cerr << "Repetitive Message Error (Handle 9)" <<endl;
+        User * receiver = find_user(sender->get_peer_username(), &users, "Handle 9");
+        if(receiver == nullptr){
+            return -2;
+        } 
         string err_msg = "Your Peer has a Problem in Communicating with the Server";
-        send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), receiver);
+        NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), receiver);
         return -3;
     }
     sender->set_peer_username(gcm_decryptedtext_str.substr(sender->get_username().length(), 
                                                             gcm_decryptedtext_str.length() - sender->get_username().length()));
     cout << "handling message 9 from " << sender->get_username()<<endl;
 
+    User * receiver = find_user(sender->get_peer_username(), &users, "Handle 9");
+    if(receiver == nullptr){
+            return -2;
+    } 
     int output = NetworkMessage::send_message_10(sender, receiver,(unsigned char*) inner_gcm.c_str(), inner_gcm.length());
     if(output == -1){
-        receiver->set_status(ONLINE);
         string err_msg = "Your Peer has a Problem in Communicating with the Server";
-        send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), receiver);
+        NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), receiver);
         return -1;
     }
     if(output == -2){
-        string err_msg = "Your Peer has Logged out";
-        NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), sender);
         return -2;
     }
 
@@ -2058,6 +2043,14 @@ int NetworkMessage::handle_message_10(User* my_user){
     int val_read = read(my_user->get_socket(), message, MAX_MESSAGE_LENGTH);
     if(val_read < 1){
         cout << "Socket Error (Handle 10)" <<endl;
+        return -1;
+    }
+    if(message[0] == 16){
+        NetworkMessage::handle_message_16(message, val_read, my_user);
+        return -1;
+    }
+    if(message[0] == 'e'){
+        handle_error_message(message, val_read, my_user);
         return -1;
     }
     if(message[0] != 10){
@@ -2248,11 +2241,6 @@ int NetworkMessage::send_message_11(User* my_user){
 //recevied by the server 
 int NetworkMessage::handle_message_11(char * message, size_t message_len, User* sender, vector<User*>users){
     usleep(DELAY);
-    User *receiver = find_user(sender->get_peer_username(), &users);
-    if(receiver == nullptr){
-        return -2;
-    }
-
     int i;
     string msg = "";
     for (i = 0; i < message_len; i++) {
@@ -2270,39 +2258,46 @@ int NetworkMessage::handle_message_11(char * message, size_t message_len, User* 
                                 sender->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &decryptedtext, 
                                 (unsigned char*)tag.c_str()))){
         cerr<< "Decryption Error (Handle 11)" <<endl;
-        receiver->set_status(ONLINE);
+        User *receiver = find_user(sender->get_peer_username(), &users, "Handle 11");
+        if(receiver == nullptr){
+            return -2;
+        }
         string err_msg = "Your Peer has a Problem in Communicating with the Server";
-        send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), receiver);
+        NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), receiver);
         return -1;
     }
     string decryptedtext_str ((char*)decryptedtext);
     free(decryptedtext);
     uint16_t server_counter = (uint16_t) *(message + MESSAGE_TYPE_LENGTH);
     if(!sender->replay_check(false, server_counter)){
-        receiver->set_status(ONLINE);
         cerr<< "This message is discarded!" <<endl;
         cerr<<"Repetitive Message Error (Handle 11)"<<endl;
+        User *receiver = find_user(sender->get_peer_username(), &users, "Handle 11");
+        if(receiver == nullptr){
+            return -2;
+        }
         string err_msg = "Your Peer has a Problem in Communicating with the Server";
-        send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), receiver);
+        NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), receiver);
         return -3;
     }
     string receiver_username = decryptedtext_str.substr(sender->get_username().length(),
                                 decryptedtext_str.length() - sender->get_username().length());
     cout << "handling message 11 from " << sender->get_username()<<endl;
-    
+    sender->set_status(ONLINE);
+    User *receiver = find_user(sender->get_peer_username(), &users, "Handle 11");
+    if(receiver == nullptr){
+        return -2;
+    }
     int output = NetworkMessage::send_message_12(sender, receiver);
     if(output == -1){
-        receiver->set_status(ONLINE);
         string err_msg = "Your Peer has a Problem in Communicating with the Server";
-        send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), receiver);
+        NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), receiver);
         return -1;
     }
     if(output == -2){
         return -2;
     }
-    
     cout << "forwarding message 11 from " << sender->get_username() <<" to " << receiver->get_username()<<endl;
-    sender->set_status(ONLINE);
     receiver->set_status(ONLINE);
     return 1;
 }
@@ -2521,12 +2516,6 @@ int NetworkMessage::send_message_13(unsigned char* message, size_t message_len, 
 //recevied by the server 
 int NetworkMessage::handle_message_13(char * message, size_t message_len, User* sender, vector<User*>online_users){
     usleep(DELAY);
-    User* receiver = find_user(sender->get_peer_username(), &online_users);
-    if(receiver == nullptr){
-        string err_msg = "Your Peer has Logged out";
-        send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), sender);
-        return -2;
-    }
     int i;
     string msg = "";
     for (i = 0; i < message_len; i++) {
@@ -2544,8 +2533,12 @@ int NetworkMessage::handle_message_13(char * message, size_t message_len, User* 
                                 sender->get_server_client_key(),(unsigned char*) gcm_iv.c_str(), &gcm_decryptedtext, 
                                 (unsigned char*)tag.c_str()))){
         cerr<<"Decryption Error (Handle 13)"<<endl;
+        User* receiver = find_user(sender->get_peer_username(), &online_users, "Handle 13");
+        if(receiver == nullptr){
+            return -2;
+        }
         string err_msg = "Your Peer has a Problem in Communicating with the Server";
-        send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), receiver);
+        NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), receiver);
         return -1;
     }
     string gcm_decryptedtext_str ((char*)gcm_decryptedtext);
@@ -2554,24 +2547,31 @@ int NetworkMessage::handle_message_13(char * message, size_t message_len, User* 
     if(!sender->replay_check(false, server_counter)){
         cerr<< "This message is discarded!" <<endl;
         cerr<<"Repetitive Message Error (Handle 13)"<<endl;
+        User* receiver = find_user(sender->get_peer_username(), &online_users, "Handle 13");
+        if(receiver == nullptr){
+            return -2;
+        }
         string err_msg = "Your Peer has a Problem in Communicating with the Server";
-        send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), receiver);
+        NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), receiver);
         return -3;
     }
     sender->set_peer_username(gcm_decryptedtext_str.substr(sender->get_username().length(), 
                                                             gcm_decryptedtext_str.length() - sender->get_username().length()));
     
     cout << "handling message 13 from " << sender->get_username()<<endl;
+
+    User* receiver = find_user(sender->get_peer_username(), &online_users, "Handle 13"); 
+    if(receiver == nullptr){
+        return -2;
+    }
+    
     int output = send_message_14(sender, receiver, (unsigned char *)inner_gcm.c_str(), inner_gcm.length());
     if(output == -1){
-        receiver->set_status(ONLINE);
         string err_msg = "Your Peer has a Problem in Communicating with the Server";
-        send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), receiver);
+        NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), receiver);
         return -1;
     }
     if(output == -2){
-        string err_msg = "Your Peer has Logged out";
-        NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), sender);
         return -2;
     }
     cout << "forwarding message 14 from " << sender->get_username() <<" to " << receiver->get_username()<<endl;
@@ -2791,12 +2791,6 @@ int NetworkMessage::send_message_15(User* my_user){
 //recevied by the server 
 int NetworkMessage::handle_message_15(char * message, size_t message_len, User* sender, vector<User*>online_users){
     usleep(DELAY);
-    User *receiver = find_user(sender->get_peer_username(), &online_users);
-    if(receiver == nullptr){
-        string err_msg = "Your Peer has Logged out";
-        send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), sender);
-        return -2;
-    }
     int i;
     string msg = "";
     for (i = 0; i < message_len; i++) {
@@ -2815,7 +2809,11 @@ int NetworkMessage::handle_message_15(char * message, size_t message_len, User* 
                                 (unsigned char*)tag.c_str()))){
         cerr<<"Decryption Error (Send 15)"<<endl;
         string err_msg = "Your Peer has Ended the Communication";
-        send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), receiver);
+        User *receiver = find_user(sender->get_peer_username(), &online_users, "Handle 15");
+        if(receiver == nullptr){
+            return -2;
+        }
+        NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), receiver);
         return -1;
     }
     string decryptedtext_str ((char*)decryptedtext);
@@ -2824,8 +2822,12 @@ int NetworkMessage::handle_message_15(char * message, size_t message_len, User* 
     if(!sender->replay_check(false, server_counter)){
         cerr<< "This message is discarded!" <<endl;
         cerr<<"Repetitive Message Error (Send 15)"<<endl;
+        User *receiver = find_user(sender->get_peer_username(), &online_users, "Handle 15");
+        if(receiver == nullptr){
+            return -2;
+        }
         string err_msg = "Your Peer has Ended the Communication";
-        send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), receiver);
+        NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), receiver);
         return -3;
     }
     string receiver_username = decryptedtext_str.substr(sender->get_username().length(),
@@ -2833,22 +2835,23 @@ int NetworkMessage::handle_message_15(char * message, size_t message_len, User* 
     sender->set_peer_username(receiver_username);
     cout << "handling message 15 from " << sender->get_username()<<endl;
 
+    User *receiver = find_user(sender->get_peer_username(), &online_users, "Handle 15");
+    if(receiver == nullptr){
+        return -2;
+    }
     int output = NetworkMessage::send_message_16(sender, receiver);
     if(output == -1){
-        receiver->set_status(ONLINE);
         string err_msg = "Your Peer has Ended the Communication";
-        send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), receiver);
+        NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), receiver);
         return -1;
     }
     if(output == -2){
-        string err_msg = "Your Peer has Logged out";
-        NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), sender);
         return -2;
     }
 
     cout << "forwarding message 16 from " << sender->get_username() <<" to " << receiver->get_username()<<endl;
-    sender->set_status(ONLINE);
     receiver->set_status(ONLINE);
+    sender->set_status(ONLINE);
     return 1;
 }
 
@@ -2924,6 +2927,7 @@ int NetworkMessage::send_message_16(User* sender, User* receiver){
     free(tag);
     sender->set_peer_username("");
     receiver->set_peer_username("");
+    sender->set_status(ONLINE);
     receiver->set_status(ONLINE);
     return message_buf_len;
 }
@@ -2959,7 +2963,9 @@ int NetworkMessage::handle_message_16(char* message, size_t message_len, User*my
     }
     string sender_username = decryptedtext_str.substr(0,
                                 decryptedtext_str.length() - my_user->get_username().length());
-    cout << "\n" <<my_user->get_peer_username() << " has exited the chat!" << endl<< endl;
+    if(!my_user->get_peer_username().empty()){
+        cout << "\n" <<my_user->get_peer_username() << " has exited the chat!" << endl<< endl;
+    }
     my_user->clear_peer();
     return 1;
 }
@@ -3063,13 +3069,12 @@ int NetworkMessage::handle_message_17(char * message, size_t message_len, User* 
         return -1;
     }
     if(!sender->get_peer_username().empty() && sender->get_status() == CHATTING){
-        User *receiver = find_user(sender->get_peer_username(), &online_users);
+        User *receiver = find_user(sender->get_peer_username(), &online_users, "Handle 17");
         if(receiver != nullptr){
             int output = send_message_16(sender, receiver);
             if(output == -1){
-                receiver->set_status(ONLINE);
                 string err_msg = "Your Peer has Ended the Communication";
-                send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), receiver);
+                NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), receiver);
             }
         }
     }
@@ -3080,7 +3085,7 @@ int NetworkMessage::handle_message_17(char * message, size_t message_len, User* 
 
 
 //sent by the server 
-int NetworkMessage::send_error_message(unsigned char * message, size_t message_len, User* receiver){
+int NetworkMessage::NetworkMessage::send_error_message(unsigned char * message, size_t message_len, User* receiver){
     if(receiver->get_server_counter() > UINT16_MAX - 4){ //1 for error message, 1 for message 17, 1 for 16
         cout << "The Communication Between You and The Server is Not Secure Anymore."; 
         cout << "The Session Will Been Terminated Now" <<endl;
@@ -3143,6 +3148,7 @@ int NetworkMessage::send_error_message(unsigned char * message, size_t message_l
     ////
     receiver->increment_server_counter();
     receiver->clear_peer();
+    receiver->set_status(ONLINE);
     free(aad);
     free(iv);
     free(gcm_ciphertext);

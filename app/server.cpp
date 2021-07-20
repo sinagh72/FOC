@@ -173,13 +173,11 @@ int main(int argc , char* argv[]) {
                     FD_CLR(sd , &readfds);
                     //
                     if(!(*it)->get_peer_username().empty()){
-                        User *receiver = find_user((*it)->get_peer_username(), &online_users);
+                        User *receiver = find_user((*it)->get_peer_username(), &online_users, "Send 16");
                         if(receiver == nullptr){
                             break;
                         }
-                        if(NetworkMessage::send_message_16((*it), receiver) == -1){
-                            cerr << "Error in sending message 16" << endl;
-                        }else{
+                        if(NetworkMessage::send_message_16((*it), receiver) != -1){
                             cout <<"sending message 16 to " << receiver->get_username() <<endl;
                         }
 
@@ -195,14 +193,12 @@ int main(int argc , char* argv[]) {
                     switch (buffer[0]) {
                         case 2:
                             if(NetworkMessage::handle_message_2(buffer, valread, (*it)) == -1){
-                                break;
                             }
                             break;
                         case 3:
                             if(NetworkMessage::handle_message_3(buffer, valread, (*it), online_users) == -1){
                                 string err_msg = "Server Cannot Handle Your Request";
                                 NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), (*it));
-                                break;
                             }
                             break;
                         case 5:
@@ -210,7 +206,6 @@ int main(int argc , char* argv[]) {
                                 (*it)->set_status(ONLINE);
                                 string err_msg = "Server Cannot Handle Your Request";
                                 NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), (*it));
-                                break;
                             }
                             break;
                         case 7:
@@ -218,7 +213,6 @@ int main(int argc , char* argv[]) {
                                 (*it)->set_status(ONLINE);
                                 string err_msg = "Server Cannot Handle Your Request";
                                 NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), (*it));
-                                break;
                             }
                             break;
                         case 9:
@@ -226,7 +220,6 @@ int main(int argc , char* argv[]) {
                                 (*it)->set_status(ONLINE);
                                  string err_msg = "Server Cannot Handle Your Request";
                                 NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), (*it));
-                                break;
                             }
                             break;
                         case 11:
@@ -234,14 +227,12 @@ int main(int argc , char* argv[]) {
                                 (*it)->set_status(ONLINE);
                                 string err_msg = "Server Cannot Handle Your Request";
                                 NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), (*it));
-                                break;
                             }
                             break;
                         case 13:
                             if(NetworkMessage::handle_message_13(buffer, valread, (*it), online_users) == -1){
                                 string err_msg = "Server Cannot Handle Your Request";
                                 NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), (*it));
-                                break;
                             }
                             break;
                         case 15:
@@ -249,7 +240,6 @@ int main(int argc , char* argv[]) {
                                 (*it)->set_status(ONLINE);
                                 string err_msg = "Server Cannot Handle Your Request";
                                 NetworkMessage::send_error_message((unsigned char*)err_msg.c_str(), err_msg.length(), (*it));
-                                break;
                             }
                             break;
                         case 17:

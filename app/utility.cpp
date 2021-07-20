@@ -19,7 +19,7 @@ bool check_user_input(const string& input, int nOption){
 }
 
 
-User* find_user(string username, vector<User*>*users){
+User* find_user(string username, vector<User*>*users, string message_type){
     for (User* usr : *users) // access by reference to avoid copying
     {  
         if (usr->get_username().compare(username)==0)
@@ -27,6 +27,6 @@ User* find_user(string username, vector<User*>*users){
             return usr;
         }
     }
-    cerr<< "User '" << username << "' Not Found Error" <<endl;
+    cerr<< "User '" << username << "' Not Found ("<<message_type <<")"<<endl;
     return NULL;
 }

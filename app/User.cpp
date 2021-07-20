@@ -60,7 +60,7 @@ User::User(const User &source){
 bool User::replay_check(bool from_server, uint16_t server_counter){
     bool returned = false;
     if (from_server)
-        if (server_counter - this->get_server_counter() != 0){//the difference between them should be always 1
+        if (server_counter - this->get_server_counter() != 0){//the difference between them should be always 0
             return false;
         }
         else {
@@ -68,7 +68,7 @@ bool User::replay_check(bool from_server, uint16_t server_counter){
             return true;
         }
     else{
-        if (server_counter - this->get_client_counter() != 0){//the difference between them should be always 1
+        if (server_counter - this->get_client_counter() != 0){//the difference between them should be always 0
             return false;
         }
         else {

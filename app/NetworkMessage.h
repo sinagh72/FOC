@@ -73,11 +73,13 @@ public:
     //===================================================================================================================  
      /**
      * handle message of message type 4
+     * @param message the message received from the socket
+     * @param message_len the size of the received message
      * @param my_user the sender of the message 3
      * @param username the vector conatining the list of usernames of the active users
      * @return negative values on error, 1 on success
      */
-    static int handle_message_4(User * my_user, vector<string>*usernames);
+    static int handle_message_4(char * message, size_t message_len, User * my_user, vector<string>*usernames);
     //===================================================================================================================  
      /**
      * create a message type 5. This function will be called inside the client application. This function terminates the 
