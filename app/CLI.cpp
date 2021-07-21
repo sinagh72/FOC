@@ -49,8 +49,7 @@ void main_menu(User* my_user, vector<string> &usernames){
     }else if(my_user->get_status() == RTT){
 
     }else{
-        //system("clear");
-        // cout<<"Welcome "+ my_user->get_username() <<endl<<endl;
+        cout<<endl;
         cout << "You can: " <<endl;
         cout << "r : refresh the list of avaiable users" <<endl;
         cout << "x : exit the application" <<endl<<endl;
@@ -101,8 +100,26 @@ bool connect_to_server(string username, string password, const char* IP, const i
     if(buffer_len == -1){
         return false;
     }
-    char *buffer = (char*)malloc(MAX_MESSAGE_LENGTH);
+    
     //handle message type 1
+    fd_set rfds;
+    struct timeval tv;
+    int retval;
+
+    FD_ZERO(&rfds);
+    FD_SET(sock, &rfds);
+
+    /* Wait up to five seconds. */
+    tv.tv_sec = 10;
+    tv.tv_usec = 0;
+
+    retval = select(sock+1, &rfds, NULL, NULL, &tv);
+    if(retval==-1 or retval==0) {
+        cout<<endl<<"Server is not answering (maybe you are logged from another device?)"<<endl;
+        exit(EXIT_FAILURE);
+    }
+
+    char *buffer = (char*)malloc(MAX_MESSAGE_LENGTH);
     valread = read( sock , buffer, MAX_MESSAGE_LENGTH);
 
     if(NetworkMessage::handle_message_1(buffer, valread, *my_user) == -1){
