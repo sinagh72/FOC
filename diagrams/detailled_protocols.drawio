@@ -1,6 +1,6 @@
-<mxfile host="app.diagrams.net" modified="2021-07-19T18:11:47.020Z" agent="5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36" etag="qYG_vU692VL8XyL-fwyJ" version="14.9.0" type="github" pages="8">
+<mxfile host="app.diagrams.net" modified="2021-07-22T21:10:54.959Z" agent="5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36" etag="cs0c1KTZMenA0dHBhFC0" version="14.9.0" type="github" pages="8">
   <diagram id="LhEle41XsYF_ekF16rDQ" name="Log in">
-    <mxGraphModel dx="865" dy="408" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="981" dy="487" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -46,7 +46,7 @@
             <mxPoint x="160" y="440" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="uD1TBX6AGUDEOee5m0MO-14" value="M&lt;sub&gt;1 &lt;/sub&gt;: Counter&lt;sub&gt;SA&lt;/sub&gt;, GCM IV, Cert&lt;sub&gt;S&lt;/sub&gt;, g&lt;sup&gt;b&lt;/sup&gt;, {H(&amp;lt;g&lt;sup&gt;a&lt;/sup&gt;, g&lt;sup&gt;b&lt;/sup&gt;&amp;gt;&lt;sub&gt;S&lt;/sub&gt;)}&lt;sub&gt;KSA&lt;/sub&gt;, Tag" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Times New Roman;" parent="1" vertex="1">
+        <mxCell id="uD1TBX6AGUDEOee5m0MO-14" value="M&lt;sub&gt;1 &lt;/sub&gt;: Counter&lt;sub&gt;SA&lt;/sub&gt;, GCM IV, Cert&lt;sub&gt;S&lt;/sub&gt;, g&lt;sup&gt;b&lt;/sup&gt;, {&amp;lt;H(g&lt;sup&gt;a&lt;/sup&gt;, g&lt;sup&gt;b&lt;/sup&gt;)&amp;gt;&lt;sub&gt;S&lt;/sub&gt;}&lt;sub&gt;KSA&lt;/sub&gt;, Tag" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Times New Roman;" parent="1" vertex="1">
           <mxGeometry x="190" y="410" width="350" height="20" as="geometry" />
         </mxCell>
         <mxCell id="uD1TBX6AGUDEOee5m0MO-15" value="K&lt;sub&gt;SA &lt;/sub&gt;= generate(g&lt;sup&gt;a&lt;/sup&gt;, g&lt;sup&gt;b&lt;/sup&gt;)&lt;br&gt;&lt;sub&gt;&lt;/sub&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Times New Roman;" parent="1" vertex="1">
@@ -58,7 +58,7 @@
             <mxPoint x="640" y="520" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="uD1TBX6AGUDEOee5m0MO-17" value="M&lt;sub&gt;2 &lt;/sub&gt;: Counter&lt;sub&gt;SA&lt;/sub&gt;, GCM IV, {H(&amp;lt;g&lt;sup&gt;a&lt;/sup&gt;, g&lt;sup&gt;b&lt;/sup&gt;&amp;gt;&lt;sub&gt;A&lt;/sub&gt;)}&lt;sub&gt;KSA&lt;/sub&gt;, Tag" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Times New Roman;" parent="1" vertex="1">
+        <mxCell id="uD1TBX6AGUDEOee5m0MO-17" value="M&lt;sub&gt;2 &lt;/sub&gt;: Counter&lt;sub&gt;SA&lt;/sub&gt;, GCM IV, {&amp;lt;H(g&lt;sup&gt;a&lt;/sup&gt;, g&lt;sup&gt;b&lt;/sup&gt;)&amp;gt;&lt;sub&gt;A&lt;/sub&gt;}&lt;sub&gt;KSA&lt;/sub&gt;, Tag" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Times New Roman;" parent="1" vertex="1">
           <mxGeometry x="190" y="490" width="350" height="20" as="geometry" />
         </mxCell>
       </root>
