@@ -1,7 +1,0 @@
-1- BAN LOGIC
-2- check if user is already connected from another session: completed in server, and server is sending an non authenticated
- message to client
-3- VERIFY THE ACTUAL TYPE OF THE INCOMING MESSAGE
-4- Check cin_flush is necessary or not
-5- usleep is not POSIX standard (not portable)
-IMPORTANT if user is chatting return a message directly from server (list of user can be not syncronizeed)

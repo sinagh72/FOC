@@ -109,7 +109,7 @@ bool connect_to_server(string username, string password, const char* IP, const i
     FD_ZERO(&rfds);
     FD_SET(sock, &rfds);
 
-    /* Wait up to five seconds. */
+    /* Wait up to ten seconds. */
     tv.tv_sec = 10;
     tv.tv_usec = 0;
 
