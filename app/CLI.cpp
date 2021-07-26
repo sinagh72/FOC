@@ -202,9 +202,7 @@ void select_main_menu(User* my_user, vector<string> &usernames) {
                     if(-1 == NetworkMessage::handle_message_14(message, val_read, my_user)){}
                     break;
                 case 16:
-                    cout <<"handling message 16 before" <<endl;
                     if(-1 == NetworkMessage::handle_message_16(message, val_read, my_user)){}
-                    cout <<"handling message 16 after" <<endl;
                     break;
                 case 'e':
                     if(-1 == NetworkMessage::handle_error_message(message, val_read, my_user)){}
